@@ -44,6 +44,7 @@ def main():
 # TODO: test cconj
 def get_test_arguments():
     return shlex.split('trans lalka pl en')
+    # return shlex.split('trans t dotyczyć pl en')  # exception
     # return shlex.split('trans definicja pl -def')
     # return shlex.split('t dać pl -c')
     # return shlex.split('t sweter pl -c')

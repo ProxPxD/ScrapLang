@@ -14,7 +14,7 @@ from pandas.core.indexes.numeric import Int64Index, NumericIndex
 from tabulate import tabulate
 
 from ..translating.parsing.parsing import Record
-from ..translating.scrapping import TranslationResult, TranslationTypes
+from ..translating.scrapping import TranslationResult, TranslationTypes, ErrorMessages
 
 
 class AbstractFormatter(ABC):
@@ -212,12 +212,23 @@ class PartOfSpeechFormatter(AbstractFormatter, AbstractIntoPrintableIterableForm
 		return part_of_speech
 
 
+class MsgFormatter(AbstractFormatter):
+	GENERAL = 'general'
+	_trans = {
+		'pl': {
+			ErrorMessages.NO_TRANSLATION: 'Nie znaleziono tłumaczenia. Jeśli argumenty są poprawne, to znaczy, że zadanie tłumaczenie jak dotąd nie istnieje'
+		}
+	}
+
+	def format(cls, to_format: str, to_lang: str = None, from_lang: str = None, is_info=False, **kwargs) -> str:
+		formatting_lang = to_lang if not is_info else from_lang
+		translation = cls._trans.get(formatting_lang, cls._trans[cls.GENERAL]).get(to_format, to_format)
+
+
 class RecordFormatter(AbstractFormatter, AbstractIntoStringFormatter, AbstractIntoPrintableIterableFormatter):
 
 	sep = '; '
 	post_all = ''
-
-	NO_RECORDS_MESSAGE = 'No translation has been found!'
 
 	@classmethod
 	def format(cls, record: Record, **kwargs):
@@ -250,12 +261,12 @@ class RecordFormatter(AbstractFormatter, AbstractIntoStringFormatter, AbstractIn
 	def format_many_into_printable_iterable(cls, records: Iterable[Record], **kwargs):
 		records = list(records)
 		if not records:
-			records = [Record(cls.NO_RECORDS_MESSAGE)]
+			records = [Record(MsgFormatter.format(ErrorMessages.NO_TRANSLATION, **kwargs))]
 		yield from super().format_many_into_printable_iterable(records, **kwargs)
 
 
 class TranslationFormatter(AbstractFormatter, AbstractIntoStringFormatter, AbstractIntoPrintableIterableFormatter):
-	_post_sep_length = 64
+	_post_sep_length = 48
 	_pre_sep_length = 4
 	group_dash = '-'
 
