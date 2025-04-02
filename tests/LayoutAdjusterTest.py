@@ -1,5 +1,4 @@
 from parameterized import parameterized
-from smartcli import Flag
 
 from src.glosbe.configurations import Configurations
 from src.glosbe.constants import FLAGS

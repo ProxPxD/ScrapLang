@@ -10,7 +10,6 @@ import pandas as pd
 from more_itertools import bucket, split_when
 from numpy import ndarray
 from pandas import DataFrame, RangeIndex, MultiIndex
-from pandas.core.indexes.numeric import Int64Index, NumericIndex
 from tabulate import tabulate
 
 from ..translating.parsing.parsing import Record
@@ -490,7 +489,7 @@ class TableMerger(AbstractFromManyToManyFormatter):
 class HeaderTableFormatter(AbstractFormatter):
 	@classmethod
 	def format(cls, table: DataFrame, **kwargs) -> DataFrame:
-		if isinstance(table.columns, (RangeIndex, Int64Index, NumericIndex)):
+		if isinstance(table.columns, (pd.RangeIndex, pd.Index)) and table.columns.is_numeric():
 			table, table.columns = table[1:], table.iloc[0]
 		return table
 
@@ -498,6 +497,6 @@ class HeaderTableFormatter(AbstractFormatter):
 class RowNamesTableFormatter(AbstractFormatter):
 	@classmethod
 	def format(cls, table: DataFrame, **kwargs) -> DataFrame:
-		if isinstance(table.index, (RangeIndex, Int64Index, NumericIndex)):
+		if isinstance(table.columns, (pd.RangeIndex, pd.Index)) and table.columns.is_numeric():
 			table = table.set_index(table.columns.array[0])
 		return table

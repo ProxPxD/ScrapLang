@@ -4,9 +4,21 @@ import sys
 import traceback
 from dataclasses import dataclass
 
-from glosbe.configurations import Configurations, Paths
 from glosbe.translatingPrinting.translationPrinter import TranslationPrinter
-from glosbe.translatorCli import TranslatorCli
+from glosbe.translatorCli import CLI
+from glosbe.configurations import ConfLoader
+from glosbe.constants import Paths
+
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.DEBUG,  # Set minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        format='%(levelname)s: %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(Paths.LOG_DIR)
+        ]
+    )
 
 
 @dataclass(frozen=True)
@@ -15,22 +27,17 @@ class ErrorMessages:
     ATTRIBUTE_ERROR: str = 'Error! Please send logs to the creator'
 
 
-@dataclass(frozen=True)
-class Data:
-    LOG_PATH = Paths.RESOURCES_DIR / 'logs.txt'
-
-
 def main():
-    if len(sys.argv) == 1:
-        sys.argv = get_test_arguments()
-
+    setup_logging()
     try:
-        Configurations.init()
-        logging.basicConfig(filename=Data.LOG_PATH, encoding='utf-8', level=logging.WARNING, format='%(levelname)s: %(message)s ')
-        cli = TranslatorCli(sys.argv)
-        cli.parse()
-        Configurations.change_last_used_languages(*cli.langs)
-        Configurations.save_and_close()
+        # Configurations.init()
+        conf = ConfLoader.load(Paths.CONF_FILE)
+        cli = CLI(conf)
+        parsed = cli.parse()
+        if parsed.debug:
+            logging.basicConfig(level=logging.DEBUG)
+        #Configurations.change_last_used_languages(*cli.langs)
+        #Configurations.save_and_close()
     except AttributeError as err:
         logging.error(traceback.format_exc())
         TranslationPrinter.out(ErrorMessages.ATTRIBUTE_ERROR)

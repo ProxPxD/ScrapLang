@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -68,7 +69,16 @@ class FLAGS:
     F = FUNCTIONAL
     M = MODES
 
-supported_langages = {
+
+@dataclass(frozen=True)
+class Paths:
+    WORKING_DIR = Path(__file__).parent.parent.parent
+    RESOURCES_DIR = WORKING_DIR / 'resources'
+    LOG_DIR = RESOURCES_DIR / 'logs.log'
+    CONF_FILE: str = RESOURCES_DIR / 'conf.yaml'
+
+
+supported_languages = {
     'af': "afrikaans Afrikaans",
     'sq': "albański Albanian, shqip",
     'en': "angielski English",

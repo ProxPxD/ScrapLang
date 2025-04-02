@@ -1,0 +1,2 @@
+langs = ["pl", "es", "en", "de", "zh", "eo", "fr", "ru", "uk", "sq", "mis_tok"]
+asssume = "lang"
