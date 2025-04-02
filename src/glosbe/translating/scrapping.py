@@ -1,5 +1,6 @@
 import logging
 import traceback
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from itertools import product
 from typing import Iterable, Any
@@ -8,9 +9,9 @@ import requests
 import requests.exceptions as request_exceptions
 
 from .parsing.parsing import TranslationParser, Record, WrongStatusCodeError, ConjugationParser, AbstractParser, DefinitionParser, WordInfoParser
-from .web.connector import Connector, TransArgs, TranslatorArgumentException
 
 
+# TODO: separate
 @dataclass(frozen=True)
 class TranslationTypes:
     SINGLE = 'Single'
@@ -20,6 +21,29 @@ class TranslationTypes:
     CONJ = 'Conjugation'
     DEF = 'Definition'
     WORD_INFO = 'Word Info'
+
+@dataclass(frozen=True)
+class WebConstants:
+    MAIN_URL = "glosbe.com"
+
+@dataclass
+class TransArgs:
+    from_lang: str = ''
+    to_lang: str = ''
+    word: str = ''
+
+    def to_url(self) -> str:
+        if not self:
+            raise TranslatorArgumentException(self)
+        return f'https://{WebConstants.MAIN_URL}/{self.from_lang}/{self.to_lang}/{self.word}'
+
+    def __bool__(self):
+        return all(filter(bool, (self.from_lang, self.to_lang, self.word)))
+
+
+class TranslatorArgumentException(ValueError):
+    def __init__(self, trans_args: TransArgs):
+        self.trans_args = trans_args
 
 
 @dataclass
@@ -50,21 +74,26 @@ def get_product(firsts, seconds, by_seconds=False):
     return product(firsts, seconds)
 
 
-class AbstractScrapper:
+def get_default_headers():
+     return {'User-agent': 'Mozilla/5.0'}
+        # {
+        #     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        #     'Accept-Encoding': 'gzip, deflate',
+        #     'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+        #     'Dnt': '1',
+        #     'Host': 'httpbin.org',
+        #     'Upgrade-Insecure-Requests': '1',
+        #     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) '
+        #                   'AppleWebKit/537.36 (KHTML, like Gecko) '
+        #                   'Chrome/83.0.4103.97 Safari/537.36',
+        #     'X-Amzn-Trace-Id': 'Root=1-5ee7bbec-779382315873aa33227a5df6'
+        # }
 
+
+class AbstractScrapper:
     def __init__(self, parser: AbstractParser, **kwargs):
         self._parser: AbstractParser = parser
-        self._session: requests.sessions.Session | None = None
-
-    def __setattr__(self, name, value):
-        match name:
-            case 'session':
-                if isinstance(value, requests.sessions.Session):
-                    self.__dict__['_' + name] = value
-                else:
-                    raise ValueError
-            case _:
-                super().__setattr__(name, value)
+        self.session: requests.sessions.Session | None = None
 
 
 class TranslatorScrapper(AbstractScrapper):
@@ -114,7 +143,7 @@ class TranslatorScrapper(AbstractScrapper):
         yield TranslationResult(trans_args, records, kind=self.kind)
 
     def request_and_set_page(self, trans_args: TransArgs):
-        page: requests.Response = self._session.get(trans_args.to_url(), allow_redirects=True)
+        page: requests.Response = self.session.get(trans_args.to_url(), allow_redirects=True)
         self._parser.set_page(page)
         self._word_info_parser.set_page(page)
 
@@ -156,7 +185,7 @@ class ConjugationScrapper(AbstractScrapper):
 
     def get_conjugation(self, lang: str, word: str) -> Iterable:
         trans_args = TransArgs(lang, 'en' if lang != 'en' else 'es', word)
-        page: requests.Response = self._session.get(f'{trans_args.to_url()}/fragment/details', allow_redirects=True)
+        page: requests.Response = self.session.get(f'{trans_args.to_url()}/fragment/details', allow_redirects=True)
         self._parser.set_page(page)
         yield from self._parser.parse()
 
@@ -167,7 +196,7 @@ class DefinitionScrapper(AbstractScrapper):
 
     def scrap_definitions(self, lang: str, word: str) -> Iterable:
         trans_args = TransArgs(lang, lang, word)
-        page: requests.Response = self._session.get(trans_args.to_url(), allow_redirects=True)
+        page: requests.Response = self.session.get(trans_args.to_url(), allow_redirects=True)
         self._parser.set_page(page)
         yield from self._parser.parse()
 
@@ -179,10 +208,10 @@ class WordScrapper(AbstractScrapper):
     def scrap(self, from_lang, to_lang, word):
         trans_args = TransArgs(from_lang, to_lang, word)
         page: requests.Response
-        page = self._session.get(trans_args.to_url(), allow_redirects=True)
+        page = self.session.get(trans_args.to_url(), allow_redirects=True)
         if not page.ok and 'en' not in (from_lang, to_lang):
             trans_args = TransArgs(from_lang, 'en', word)
-            page = self._session.get(trans_args.to_url(), allow_redirects=True)
+            page = self.session.get(trans_args.to_url(), allow_redirects=True)
         self._parser.set_page(page)
         yield from self._parser.parse()
 
@@ -190,42 +219,38 @@ class WordScrapper(AbstractScrapper):
 class Scrapper:
     def __init__(self):
         self.args = TransArgs()
-        self._connector = Connector()
         self._conjugation_scrapper = ConjugationScrapper()
         self._translation_scrapper = TranslatorScrapper()
         self._definition_scrapper = DefinitionScrapper()
         self._word_info_scrapper = WordScrapper()
 
+    @contextmanager
+    def connect(self):
+        session = None
+        try:
+            session = requests.Session()
+            session.headers.update(get_default_headers())
+            self._translation_scrapper.session = session
+            self._conjugation_scrapper.session = session
+            self._definition_scrapper.session = session
+            yield session
+        finally:
+            if session:
+                session.close()
+
     def scrap_translation(self, from_lang: str, to_langs: list[str, ...], words: list[str, ...], by_word=False, show_info=True) -> Iterable[TranslationResult]:
-        self._connector.establish_session()
-        self._translation_scrapper.session = self._connector.session
-
-        yield from self._translation_scrapper.translate(from_lang, to_langs, words, by_word=by_word, show_info=show_info)
-
-        self._connector.close_session()
+        with self.connect():
+            yield from self._translation_scrapper.translate(from_lang, to_langs, words, by_word=by_word, show_info=show_info)
 
     def scrap_conjugation(self, lang: str, word: str) -> Iterable:
-        self._connector.establish_session()
-        self._conjugation_scrapper.session = self._connector.session
-
-        yield from self._conjugation_scrapper.get_conjugation(lang, word)
-
-        self._connector.close_session()
+        with self.connect():
+            yield from self._conjugation_scrapper.get_conjugation(lang, word)
 
     def scrap_translation_and_conjugation(self, from_lang: str, to_lang: str, word: str, **scrapper_kwargs) -> Iterable[TranslationResult] | Any:
-        self._connector.establish_session()
-        self._translation_scrapper.session = self._connector.session
-        self._conjugation_scrapper.session = self._connector.session
-
-        translation_result = self._translation_scrapper.translate(from_lang, to_lang, word, **scrapper_kwargs)
-        conjugation_result = self._conjugation_scrapper.get_conjugation(from_lang, word)
-        yield translation_result
-        yield conjugation_result
-
-        self._connector.close_session()
+        with self.connect():
+            yield self._translation_scrapper.translate(from_lang, to_lang, word, **scrapper_kwargs)
+            yield self._conjugation_scrapper.get_conjugation(from_lang, word)
 
     def scrap_definition(self, lang: str, word: str) -> Iterable:
-        self._connector.establish_session()
-        self._definition_scrapper.session = self._connector.session
-        yield from self._definition_scrapper.scrap_definitions(lang, word)
-        self._connector.close_session()
+        with self.connect():
+            yield from self._definition_scrapper.scrap_definitions(lang, word)
