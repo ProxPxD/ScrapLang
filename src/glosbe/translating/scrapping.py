@@ -3,7 +3,7 @@ import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Iterable, Any
+from typing import Iterable, Any, Sequence
 
 import requests
 import requests.exceptions as request_exceptions
@@ -97,7 +97,6 @@ class AbstractScrapper:
 
 
 class TranslatorScrapper(AbstractScrapper):
-
     def __init__(self, **kwargs):
         super().__init__(parser=TranslationParser(), **kwargs)
         self._word_info_parser = WordInfoParser()
@@ -201,6 +200,7 @@ class DefinitionScrapper(AbstractScrapper):
         yield from self._parser.parse()
 
 
+# TODO: unused
 class WordScrapper(AbstractScrapper):
     def __init__(self, **kwargs):
         super().__init__(parser=WordInfoParser(), **kwargs)
@@ -219,10 +219,14 @@ class WordScrapper(AbstractScrapper):
 class Scrapper:
     def __init__(self):
         self.args = TransArgs()
-        self._conjugation_scrapper = ConjugationScrapper()
         self._translation_scrapper = TranslatorScrapper()
+        self._conjugation_scrapper = ConjugationScrapper()
         self._definition_scrapper = DefinitionScrapper()
         self._word_info_scrapper = WordScrapper()
+
+    @property
+    def scrappers(self) -> Sequence[AbstractScrapper]:
+        return self._translation_scrapper, self._conjugation_scrapper, self._definition_scrapper, self._word_info_scrapper
 
     @contextmanager
     def connect(self):
@@ -230,9 +234,8 @@ class Scrapper:
         try:
             session = requests.Session()
             session.headers.update(get_default_headers())
-            self._translation_scrapper.session = session
-            self._conjugation_scrapper.session = session
-            self._definition_scrapper.session = session
+            for scrapper in self.scrappers:
+                scrapper.session = session
             yield session
         finally:
             if session:
