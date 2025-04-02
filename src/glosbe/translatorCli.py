@@ -448,30 +448,7 @@ modes = (F.M.SINGLE_LONG_FLAG, F.M.LANG_LONG_FLAG, F.M.WORD_LONG_FLAG)
 #         super().set_out_stream(out)
 #         ConfigDisplayer.out_func = out
 #         TranslationPrinter.out_func = out
-#
-#     def _correct_misplaced(self):
-#         '''
-#             How and why exactly the nested if exists is not clear to me
-#             Until a better explanation I announce it magic
-#         '''
-#         if self._word_filter.is_any_lang_misplaced(*self._from_langs, *self._to_langs):
-#             from_langs, to_langs, words = self._word_filter.split_from_from_and_to_langs(self._from_langs, self._to_langs)
-#             self._from_langs.reset()
-#             self._from_langs += from_langs
-#             self._to_langs.reset()
-#             self._to_langs += to_langs
-#             self._words += words
-#
-#             if self._word_filter.is_any_word_moved_from_to_langs():
-#                 if self._single_node.is_active():
-#                     self._from_langs += -self._words
-#                 self._to_langs += -self._from_langs
-#
-#             if self._word_filter.is_any_word_moved_from_from_langs() and not self._word_node.is_active():
-#                 self._from_langs += -self._words
-#
-#             self._word_filter.reset()
-#
+
 #     def _add_translation_args_preprocessing_actions(self) -> None:
 #         self.add_args_preprocessing_action(self._adjust_args, lambda: Configurations.get_adjustment_method() in LayoutAdjustmentsMethods.get_adjusting_methods())
 #
@@ -537,7 +514,7 @@ class CLI:
         supported_langs_msg = f'Supported languages: {" ".join(supported_languages.keys())}'
 
         parser.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
-        parser.add_argument('--from', '--from-lang', '-f', '-s', dest='from_lang', help=supported_langs_msg)
+        parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
         parser.add_argument('--words', '-w', nargs='+', default=[], help='Words to translate')
 
@@ -547,7 +524,9 @@ class CLI:
 
     def parse(self, args=None, namespace=None) -> Namespace:
         parsed = self.parser.parse_args(args, namespace)
+        # use keyboard-layout for adjustment
         parsed = self._distribute_args(parsed)
+        parsed = self._fill_defaults(parsed)
         logging.debug(f'Parsed: {parsed}')
         return parsed
 
@@ -562,7 +541,7 @@ class CLI:
             raise ValueError(f'Could not resolve arguments: {parsed.args}')
 
         # assume == lang
-        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in supported_languages]))
+        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in supported_languages]), default_box=True)
         parsed.args = []
 
         if not parsed.words:
@@ -591,3 +570,21 @@ class CLI:
             raise ValueError('No word provided!')
         logging.debug(f'Assuming: "{word}" is word')
         return word
+
+    def _fill_defaults(self, parsed: Namespace) -> Namespace:
+        used = _.filter_([parsed.from_lang] + parsed.to_langs)
+        pot_defaults = [lang for lang in self.conf.langs if lang not in used]
+        logging.debug(f'Potential defaults: {pot_defaults}')
+        if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
+            raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
+        to_fill = pot_defaults[:n_needed]
+        logging.debug(f'Chosen defaults: {to_fill}')
+        if not parsed.from_lang:
+            from_lang = to_fill.pop(0)
+            logging.debug(f'Filling from_lang with {from_lang}')
+            parsed.from_lang = from_lang
+        if not parsed.to_langs:
+            to_lang = to_fill.pop(0)
+            logging.debug(f'Filling to_lang with {to_lang}')
+            parsed.to_langs.append(to_lang)
+        return parsed
