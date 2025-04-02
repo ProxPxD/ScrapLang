@@ -516,3 +516,6 @@ class TranslatorCli(Cli):
             + f'{self._double_multi_node.name}: {self._double_multi_node.help.synopsis}\n'\
             + f'{self._conjugation_node.name}: {self._conjugation_node.help.synopsis}\n'\
             + f'{self._definition_node.name}: {self._definition_node.help.synopsis}'
+
+
+

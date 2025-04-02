@@ -33,16 +33,16 @@ class Definition:
 
 
 class AbstractParser(ABC):
-
     def __init__(self, page: requests.Response = None, **kwargs):
-        self._page = page
+        super().__init__(**kwargs)
+        self.page = page
 
     def set_page(self, page: requests.Response):
-        self._page = page
+        self.page = page
 
     def parse(self):
-        if not self._page.ok:
-            raise WrongStatusCodeError(self._page)
+        if not self.page.ok:
+            raise WrongStatusCodeError(self.page)
         yield from self._parse()
 
     @abstractmethod
@@ -81,7 +81,7 @@ class WordInfoParser(FeatureParser):
         super().__init__(page, **kwargs)
 
     def _parse(self) -> Iterable[Record]:  # TODO: add test for it
-        soup = BeautifulSoup(self._page.text, features="html.parser")
+        soup = BeautifulSoup(self.page.text, features="html.parser")
         word_info_tag = soup.find('div', {'class': 'text-xl text-gray-900 px-1 pb-1'})
         # actual_trans = filter(lambda trans_elem: trans_elem.select_one('h3'), trans_elems)
         get_featured_record = self._get_create_featured_record_from_tag(self._get_word, self._get_spans)
@@ -102,11 +102,7 @@ class TranslationParser(FeatureParser):
         super().__init__(page, **kwargs)
 
     def _parse(self) -> Iterable[Record]:
-        soup = BeautifulSoup(self._page.text, features="html.parser")
-        translation_records = self._parse_translation_records(soup)
-        return translation_records
-
-    def _parse_translation_records(self, soup: BeautifulSoup) -> Iterable[Record]:
+        soup = BeautifulSoup(self.page.text, features="html.parser")
         trans_elems = soup.find_all('div', {'class': 'inline leading-10'})
         actual_trans = filter(lambda trans_elem: trans_elem.select_one('h3'), trans_elems)
         get_featured_record = self._get_create_featured_record_from_tag(self._get_translation, self._get_spans)
@@ -127,7 +123,7 @@ class ConjugationParser(AbstractParser):
 
     def _parse(self):
         try:
-            return pd.read_html(self._page.text, keep_default_na=False, header=None)
+            return pd.read_html(self.page.text, keep_default_na=False, header=None)
         except ValueError as e:
             match e.args[0]:
                 case "invalid literal for int() with base 10: '100%'":
@@ -145,7 +141,7 @@ class DefinitionParser(AbstractParser):
         super().__init__(page, **kwargs)
 
     def _parse(self):
-        soup = BeautifulSoup(self._page.text, features="html.parser")
+        soup = BeautifulSoup(self.page.text, features="html.parser")
         definitions_nodes = soup.find_all('li', {'class': 'pb-2'})
         definitions = map(self._parse_definition, definitions_nodes)
         return definitions
