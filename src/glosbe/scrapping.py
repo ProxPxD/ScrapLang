@@ -8,9 +8,12 @@ from typing import Iterable, Any, Sequence, Iterator
 import requests
 import requests.exceptions as request_exceptions
 from requests import Session
+from returns.result import safe, Result, Failure
 
-from .parsing import TranslationParser, Record, WrongStatusCodeError, ConjugationParser, AbstractParser, DefinitionParser, WordInfoParser, ParserResult, TranslationParser_
-
+from .parsing import TranslationParser, Record, WrongStatusCodeError, ConjugationParser, AbstractParser, DefinitionParser, WordInfoParser, ParserResult, TranslationParser_, Parser, \
+    ParsingException
+from .web_pather import get_default_headers, GlosbePather
+from requests.exceptions import HTTPError
 
 # TODO: separate
 @dataclass(frozen=True)
@@ -77,20 +80,6 @@ def get_product(firsts, seconds, by_seconds=False):
     return product(firsts, seconds)
 
 
-def get_default_headers():
-     return {'User-agent': 'Mozilla/5.0'}
-        # {
-        #     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        #     'Accept-Encoding': 'gzip, deflate',
-        #     'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
-        #     'Dnt': '1',
-        #     'Host': 'httpbin.org',
-        #     'Upgrade-Insecure-Requests': '1',
-        #     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) '
-        #                   'AppleWebKit/537.36 (KHTML, like Gecko) '
-        #                   'Chrome/83.0.4103.97 Safari/537.36',
-        #     'X-Amzn-Trace-Id': 'Root=1-5ee7bbec-779382315873aa33227a5df6'
-        # }
 
 
 class AbstractScrapper:
@@ -261,3 +250,22 @@ class Scrapper:
     def scrap_definition(self, lang: str, word: str) -> Iterable:
         with self.connect():
             yield from self._definition_scrapper.scrap_definitions(lang, word)
+
+
+class Scrapper_:
+    def __init__(self, session: Session):
+        self.session = session
+
+    @safe
+    def scrap(self, url: str, parser: Parser) -> Result[Any, HTTPError | ParsingException]:
+        response = self.session.get(url, allow_redirects=True)
+        response.raise_for_status()
+        return parser.parse(response).unwrap()
+
+    def scrap_translation(self, from_lang: str, to_lang: str, word: str) -> Result[Iterable, HTTPError | ParsingException]:
+        url = GlosbePather.get_word_trans_url(from_lang, to_lang, word)
+        return self.scrap(url, TranslationParser_)
+
+    def scrap_conjugation(self, lang: str, word: str) -> Result[Any, HTTPError | ParsingException]:
+        url = GlosbePather.get_details_url(lang, word)
+        return self.scrap(url, ConjugationParser)

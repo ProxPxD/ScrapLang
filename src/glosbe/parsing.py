@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from enum import StrEnum
+from io import StringIO
 from typing import Iterable, Callable
 
 import pandas as pd
@@ -160,23 +161,6 @@ class TranslationParser(FeatureParser):
         return main_span.find_all('span')
 
 
-class ConjugationParser(AbstractParser):
-    def __init__(self, page: requests.Response = None, **kwargs):
-        super().__init__(page, **kwargs)
-
-    def _parse(self):
-        try:
-            return pd.read_html(self.page.text, keep_default_na=False, header=None)
-        except ValueError as e:
-            match e.args[0]:
-                case "invalid literal for int() with base 10: '100%'":
-                    return [pd.DataFrame({'Error': []})]
-                case "No tables found":
-                    #TODO: implement error printing
-                    return [pd.DataFrame({'Error': [e.args[0]]})]
-                case _:
-                    raise e
-
 
 class DefinitionParser(AbstractParser):
 
@@ -244,11 +228,9 @@ class Parser(ABC):
             case _: raise ValueError(f'Cannot handle type {type(to_parse)} of {to_parse}!')
 
     @classmethod
-    def parse(cls, to_parse: Response | Tag | str) -> Result[Iterable[ParserResult], ParsingException]:
-        try:
-            return Success(cls._parse(cls.ensure_tag(to_parse)))
-        except ParsingException as pe:
-            return Failure(pe)
+    @safe
+    def parse(cls, to_parse: Response | Tag | str) -> Result[Iterable, ParsingException]:
+        return cls._parse(cls.ensure_tag(to_parse))
 
     @classmethod
     @abstractmethod
@@ -258,7 +240,7 @@ class Parser(ABC):
 
 class TranslationParser_(Parser):
     @classmethod
-    def _parse(cls, tag) -> Iterable[Result[tuple(str, Maybe[str], Maybe[str]), ParsingException]]:
+    def _parse(cls, tag: Tag) -> Iterable[Result[tuple(str, Maybe[str], Maybe[str]), ParsingException]]:
         if not (trans_divs := tag.find_all('div', {'class': 'inline leading-10'})):
             raise ParsingException('No translation div!')
         for trans_div in map(Success, trans_divs):
@@ -279,3 +261,10 @@ class TranslationParser_(Parser):
     def _get_spans(cls, trans_tag: Tag) -> ResultSet[Tag]:
         main_span = trans_tag.select_one('span', {'class': 'text-xxs text-gray-500'})
         return main_span.find_all('span')
+
+
+class ConjugationParser(Parser):
+    @classmethod
+    def _parse(cls, tag: Tag):
+        for table in tag.select('div #grammar_0_0 table'):
+            yield pd.read_html(StringIO(str(table)), keep_default_na=False, header=None)

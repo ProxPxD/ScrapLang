@@ -14,7 +14,7 @@ from glosbe.constants import Paths
 
 def setup_logging():
     logging.basicConfig(
-        level=logging.DEBUG,  # Set minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        level=logging.INFO,  # Set minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         format='%(levelname)s: %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
