@@ -15,7 +15,7 @@ def get_default_headers():
 
 
 class GlosbePather:
-    MAIN_URL = "glosbe.com"
+    MAIN_URL = 'glosbe.com'
 
     @classmethod
     def get_word_trans_url(cls, from_lang: str, to_lang: str, word: str) -> str:
@@ -23,4 +23,5 @@ class GlosbePather:
 
     @classmethod
     def get_details_url(cls, lang: str, word: str) -> str:
-        return f'{cls.get_word_trans_url(lang, "en", word)}/fragment/details'
+        to_lang = 'en' if lang != 'en' else 'fr'
+        return f'{cls.get_word_trans_url(lang, to_lang, word)}/fragment/details'
