@@ -9,11 +9,11 @@ import numpy as np
 import pandas as pd
 from more_itertools import bucket, split_when
 from numpy import ndarray
-from pandas import DataFrame, RangeIndex, MultiIndex
+from pandas import DataFrame, MultiIndex
 from tabulate import tabulate
 
-from ..translating.parsing.parsing import Record
-from ..translating.scrapping import TranslationResult, TranslationTypes, ErrorMessages
+#from src.glosbe.parsing import Record
+#from src.glosbe.scrapping import TranslationResult, TranslationTypes, ErrorMessages
 
 
 class AbstractFormatter(ABC):

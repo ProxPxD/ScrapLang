@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import logging
 import shlex
 import sys
-import traceback
+from collections import ChainMap
 from dataclasses import dataclass
 
-from glosbe.translatingPrinting.translationPrinter import TranslationPrinter
-from glosbe.translatorCli import CLI
+from glosbe.AppManager import AppManager, Context
+from glosbe.cli import CLI
 from glosbe.configurations import ConfLoader
 from glosbe.constants import Paths
 
@@ -31,20 +33,23 @@ def main():
     setup_logging()
     try:
         # Configurations.init()
-        conf = ConfLoader.load(Paths.CONF_FILE)
-        cli = CLI(conf)
-        parsed = cli.parse()
-        if parsed.debug:
+        default_conf = ConfLoader.load(Paths.CONF_FILE)
+        parsed = CLI(default_conf).parse()
+        context = Context(vars(parsed), default_conf)
+        if context.debug:
             logging.basicConfig(level=logging.DEBUG)
+        AppManager(context).run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()
-    except AttributeError as err:
-        logging.error(traceback.format_exc())
-        TranslationPrinter.out(ErrorMessages.ATTRIBUTE_ERROR)
-    except Exception as ex:
-        # TODO: in next((flag for flag in self._flags if flag.has_name(name))) of cli parser add an exception to know that the flag has not been added. Similarly in sibling cli_elements
-        logging.exception(traceback.format_exc())
-        TranslationPrinter.out(ErrorMessages.UNKNOWN_EXCEPTION, end='\n')
+    except:
+        raise
+    # except AttributeError as err:
+    #     logging.error(traceback.format_exc())
+    #     TranslationPrinter.out(ErrorMessages.ATTRIBUTE_ERROR)
+    # except Exception as ex:
+    #     # TODO: in next((flag for flag in self._flags if flag.has_name(name))) of cli parser add an exception to know that the flag has not been added. Similarly in sibling cli_elements
+    #     logging.exception(traceback.format_exc())
+    #     TranslationPrinter.out(ErrorMessages.UNKNOWN_EXCEPTION, end='\n')
 
 
 # TODO: test conj

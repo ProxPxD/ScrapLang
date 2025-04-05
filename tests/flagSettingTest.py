@@ -3,7 +3,7 @@ from smartcli.nodes.smartList import SmartList
 
 from src.glosbe.configurations import Configurations
 from src.glosbe.constants import FLAGS as F
-from src.glosbe.translating.scrapping import TranslationTypes
+from src.glosbe.scrapping import TranslationTypes
 from src.glosbe.translatingPrinting.translationPrinter import TranslationPrinter
 from tests.abstractCliTest import AbstractCliTest
 

@@ -2,26 +2,17 @@ import time
 from time import sleep
 from typing import Iterable, Any
 
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 from .formatting import TranslationFormatter
-from ..translating.scrapping import TranslationResult
 
 
 class TranslationPrinter:
-    out_func = lambda to_print: print(to_print, end='')
-    _is_turned_on = True
-    break_time = 0.2
+    def __init__(self, interval: int = 0,):
+        self.interval = interval
+        self.sched = BlockingScheduler()
 
-    @classmethod
-    def turn_off(cls) -> None:
-        cls.turn(False)
 
-    @classmethod
-    def turn_on(cls) -> None:
-        cls.turn(True)
-
-    @classmethod
-    def turn(cls, state: bool) -> None:
-        cls._is_turned_on = state
 
     @classmethod
     def out(cls, to_print: Any, end=None) -> None:

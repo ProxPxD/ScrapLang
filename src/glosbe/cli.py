@@ -513,12 +513,17 @@ class CLI:
         )
         supported_langs_msg = f'Supported languages: {" ".join(supported_languages.keys())}'
 
+        # Main args
         parser.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
+        parser.add_argument('--words', '-w', nargs='+', default=[], help='Words to translate')
         parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
-        parser.add_argument('--words', '-w', nargs='+', default=[], help='Words to translate')
 
-        parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume in doubt of positional args')
+        # Cli Conf
+        parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
+        # Display Conf
+        parser.add_argument('--groupby', '-by', choices=['lang', 'word'], help='What to group the result translations by')
+        # Developer Conf
         parser.add_argument('--debug', action='store_true')
         return parser
 

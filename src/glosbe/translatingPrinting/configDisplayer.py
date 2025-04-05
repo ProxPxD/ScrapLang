@@ -1,10 +1,4 @@
-from typing import Any
-
 # from ..configurations import Configurations
-from ..constants import FLAGS as F
-from ..layoutAdjusting.layoutAdjuster import LayoutAdjustmentsMethods
-from ..translating.scrapping import TranslationTypes
-from ..translatingPrinting.translationPrinter import TranslationPrinter
 
 
 # TODO: move it in translator printer

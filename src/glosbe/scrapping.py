@@ -3,12 +3,13 @@ import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Iterable, Any, Sequence
+from typing import Iterable, Any, Sequence, Iterator
 
 import requests
 import requests.exceptions as request_exceptions
+from requests import Session
 
-from .parsing.parsing import TranslationParser, Record, WrongStatusCodeError, ConjugationParser, AbstractParser, DefinitionParser, WordInfoParser
+from .parsing import TranslationParser, Record, WrongStatusCodeError, ConjugationParser, AbstractParser, DefinitionParser, WordInfoParser, ParserResult, TranslationParser_
 
 
 # TODO: separate
@@ -22,9 +23,11 @@ class TranslationTypes:
     DEF = 'Definition'
     WORD_INFO = 'Word Info'
 
+
 @dataclass(frozen=True)
 class WebConstants:
     MAIN_URL = "glosbe.com"
+
 
 @dataclass
 class TransArgs:
@@ -102,32 +105,15 @@ class TranslatorScrapper(AbstractScrapper):
         self._word_info_parser = WordInfoParser()
         self.kind: str = ''
 
-    def translate(self, from_lang: str, to_langs: list[str] | str, words: list[str] | str, by_word=False, show_info=True) -> Iterable[TranslationResult]:
-        if isinstance(words, str):
-            words = [words]
-        if isinstance(to_langs, str):
-            to_langs = [to_langs]
+    def translate(self, from_lang: str, to_langs: list[str], words: list[str], by_word=False, show_info=True) -> Iterable[TranslationResult]:
         langs_words = get_product(to_langs, words, by_word)
-        self.kind = self.get_translation_kind(to_langs, words)
 
         gathered_info = []
         for to_lang, word in langs_words:
             is_first = show_info and word not in gathered_info
-            # print(f'{to_lang}, {word}, {is_first}, {gathered_info}')
             yield from self.translate_single(from_lang, to_lang, word, is_first=is_first)
             if is_first:
                 gathered_info.append(word)
-
-    def get_translation_kind(self, to_langs: list[str], words: list[str]):
-        if len(to_langs) == 1 and len(words) == 1:
-            return TranslationTypes.SINGLE
-        if len(to_langs) == 1 and len(words) > 1:
-            return TranslationTypes.WORD
-        if len(to_langs) > 1 and len(words) == 1:
-            return TranslationTypes.LANG
-        if len(to_langs) > 1 and len(words) > 1:
-            return TranslationTypes.DOUBLE
-        return ''
 
     def translate_single(self, from_lang: str, to_lang: str, word: str, is_first=False) -> TranslationResult:
         trans_args = TransArgs(from_lang, to_lang, word)
@@ -216,6 +202,24 @@ class WordScrapper(AbstractScrapper):
         yield from self._parser.parse()
 
 
+####
+
+
+
+class TranslationScrapper:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def scrap(self, from_lang, to_lang, word):
+        raise NotImplementedError
+
+
+    def scrap_(self, from_lang: str, to_langs: list[str], words: list[str], by_word=False, show_info=True) -> Iterable[ParserResult]:
+        page: requests.Response = self.session.get(trans_args.to_url(), allow_redirects=True)
+        TranslationParser_.parse()
+
+
+
 class Scrapper:
     def __init__(self):
         self.args = TransArgs()
@@ -229,10 +233,10 @@ class Scrapper:
         return self._translation_scrapper, self._conjugation_scrapper, self._definition_scrapper, self._word_info_scrapper
 
     @contextmanager
-    def connect(self):
+    def connect(self) -> Iterator[Session]:
         session = None
         try:
-            session = requests.Session()
+            session = Session()
             session.headers.update(get_default_headers())
             for scrapper in self.scrappers:
                 scrapper.session = session
@@ -241,7 +245,7 @@ class Scrapper:
             if session:
                 session.close()
 
-    def scrap_translation(self, from_lang: str, to_langs: list[str, ...], words: list[str, ...], by_word=False, show_info=True) -> Iterable[TranslationResult]:
+    def scrap_translation(self, from_lang: str, to_langs: list[str], words: list[str], by_word=False, show_info=True) -> Iterable[TranslationResult]:
         with self.connect():
             yield from self._translation_scrapper.translate(from_lang, to_langs, words, by_word=by_word, show_info=show_info)
 
