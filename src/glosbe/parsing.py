@@ -66,9 +66,9 @@ class TranslationParser_(Parser):
     @classmethod
     def _parse(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
         yield from cls._parse_main_translations(tag)
-        # match less_freqs := cls._parse_less_frequent_translations(tag):
-        #     case Success(): yield from less_freqs.unwrap()
-        #     case Failure(): yield less_freqs.failure()
+        match less_freqs := cls._parse_less_frequent_translations(tag):
+            case Exception(): pass
+            case _: yield from less_freqs
 
     @classmethod
     def _parse_main_translations(cls, tag: Tag) -> Iterable[ParsedTranslation] | ParsingException:
@@ -86,10 +86,12 @@ class TranslationParser_(Parser):
 
     @classmethod
     def _parse_less_frequent_translations(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
-        if not (less_freq_tag := tag.select_one('ul', {'class': 'py-2', 'id': 'less-frequent-translations-container-0'})):
+        # <ul class="columns-2 md:columns-4 text-primary-700 break-words font-medium text-base cursor-pointer py-2 pl-6" lang="de">
+        less_freq_tag = tag.find('ul', {'id': 'less-frequent-translations-container-0'})
+        if not less_freq_tag:
             return ParsingException('No less frequent translations!')
         less_freqs = []
-        for less_freq in less_freq_tag.find_all('li'):
+        for less_freq in less_freq_tag.find_all('li', {'class': 'break-inside-avoid-column'}):
             less_freqs.append(ParsedTranslation(less_freq.text.replace('\n', '')))
         return less_freqs
 

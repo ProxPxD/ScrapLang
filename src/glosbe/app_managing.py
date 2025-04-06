@@ -4,6 +4,7 @@ from typing import Iterator
 from requests import Session
 
 from .context import Context
+from .parsing import ParsedTranslation
 from .scrap_managing import ScrapManager, ScrapKinds
 from .scrapping import Scrapper
 from .web_pather import get_default_headers
@@ -42,7 +43,13 @@ class AppManager:
                     case ScrapKinds.TRANSLATION:
                         i += 1
                         for j, record in enumerate(result.content, 1):
-                            print(list(record))
+                            for t in record:
+                                t: ParsedTranslation
+                                print(
+                                    f'- {t.word}' +
+                                    (f' ({t.pos})' if t.pos else '') +
+                                    (f' [{t.gender}]' if t.gender else '')
+                                )
                     case ScrapKinds.DEFINITION:
                         for defi in result.content:
                             print(list(defi))
