@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
-from enum import StrEnum
+from dataclasses import dataclass
 from io import StringIO
 from typing import Iterable, Callable
 
 import pandas as pd
-import pydash as _
 import requests
 from bs4 import BeautifulSoup, NavigableString, ResultSet
 from bs4.element import Tag
@@ -16,11 +14,6 @@ from pydash import chain as c
 from requests import Response
 from returns.maybe import Maybe
 from returns.result import safe, Result, Success, Failure
-
-from .context import Context
-
-is_response = _.is_instance_of_cmp(Response)
-is_context = _.is_instance_of_cmp(Context)
 
 
 class WrongStatusCodeError(ConnectionError):
@@ -47,33 +40,6 @@ class Record:
 class Definition:
     definition: str = ''
     example: str = ''
-
-
-@dataclass(frozen=True)
-class ScrappingKind(StrEnum):
-    TRANSLATION: str = 'translation'
-
-
-@dataclass
-class ParserResult:
-    kind: ScrappingKind
-    context: Context
-
-    translation: str = ''
-    part_of_speech: str = ''
-    gender: str = ''
-
-    definition: str = ''
-    example: str = ''
-
-    exception: Exception = None
-
-    def __bool__(self):
-        return c(asdict(self).values()).reject(is_context).some()
-
-    @property
-    def is_success(self) -> bool:
-        return self.exception is None
 
 
 class AbstractParser(ABC):
@@ -105,21 +71,6 @@ class FeatureParser(AbstractParser, ABC):
         features = self._get_features(spans)
         return Record(main, *features)
 
-    def _get_features(self, spans):
-        part_of_speech = self._get_part_of_speech(spans)
-        gender = self._get_gender(spans)
-        return part_of_speech, gender
-
-    def _get_part_of_speech(self, spans: list[Tag, ...]) -> str:
-        return self._get_ith(spans, 0)
-
-    def _get_gender(self, spans: list[Tag, ...]) -> str:
-        return self._get_ith(spans, 1)
-
-    def _get_ith(self, items: list[Tag, ...], i: int):
-        return items[i].text if len(items) > i else ''
-
-
 class WordInfoParser(FeatureParser):
     def __init__(self, page: requests.Response = None, **kwargs):
         super().__init__(page, **kwargs)
@@ -138,26 +89,6 @@ class WordInfoParser(FeatureParser):
 
     def _get_spans(self, tag: Tag) -> list:
         main_span = tag.find('span', {'class': 'text-xxs text-gray-500 inline-block'})
-        return main_span.find_all('span')
-
-
-class TranslationParser(FeatureParser):
-    def __init__(self, page: requests.Response = None, **kwargs):
-        super().__init__(page, **kwargs)
-
-    def _parse(self) -> Iterable[Record]:
-        soup = BeautifulSoup(self.page.text, features="html.parser")
-        trans_elems = soup.find_all('div', {'class': 'inline leading-10'})
-        actual_trans = filter(lambda trans_elem: trans_elem.select_one('h3'), trans_elems)
-        get_featured_record = self._get_create_featured_record_from_tag(self._get_translation, self._get_spans)
-        records = map(get_featured_record, actual_trans)
-        return records
-
-    def _get_translation(self, translation_tag: Tag) -> str:
-        return translation_tag.select_one('h3').text.replace('\n', '')
-
-    def _get_spans(self, translation_tag: Tag) -> list[Tag, ...]:
-        main_span = translation_tag.select_one('span', {'class': 'text-xxs text-gray-500'})
         return main_span.find_all('span')
 
 

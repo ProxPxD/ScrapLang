@@ -75,14 +75,6 @@ class ErrorMessages:
     CONNECTION_ERROR = 'Connection error! Check your network connection'
 
 
-def get_product(firsts, seconds, by_seconds=False):
-    if by_seconds:
-        return map(tuple, map(reversed, product(seconds, firsts)))
-    return product(firsts, seconds)
-
-
-
-
 class AbstractScrapper:
     def __init__(self, parser: AbstractParser, **kwargs):
         self._parser: AbstractParser = parser
@@ -153,18 +145,6 @@ class TranslatorScrapper(AbstractScrapper):
                 return PageCodeMessages.UNHANDLED_PAGE_FULL_MESSAGE.format(err.page.status_code)
 
 
-class ConjugationScrapper(AbstractScrapper):
-
-    def __init__(self, **kwargs):
-        super().__init__(parser=ConjugationParser(), **kwargs)
-
-    def get_conjugation(self, lang: str, word: str) -> Iterable:
-        trans_args = TransArgs(lang, 'en' if lang != 'en' else 'es', word)
-        page: requests.Response = self.session.get(f'{trans_args.to_url()}/fragment/details', allow_redirects=True)
-        self._parser.set_page(page)
-        yield from self._parser.parse()
-
-
 class DefinitionScrapper(AbstractScrapper):
     def __init__(self, **kwargs):
         super().__init__(parser=DefinitionParser(), **kwargs)
@@ -196,53 +176,7 @@ class WordScrapper(AbstractScrapper):
 
 
 
-class TranslationScrapper:
-    def __init__(self, session: Session):
-        self.session = session
-
-    def scrap(self, from_lang, to_lang, word):
-        raise NotImplementedError
-
-
-    def scrap_(self, from_lang: str, to_langs: list[str], words: list[str], by_word=False, show_info=True) -> Iterable[ParserResult]:
-        page: requests.Response = self.session.get(trans_args.to_url(), allow_redirects=True)
-        TranslationParser_.parse()
-
-
-
 class Scrapper:
-    def __init__(self):
-        self.args = TransArgs()
-        self._translation_scrapper = TranslatorScrapper()
-        self._conjugation_scrapper = ConjugationScrapper()
-        self._definition_scrapper = DefinitionScrapper()
-        self._word_info_scrapper = WordScrapper()
-
-    @property
-    def scrappers(self) -> Sequence[AbstractScrapper]:
-        return self._translation_scrapper, self._conjugation_scrapper, self._definition_scrapper, self._word_info_scrapper
-
-    @contextmanager
-    def connect(self) -> Iterator[Session]:
-        session = None
-        try:
-            session = Session()
-            session.headers.update(get_default_headers())
-            for scrapper in self.scrappers:
-                scrapper.session = session
-            yield session
-        finally:
-            if session:
-                session.close()
-
-    def scrap_translation(self, from_lang: str, to_langs: list[str], words: list[str], by_word=False, show_info=True) -> Iterable[TranslationResult]:
-        with self.connect():
-            yield from self._translation_scrapper.translate(from_lang, to_langs, words, by_word=by_word, show_info=show_info)
-
-    def scrap_conjugation(self, lang: str, word: str) -> Iterable:
-        with self.connect():
-            yield from self._conjugation_scrapper.get_conjugation(lang, word)
-
     def scrap_translation_and_conjugation(self, from_lang: str, to_lang: str, word: str, **scrapper_kwargs) -> Iterable[TranslationResult] | Any:
         with self.connect():
             yield self._translation_scrapper.translate(from_lang, to_lang, word, **scrapper_kwargs)
