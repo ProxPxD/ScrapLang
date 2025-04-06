@@ -14,6 +14,7 @@ class Context:
     debug: bool
     groupby: str
     inflection: bool
+    definition: bool
 
     to_filter: ClassVar[list[str]] = ['assume', 'args']
 

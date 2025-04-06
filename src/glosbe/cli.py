@@ -515,7 +515,8 @@ class CLI:
         parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
 
-        parser.add_argument('--inflection', '--infl', '--conj', '-c', '--decl', action='store_true', default=False, help='#todo')
+        parser.add_argument('--inflection', '--infl', '--conj', '-cong', '-c', '--decl', '-decl', action='store_true', default=False, help='#todo')
+        parser.add_argument('--definition', '--definitions', '--def', '-def', action='store_true', default=False, help='#todo')
 
         # Cli Conf
         parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
@@ -580,13 +581,16 @@ class CLI:
         logging.debug(f'Potential defaults: {pot_defaults}')
         if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
+        # Do not require to translate on definition or conjugation
+        if not parsed.to_langs and (parsed.definition or parsed.conjugation):
+            n_needed -= 1
         to_fill = pot_defaults[:n_needed]
         logging.debug(f'Chosen defaults: {to_fill}')
-        if not parsed.from_lang:
+        if not parsed.from_lang and to_fill:
             from_lang = to_fill.pop(0)
             logging.debug(f'Filling from_lang with {from_lang}')
             parsed.from_lang = from_lang
-        if not parsed.to_langs:
+        if not parsed.to_langs and to_fill:
             to_lang = to_fill.pop(0)
             logging.debug(f'Filling to_lang with {to_lang}')
             parsed.to_langs.append(to_lang)

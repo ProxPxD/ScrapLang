@@ -6,7 +6,7 @@ import sys
 from collections import ChainMap
 from dataclasses import dataclass
 
-from glosbe.AppManager import AppManager, Context
+from glosbe.app_managing import AppManager, Context
 from glosbe.cli import CLI
 from glosbe.configurations import ConfLoader
 from glosbe.constants import Paths

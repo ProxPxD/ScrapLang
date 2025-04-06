@@ -41,7 +41,9 @@ class AppManager:
                                 print(table)
                     case ScrapKinds.TRANSLATION:
                         i += 1
-                        for i, record in enumerate(result.content.unwrap(), 1):
+                        for j, record in enumerate(result.content.unwrap(), 1):
                             print(record.unwrap())
+                    case ScrapKinds.DEFINITION:
+                        print(list(result.content.unwrap()))
                     case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
 

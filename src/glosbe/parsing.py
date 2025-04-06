@@ -3,10 +3,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import StringIO
-from typing import Iterable, Callable
+from typing import Iterable
 
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup, NavigableString, ResultSet
 from bs4.element import Tag
 from decorator import decorator
@@ -16,118 +15,9 @@ from returns.maybe import Maybe
 from returns.result import safe, Result, Success, Failure
 
 
-class WrongStatusCodeError(ConnectionError):
-    def __init__(self, page: requests.Response, *args):
-        super().__init__(*args)
-        self.page = page
-
-
 class ParsingException(ValueError):
     pass
 
-
-@dataclass
-class Record:
-    translation: str = ''
-    part_of_speech: str = ''
-    gender: str = ''
-
-    def __bool__(self):
-        return any(filter(bool, (self.translation, self.part_of_speech, self.gender)))
-
-
-@dataclass
-class Definition:
-    definition: str = ''
-    example: str = ''
-
-
-class AbstractParser(ABC):
-    def __init__(self, page: requests.Response = None, **kwargs):
-        super().__init__(**kwargs)
-        self.page = page
-
-    def set_page(self, page: requests.Response):
-        self.page = page
-
-    def parse(self):
-        if not self.page.ok:
-            raise WrongStatusCodeError(self.page)
-        yield from self._parse()
-
-    @abstractmethod
-    def _parse(self):
-        raise NotImplemented
-
-
-class FeatureParser(AbstractParser, ABC):
-    def __init__(self, page: requests.Response = None, **kwargs):
-        super().__init__(page, **kwargs)
-
-    def _get_create_featured_record_from_tag(self, get_main: Callable[[Tag], str], get_spans: Callable[[Tag], list]):
-        return lambda tag: self._create_featured_record_with_spans(get_main(tag), get_spans(tag))
-
-    def _create_featured_record_with_spans(self, main: str, spans: list) -> Record:
-        features = self._get_features(spans)
-        return Record(main, *features)
-
-class WordInfoParser(FeatureParser):
-    def __init__(self, page: requests.Response = None, **kwargs):
-        super().__init__(page, **kwargs)
-
-    def _parse(self) -> Iterable[Record]:  # TODO: add test for it
-        soup = BeautifulSoup(self.page.text, features="html.parser")
-        word_info_tag = soup.find('div', {'class': 'text-xl text-gray-900 px-1 pb-1'})
-        # actual_trans = filter(lambda trans_elem: trans_elem.select_one('h3'), trans_elems)
-        get_featured_record = self._get_create_featured_record_from_tag(self._get_word, self._get_spans)
-        record = get_featured_record(word_info_tag)
-        yield record
-
-    def _get_word(self, tag: Tag) -> str:
-        word = tag.select_one('span', {'class': 'font-medium break-words'}).text
-        return ''
-
-    def _get_spans(self, tag: Tag) -> list:
-        main_span = tag.find('span', {'class': 'text-xxs text-gray-500 inline-block'})
-        return main_span.find_all('span')
-
-
-
-class DefinitionParser(AbstractParser):
-
-    def __init__(self, page: requests.Response = None, **kwargs):
-        super().__init__(page, **kwargs)
-
-    def _parse(self):
-        soup = BeautifulSoup(self.page.text, features="html.parser")
-        definitions_nodes = soup.find_all('li', {'class': 'pb-2'})
-        definitions = map(self._parse_definition, definitions_nodes)
-        return definitions
-
-    def _parse_definition(self, definition_tag: Tag) -> Definition:
-        definition_text = self._parse_definition_text(definition_tag)
-        example = self._parse_example(definition_tag)
-        return Definition(definition_text, example)
-
-    def _parse_definition_text(self, definition_tag: Tag) -> str:
-        core_content = ''.join((content for content in definition_tag.contents if isinstance(content, (NavigableString, str))))
-        return core_content\
-            .removeprefix('\n')\
-            .removesuffix('\n')\
-            .replace('\n\n', ' ')\
-            .replace('\n', ' ')\
-            .removeprefix(' ')\
-            .removeprefix(' ')
-
-    def _parse_example(self, definition_tag: Tag) -> str:
-        example_tag = definition_tag.select_one('div', {'class': 'border-l-2 pl-2 border-gray-200 text-gray-600 '})
-        example = example_tag.text.replace('\n', '') if example_tag else ''
-        if any((to_skip == example for to_skip in ('adjective', 'verb', 'noun'))):
-            return ''
-        return example
-
-
-# TODO: Rename from "Parser" to HtmlParser?
 
 UNSET = object()
 
@@ -148,6 +38,7 @@ def railway(func, *args, on_failure=UNSET, on_exception=UNSET, on_none=UNSET, on
     return result
 
 
+# TODO: Rename from "Parser" to HtmlParser?
 class Parser(ABC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -180,9 +71,8 @@ class ParsedTranslation:
 
 
 class TranslationParser_(Parser):
-
     @classmethod
-    def _parse(cls, tag: Tag) -> Iterable[Result[tuple(str, Maybe[str], Maybe[str]), ParsingException]]:
+    def _parse(cls, tag: Tag) -> Iterable[Result[tuple(str, str, str), ParsingException]]:
         if not (trans_divs := tag.find_all('div', {'class': 'inline leading-10'})):
             raise ParsingException('No translation div!')
         for trans_div in map(Success, trans_divs):
@@ -208,5 +98,49 @@ class TranslationParser_(Parser):
 class ConjugationParser(Parser):
     @classmethod
     def _parse(cls, tag: Tag):
-        for table in tag.select('div #grammar_0_0 table'):
+        if not (tables := tag.select('div #grammar_0_0 table')):
+            raise ParsingException('No inflection table!')
+        for table in tables:
             yield pd.read_html(StringIO(str(table)), keep_default_na=False, header=None)
+
+
+@dataclass(frozen=True)
+class ParsedDefinition:
+    text: str
+    example: str
+
+
+class DefinitionParser_(Parser):
+    @classmethod
+    def _parse(cls, tag: Tag):
+        if not (definition_tags := tag.find_all('li', {'class': 'pb-2'})):
+            raise ParsingException('No inflection table!')
+        definitions = map(cls._parse_definition, definition_tags)
+        return definitions
+
+    @classmethod
+    @safe
+    def _parse_definition(cls, definition_tag: Tag) -> ParsedDefinition:
+        definition_text = cls._parse_definition_text(definition_tag)
+        example = cls._parse_example(definition_tag)
+        return ParsedDefinition(definition_text, example)
+
+    @classmethod
+    def _parse_definition_text(cls, definition_tag: Tag) -> str:
+        core_content = ''.join((content for content in definition_tag.contents if isinstance(content, (NavigableString, str))))
+        return core_content\
+            .removeprefix('\n')\
+            .removesuffix('\n')\
+            .replace('\n\n', ' ')\
+            .replace('\n', ' ')\
+            .removeprefix(' ')\
+            .removeprefix(' ')
+
+    @classmethod
+    def _parse_example(cls, definition_tag: Tag) -> str:
+        # TODO: think of railing?
+        example_tag = definition_tag.select_one('div', {'class': 'border-l-2 pl-2 border-gray-200 text-gray-600 '})
+        example = example_tag.text.replace('\n', '') if example_tag else ''
+        if any((to_skip == example for to_skip in ('adjective', 'verb', 'noun'))):
+            return ''
+        return example
