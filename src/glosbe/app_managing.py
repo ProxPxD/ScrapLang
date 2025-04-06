@@ -36,14 +36,15 @@ class AppManager:
             for result in scrap_results:
                 match result.kind:
                     case ScrapKinds.INFLECTION:
-                        for table_batch in result.content.unwrap():
+                        for table_batch in result.content:
                             for table in table_batch:
                                 print(table)
                     case ScrapKinds.TRANSLATION:
                         i += 1
-                        for j, record in enumerate(result.content.unwrap(), 1):
-                            print(record.unwrap())
+                        for j, record in enumerate(result.content, 1):
+                            print(list(record))
                     case ScrapKinds.DEFINITION:
-                        print(list(result.content.unwrap()))
+                        for defi in result.content:
+                            print(list(defi))
                     case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
 

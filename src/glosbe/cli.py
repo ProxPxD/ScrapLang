@@ -1,4 +1,5 @@
 import logging
+import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
 
@@ -515,7 +516,7 @@ class CLI:
         parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
 
-        parser.add_argument('--inflection', '--infl', '--conj', '-cong', '-c', '--decl', '-decl', action='store_true', default=False, help='#todo')
+        parser.add_argument('--inflection', '--infl', '-infl', '--conj', '-cong', '-c', '--decl', '-decl', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', action='store_true', default=False, help='#todo')
 
         # Cli Conf
@@ -527,6 +528,9 @@ class CLI:
         return parser
 
     def parse(self, args=None, namespace=None) -> Namespace:
+        if len(args or sys.argv) == 1:
+            self.parser.print_help()
+            raise Exception('No args to parse')  # change
         parsed = self.parser.parse_args(args, namespace)
         # use keyboard-layout for adjustment
         parsed = self._distribute_args(parsed)
@@ -581,8 +585,8 @@ class CLI:
         logging.debug(f'Potential defaults: {pot_defaults}')
         if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
-        # Do not require to translate on definition or conjugation
-        if not parsed.to_langs and (parsed.definition or parsed.conjugation):
+        # Do not require to translate on definition or inflection
+        if not parsed.to_langs and (parsed.definition or parsed.inflection):
             n_needed -= 1
         to_fill = pot_defaults[:n_needed]
         logging.debug(f'Chosen defaults: {to_fill}')

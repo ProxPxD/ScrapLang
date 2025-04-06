@@ -1,10 +1,6 @@
-import logging
-import traceback
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterable, Any, Optional, Callable
 
-import requests
-import requests.exceptions as request_exceptions
 from requests import Session, Response
 from requests.exceptions import HTTPError
 from returns.result import safe, Result
@@ -34,19 +30,19 @@ class Scrapper:
         self.session: Optional[Session] = session
 
     @safe
-    def scrap(self, url: str, parse: Callable[[Response], Result]) -> Result[Any, HTTPError | ParsingException]:
+    def scrap(self, url: str, parse: Callable[[Response], Result]) -> Any | HTTPError | ParsingException:
         response = self.session.get(url, allow_redirects=True)
         response.raise_for_status()
-        return parse(response).unwrap()
+        return parse(response)
 
-    def scrap_translation(self, from_lang: str, to_lang: str, word: str) -> Result[Iterable[ParsedTranslation], HTTPError | ParsingException]:
+    def scrap_translation(self, from_lang: str, to_lang: str, word: str) -> Iterable[ParsedTranslation] | HTTPError | ParsingException:
         url = GlosbePather.get_word_trans_url(from_lang, to_lang, word)
         return self.scrap(url, TranslationParser_.parse)
 
-    def scrap_inflection(self, lang: str, word: str) -> Result[Any, HTTPError | ParsingException]:
+    def scrap_inflection(self, lang: str, word: str) -> Any | HTTPError | ParsingException:
         url = GlosbePather.get_details_url(lang, word)
         return self.scrap(url, ConjugationParser.parse)
 
-    def scrap_definition(self, lang: str, word: str) -> Result[Iterable[ParsedDefinition], HTTPError | ParsingException]:
+    def scrap_definition(self, lang: str, word: str) -> Iterable[ParsedDefinition] | HTTPError | ParsingException:
         url = GlosbePather.get_word_trans_url(lang, lang, word)
         return self.scrap(url, DefinitionParser_.parse)
