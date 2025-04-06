@@ -196,6 +196,8 @@ class DefinitionParser(AbstractParser):
         return example
 
 
+# TODO: Rename from "Parser" to HtmlParser?
+
 UNSET = object()
 
 
@@ -238,7 +240,16 @@ class Parser(ABC):
         raise NotImplementedError
 
 
+@dataclass(frozen=True)
+class ParsedTranslation:
+    word: str
+    gender: str = None
+    pos: str = None
+    # Thing of generality if more than two span case arises
+
+
 class TranslationParser_(Parser):
+
     @classmethod
     def _parse(cls, tag: Tag) -> Iterable[Result[tuple(str, Maybe[str], Maybe[str]), ParsingException]]:
         if not (trans_divs := tag.find_all('div', {'class': 'inline leading-10'})):
@@ -249,7 +260,7 @@ class TranslationParser_(Parser):
             # Assume for now
             pos = spans.map(c().get('0.text'))     # None is not Failure
             gender = spans.map(c().get('1.text'))  # None is not Failure
-            yield Result.do((w, Maybe.from_optional(g), Maybe.from_optional(p)) for w in word for g in gender for p in pos)
+            yield Result.do(ParsedTranslation(w, g, p) for w in word for g in gender for p in pos)
 
     @classmethod
     @railway(on_failure=ParsingException('No word!'))

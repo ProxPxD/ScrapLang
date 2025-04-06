@@ -13,7 +13,7 @@ class Context:
     to_langs: list[str]
     debug: bool
     groupby: str
-    conj: bool
+    inflection: bool
 
     to_filter: ClassVar[list[str]] = ['assume', 'args']
 

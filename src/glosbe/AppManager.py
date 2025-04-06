@@ -1,13 +1,12 @@
 from contextlib import contextmanager
 from typing import Iterator
 
-from requests import Response, Session
-from returns.result import Result
+from requests import Session
 
 from .context import Context
-from .parsing import TranslationParser_, ConjugationParser
-from .scrapping import Scrapper, Scrapper_
-from .web_pather import GlosbePather, get_default_headers
+from .scrap_managing import ScrapManager, ScrapKinds
+from .scrapping import Scrapper
+from .web_pather import get_default_headers
 
 
 class AppManager:
@@ -31,27 +30,18 @@ class AppManager:
             raise ValueError('No context provided!')
         # TODO: think when to raise if no word
 
-        results = []
         with self.connect() as session:
-            scrapper = Scrapper_(session)
-            if context.conj:
-                conjs = []
-                for lang, word in context.source_pairs:
-                    conj = scrapper.scrap_conjugation(lang, word)
-                    conjs.append(conj)
-                for tables in conjs:
-                    for table in tables.unwrap():
-                        print(table)
-
-            # TODO: Object defining info about what is it?
-            for from_lang, to_lang, word in context.url_triples:
-                one_page_translation = scrapper.scrap_translation(from_lang, to_lang, word)
-                results.append(one_page_translation)
-            print('Result:')
-            for i, one_page_translation in enumerate(results):
-                print(f'Page {1+i}')
-                print(type(one_page_translation))
-                for record in one_page_translation:
-                    print(type(record))
-                    print(list(record))
+            scrap_results = ScrapManager(session).scrap(context)
+            i = 0
+            for result in scrap_results:
+                match result.kind:
+                    case ScrapKinds.INFLECTION:
+                        for table_batch in result.content.unwrap():
+                            for table in table_batch:
+                                print(table)
+                    case ScrapKinds.TRANSLATION:
+                        i += 1
+                        for i, record in enumerate(result.content.unwrap(), 1):
+                            print(record.unwrap())
+                    case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
 

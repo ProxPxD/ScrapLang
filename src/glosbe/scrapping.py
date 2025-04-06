@@ -3,17 +3,18 @@ import traceback
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Iterable, Any, Sequence, Iterator
+from typing import Iterable, Any, Sequence, Iterator, Optional
 
 import requests
 import requests.exceptions as request_exceptions
 from requests import Session
-from returns.result import safe, Result, Failure
+from requests.exceptions import HTTPError
+from returns.result import safe, Result
 
 from .parsing import TranslationParser, Record, WrongStatusCodeError, ConjugationParser, AbstractParser, DefinitionParser, WordInfoParser, ParserResult, TranslationParser_, Parser, \
-    ParsingException
+    ParsingException, ParsedTranslation
 from .web_pather import get_default_headers, GlosbePather
-from requests.exceptions import HTTPError
+
 
 # TODO: separate
 @dataclass(frozen=True)
@@ -252,9 +253,10 @@ class Scrapper:
             yield from self._definition_scrapper.scrap_definitions(lang, word)
 
 
+# TODO: rename?
 class Scrapper_:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, session: Session = None):
+        self.session: Optional[Session] = session
 
     @safe
     def scrap(self, url: str, parser: Parser) -> Result[Any, HTTPError | ParsingException]:
@@ -262,7 +264,7 @@ class Scrapper_:
         response.raise_for_status()
         return parser.parse(response).unwrap()
 
-    def scrap_translation(self, from_lang: str, to_lang: str, word: str) -> Result[Iterable, HTTPError | ParsingException]:
+    def scrap_translation(self, from_lang: str, to_lang: str, word: str) -> Result[Iterable[ParsedTranslation], HTTPError | ParsingException]:
         url = GlosbePather.get_word_trans_url(from_lang, to_lang, word)
         return self.scrap(url, TranslationParser_)
 

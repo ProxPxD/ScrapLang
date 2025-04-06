@@ -1,16 +1,12 @@
 import logging
-from itertools import chain, islice
-from typing import Callable, Iterable
-
-from box import Box
-from more_itertools import unique_everseen, grouper, bucket
-from pandas import DataFrame
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
-import argparse
 from argparse import ArgumentParser, Namespace
+
 import pydash as _
+from box import Box
 
 from .constants import FLAGS as F, supported_languages
+
 # from .layoutAdjusting.layoutAdjuster import LayoutAdjustmentsMethods, LayoutAdjusterFactory
 # from .translating.parsing.parsing import Definition
 # from .translating.scrapping import TranslationTypes, TranslationResult, Scrapper
@@ -519,7 +515,7 @@ class CLI:
         parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
 
-        parser.add_argument('--conj', '-c', action='store_true', default=False, help='#todo')
+        parser.add_argument('--inflection', '--infl', '--conj', '-c', '--decl', action='store_true', default=False, help='#todo')
 
         # Cli Conf
         parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
