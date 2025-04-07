@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
+from functools import wraps
 from io import StringIO
 from typing import Iterable, Callable, Any
 
@@ -37,36 +39,47 @@ class Parser(ABC):
         super().__init__(**kwargs)
 
     @classmethod
-    def ensure_tag(cls, to_parse: Response | Tag | str) -> Tag:
+    def _ensure_tag(cls, to_parse: Response | Tag | str) -> Tag:
         match to_parse:
             case Tag(): return to_parse
             case str(): return BeautifulSoup(to_parse, features="html.parser")
-            case Response(): return cls.ensure_tag(to_parse.text)
+            case Response(): return cls._ensure_tag(to_parse.text)
             case _: raise ValueError(f'Cannot handle type {type(to_parse)} of {to_parse}!')
 
     @classmethod
-    def parse(cls, to_parse: Response | Tag | str, parser: Callable = None) -> Iterable:
-        parser = parser or cls._parse
-        return parser(cls.ensure_tag(to_parse))
+    def ensure_tag(cls, func):
+        @wraps(func)
+        def wrapper(self, tag):
+            return func(self, cls._ensure_tag(tag))
+        return wrapper
 
     @classmethod
-    def _parse(cls, to_parse: Tag) -> Iterable:
+    @abstractmethod
+    def parse(cls, to_parse: Response | Tag | str) -> Iterable:
         raise NotImplementedError
+
+
+class TranslationKind(Enum):
+    MAIN: str = 'main'
+    LESS_FREQUENT: str = 'less-frequent'
+    INDIRECT: str = 'indirect'
 
 
 @dataclass(frozen=True)
 class ParsedTranslation:
+    kind: TranslationKind
     word: str
     gender: str = None
     pos: str = None
     # Thing of generality if more than two span case arises
 
 
-class TranslationParser_(Parser):
+class TranslationParser(Parser):
     @classmethod
-    def _parse(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
+    @Parser.ensure_tag
+    def parse(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
         yield from cls._parse_main_translations(tag)
-        match less_freqs := cls._parse_less_frequent_translations(tag):
+        match less_freqs := cls.parse_less_frequent_translations(tag):
             case Exception(): pass
             case _: yield from less_freqs
 
@@ -75,25 +88,41 @@ class TranslationParser_(Parser):
         if not (trans_divs := tag.find_all('div', {'class': 'inline leading-10'})):
             return ParsingException('No translation div!')
         translations = []
+        kinds = TranslationKind
         for trans_div in trans_divs:
             word = cls._get_translated_word(trans_div)
             spans = cls._get_spans(trans_div)
             # Assume for now
             pos = _.get(spans, '0.text')  # spans.map(c().get('0.text'))     # None is not Failure
             gender = _.get(spans, '1.text')  # None is not Failure
-            translations.append(ParsedTranslation(word, gender, pos))
+            translations.append(ParsedTranslation(kinds.MAIN, word, gender, pos))
         return translations
 
     @classmethod
-    def _parse_less_frequent_translations(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
+    @Parser.ensure_tag
+    def parse_less_frequent_translations(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
         # <ul class="columns-2 md:columns-4 text-primary-700 break-words font-medium text-base cursor-pointer py-2 pl-6" lang="de">
         less_freq_tag = tag.find('ul', {'id': 'less-frequent-translations-container-0'})
         if not less_freq_tag:
             return ParsingException('No less frequent translations!')
+        kinds = TranslationKind
         less_freqs = []
         for less_freq in less_freq_tag.find_all('li', {'class': 'break-inside-avoid-column'}):
-            less_freqs.append(ParsedTranslation(less_freq.text.replace('\n', '')))
+            less_freqs.append(ParsedTranslation(kinds.LESS_FREQUENT, less_freq.text.replace('\n', '')))
         return less_freqs
+
+    @classmethod
+    @Parser.ensure_tag
+    def parse_indirect_translations(cls, tag: Tag) -> Iterable[ParsedTranslation]:
+        translation_buttons = tag.find_all('button', {'class': 'font-medium break-all flex-inline focus:outline-none'})
+        kinds = TranslationKind
+        indirects = []
+        for button in translation_buttons:
+            translation = button.find('span', {'class': 'text-primary-700 break-words font-medium text-base cursor-pointer'})
+            indirects.append(ParsedTranslation(kinds.INDIRECT, translation.text.replace('\n', '')))
+        return indirects
+
+        # https://glosbe.com/uk/en/%D0%B7%D0%B1%D0%B8%D1%80%D0%B0%D1%82%D0%B8%D1%81%D1%8F/fragment/indirect
 
     # To the below functions decorator or exception handling needed
     @classmethod
@@ -106,9 +135,10 @@ class TranslationParser_(Parser):
         return main_span.find_all('span')
 
 
-class ConjugationParser(Parser):
+class InflectionParser(Parser):
     @classmethod
-    def _parse(cls, tag: Tag) -> Iterable[DataFrame] | ParsingException:
+    @Parser.ensure_tag
+    def parse(cls, tag: Tag) -> Iterable[DataFrame] | ParsingException:
         if not (table_tags := tag.select('div #grammar_0_0 table')):
             return ParsingException('No inflection table!')
         return [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
@@ -122,7 +152,8 @@ class ParsedDefinition:
 
 class DefinitionParser_(Parser):
     @classmethod
-    def _parse(cls, tag: Tag) -> ParsingException | Iterable[ParsedDefinition]:
+    @Parser.ensure_tag
+    def parse(cls, tag: Tag) -> ParsingException | Iterable[ParsedDefinition]:
         if not (definition_tags := tag.find_all('li', {'class': 'pb-2'})):
             return ParsingException('No inflection table!')
         return map(cls._parse_definition, definition_tags)

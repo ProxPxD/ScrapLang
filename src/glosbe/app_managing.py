@@ -5,7 +5,7 @@ from requests import Session
 
 from .context import Context
 from .parsing import ParsedTranslation
-from .scrap_managing import ScrapManager, ScrapKinds
+from .scrap_managing import ScrapManager, ScrapKinds, ScrapResult
 from .scrapping import Scrapper
 from .web_pather import get_default_headers
 
@@ -33,6 +33,7 @@ class AppManager:
 
         with self.connect() as session:
             scrap_results = ScrapManager(session).scrap(context)
+            scrap_results = list(scrap_results)
             i = 0
             for result in scrap_results:
                 match result.kind:
@@ -42,14 +43,14 @@ class AppManager:
                                 print(table)
                     case ScrapKinds.TRANSLATION:
                         i += 1
-                        for j, record in enumerate(result.content, 1):
-                            for t in record:
-                                t: ParsedTranslation
-                                print(
-                                    f'- {t.word}' +
-                                    (f' ({t.pos})' if t.pos else '') +
-                                    (f' [{t.gender}]' if t.gender else '')
-                                )
+                        result: ScrapResult
+                        for j, t in enumerate(result.content, 1):
+                            t: ParsedTranslation
+                            print(
+                                f'- {t.word}' +
+                                (f' ({t.pos})' if t.pos else '') +
+                                (f' [{t.gender}]' if t.gender else '')
+                            )
                     case ScrapKinds.DEFINITION:
                         for defi in result.content:
                             print(list(defi))

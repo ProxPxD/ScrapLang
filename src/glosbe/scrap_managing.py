@@ -6,6 +6,7 @@ from box import Box
 from requests import Session
 
 from .context import Context
+from .parsing import ParsedTranslation
 from .scrapping import Scrapper
 
 
@@ -22,7 +23,7 @@ class ScrapKinds(Enum):
 class ScrapResult:
     kind: ScrapKinds
     args: Box  # TODO: think of restricting
-    content: Any
+    content: Any | ParsedTranslation
 
 
 class ScrapManager:
