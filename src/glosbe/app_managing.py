@@ -38,9 +38,8 @@ class AppManager:
             for result in scrap_results:
                 match result.kind:
                     case ScrapKinds.INFLECTION:
-                        for table_batch in result.content:
-                            for table in table_batch:
-                                print(table)
+                        for table in result.content:
+                            print(table)
                     case ScrapKinds.TRANSLATION:
                         i += 1
                         result: ScrapResult
@@ -53,6 +52,8 @@ class AppManager:
                             )
                     case ScrapKinds.DEFINITION:
                         for defi in result.content:
-                            print(list(defi))
+                            print(f'- {defi.text}', end=('', ':\n')[bool(defi.examples)])
+                            for example in defi.examples:
+                                print(f'   - {example}')
                     case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
 

@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
 from io import StringIO
-from typing import Iterable, Callable, Any
+from tkinter.scrolledtext import example
+from typing import Iterable, Any
 
 import pandas as pd
 import pydash as _
 from bs4 import BeautifulSoup, NavigableString
 from bs4.element import Tag
 from decorator import decorator
+from more_itertools import split_at
 from pandas import DataFrame
+from pydash import chain as c
 from requests import Response
 
 
@@ -147,10 +151,10 @@ class InflectionParser(Parser):
 @dataclass(frozen=True)
 class ParsedDefinition:
     text: str
-    example: str
+    examples: list[str]
 
 
-class DefinitionParser_(Parser):
+class DefinitionParser(Parser):
     @classmethod
     @Parser.ensure_tag
     def parse(cls, tag: Tag) -> ParsingException | Iterable[ParsedDefinition]:
@@ -159,27 +163,15 @@ class DefinitionParser_(Parser):
         return map(cls._parse_definition, definition_tags)
 
     @classmethod
-    def _parse_definition(cls, definition_tag: Tag) -> ParsedDefinition:
-        definition_text = cls._parse_definition_text(definition_tag)
-        example = cls._parse_example(definition_tag)
-        return ParsedDefinition(definition_text, example)
+    def _parse_definition(cls, def_tag: Tag) -> ParsedDefinition:
+        """
+        Expects: The definition part up to a py-2 class that is a batch of examples
+        """
+        # TODO: correct PoS
+        clean = c().join('').trim().trim(';')
+        to_text = lambda tag: tag.text
 
-    @classmethod
-    def _parse_definition_text(cls, definition_tag: Tag) -> str:
-        core_content = ''.join((content for content in definition_tag.contents if isinstance(content, (NavigableString, str))))
-        return core_content\
-            .removeprefix('\n')\
-            .removesuffix('\n')\
-            .replace('\n\n', ' ')\
-            .replace('\n', ' ')\
-            .removeprefix(' ')\
-            .removeprefix(' ')
+        definition = c(def_tag.contents).take_while(lambda content: 'py-2' not in _.get(content, 'attrs.class', [])).map_(to_text).apply(clean).value()
 
-    @classmethod
-    def _parse_example(cls, definition_tag: Tag) -> str:
-        # TODO: think of railing?
-        example_tag = definition_tag.select_one('div', {'class': 'border-l-2 pl-2 border-gray-200 text-gray-600 '})
-        example = example_tag.text.replace('\n', '') if example_tag else ''
-        if any((to_skip == example for to_skip in ('adjective', 'verb', 'noun'))):
-            return ''
-        return example
+        examples = (batch := def_tag.find('div', class_='py-2')) and c(batch).apply(lambda tag: tag.find_all('div')).map_(to_text).map_(clean).filter_().value()
+        return ParsedDefinition(definition, examples or [])

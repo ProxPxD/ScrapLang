@@ -4,7 +4,7 @@ from typing import Iterable, Any, Optional, Callable
 from requests import Session, Response
 from requests.exceptions import HTTPError
 
-from .parsing import InflectionParser, TranslationParser, ParsingException, ParsedTranslation, ParsedDefinition, DefinitionParser_
+from .parsing import InflectionParser, TranslationParser, ParsingException, ParsedTranslation, ParsedDefinition, DefinitionParser
 from .web_pather import GlosbePather
 
 
@@ -45,4 +45,4 @@ class Scrapper:
 
     def scrap_definition(self, lang: str, word: str) -> Iterable[ParsedDefinition] | HTTPError | ParsingException:
         url = GlosbePather.get_word_trans_url(lang, lang, word)
-        return self.scrap(url, DefinitionParser_.parse)
+        return self.scrap(url, DefinitionParser.parse)
