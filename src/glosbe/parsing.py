@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-import re
+import operator as op
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
 from io import StringIO
-from tkinter.scrolledtext import example
 from typing import Iterable, Any
 
 import pandas as pd
 import pydash as _
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 from bs4.element import Tag
 from decorator import decorator
-from more_itertools import split_at
 from pandas import DataFrame
 from pydash import chain as c
 from requests import Response
@@ -171,6 +169,6 @@ class DefinitionParser(Parser):
         clean = c().join('').trim().trim(';')
         to_text = lambda tag: tag.text
 
-        definition = c(def_tag.contents).take_while(lambda content: 'py-2' not in _.get(content, 'attrs.class', [])).map_(to_text).apply(clean).value()
+        definition = c(def_tag.contents).take_while(c().get('attrs.class',  []).filter_(c().is_equal('py-2')).is_empty()).map_(to_text).apply(clean).value()
         examples = (batch := def_tag.find('div', class_='py-2')) and c(batch).apply(lambda tag: tag.find_all('div')).map_(to_text).map_(clean).filter_().value()
         return ParsedDefinition(definition, examples or [])
