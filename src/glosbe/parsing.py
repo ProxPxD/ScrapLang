@@ -172,6 +172,5 @@ class DefinitionParser(Parser):
         to_text = lambda tag: tag.text
 
         definition = c(def_tag.contents).take_while(lambda content: 'py-2' not in _.get(content, 'attrs.class', [])).map_(to_text).apply(clean).value()
-
         examples = (batch := def_tag.find('div', class_='py-2')) and c(batch).apply(lambda tag: tag.find_all('div')).map_(to_text).map_(clean).filter_().value()
         return ParsedDefinition(definition, examples or [])
