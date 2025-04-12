@@ -27,7 +27,7 @@ class AppManager:
 
     def run(self, context: Context = None):
         context = context or self.context
-        if not context:
+        if not (context := context or self.context):
             raise ValueError('No context provided!')
         # TODO: think when to raise if no word
 
