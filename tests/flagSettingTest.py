@@ -4,7 +4,7 @@ from smartcli.nodes.smartList import SmartList
 from src.glosbe.configurations import Configurations
 from src.glosbe.constants import FLAGS as F
 from src.glosbe.scrapping import TranslationTypes
-from src.glosbe.translatingPrinting.translationPrinter import TranslationPrinter
+from src.glosbe.printer import Printer
 from tests.abstractCliTest import AbstractCliTest
 
 
@@ -20,7 +20,7 @@ class FlagSettingTest(AbstractCliTest):
 	def setUp(self) -> None:
 		super().setUp()
 		Configurations.init(self.get_file_name())
-		TranslationPrinter.turn(True)
+		Printer.turn(True)
 
 	def tearDown(self) -> None:
 		super().tearDown()

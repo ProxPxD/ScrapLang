@@ -7,7 +7,7 @@ from src.glosbe.configurations import Configurations
 from src.glosbe.constants import FLAGS as F
 from src.glosbe.scrapping import TranslationTypes
 from src.glosbe.translatingPrinting.formatting import TranslationFormatter
-from src.glosbe.translatingPrinting.translationPrinter import TranslationPrinter
+from src.glosbe.printer import Printer
 from tests.abstractCliTest import AbstractCliTest
 
 
@@ -25,7 +25,7 @@ class FormattingFinalResultTest(AbstractCliTest):
 
 	def setUp(self) -> None:
 		super().setUp()
-		TranslationPrinter.turn(False)
+		Printer.turn(False)
 		Configurations.init(self.get_file_name(), default=self.get_default_configs())
 		Configurations.add_langs('es', 'pl', 'de', 'ar')
 		Configurations.change_conf('-l', 3)

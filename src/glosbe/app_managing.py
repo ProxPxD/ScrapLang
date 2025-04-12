@@ -4,9 +4,9 @@ from typing import Iterator
 from requests import Session
 
 from .context import Context
-from .parsing import ParsedTranslation
-from .scrap_managing import ScrapManager, ScrapKinds, ScrapResult
+from .scrap_managing import ScrapManager
 from .scrapping import Scrapper
+from .printer import Printer
 from .web_pather import get_default_headers
 
 
@@ -33,27 +33,5 @@ class AppManager:
 
         with self.connect() as session:
             scrap_results = ScrapManager(session).scrap(context)
-            scrap_results = list(scrap_results)
-            i = 0
-            for result in scrap_results:
-                match result.kind:
-                    case ScrapKinds.INFLECTION:
-                        for table in result.content:
-                            print(table)
-                    case ScrapKinds.TRANSLATION:
-                        i += 1
-                        result: ScrapResult
-                        for j, t in enumerate(result.content, 1):
-                            t: ParsedTranslation
-                            print(
-                                f'- {t.word}' +
-                                (f' ({t.pos})' if t.pos else '') +
-                                (f' [{t.gender}]' if t.gender else '')
-                            )
-                    case ScrapKinds.DEFINITION:
-                        for defi in result.content:
-                            print(f'- {defi.text}', end=('', ':\n')[bool(defi.examples)])
-                            for example in defi.examples:
-                                print(f'   - {example}')
-                    case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
+            Printer(context).print_all_results(scrap_results)
 

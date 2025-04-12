@@ -12,6 +12,7 @@ from numpy import ndarray
 from pandas import DataFrame, MultiIndex
 from tabulate import tabulate
 
+
 #from src.glosbe.parsing import Record
 #from src.glosbe.scrapping import TranslationResult, TranslationTypes, ErrorMessages
 

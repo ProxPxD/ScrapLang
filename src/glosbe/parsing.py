@@ -73,6 +73,10 @@ class ParsedTranslation:
     word: str
     gender: str = None
     pos: str = None
+
+    @property
+    def formatted(self) -> str:
+        return self.word + (f' ({self.pos})' if self.pos else '') + (f' [{self.gender}]' if self.gender else '')
     # Thing of generality if more than two span case arises
 
 
@@ -143,7 +147,8 @@ class InflectionParser(Parser):
     def parse(cls, tag: Tag) -> Iterable[DataFrame] | ParsingException:
         if not (table_tags := tag.select('div #grammar_0_0 table')):
             return ParsingException('No inflection table!')
-        return [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
+        tables = [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
+        return tables[-1]
 
 
 @dataclass(frozen=True)
