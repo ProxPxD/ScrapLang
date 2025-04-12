@@ -4,7 +4,6 @@ import logging
 import shlex
 import sys
 import warnings
-from collections import ChainMap
 from dataclasses import dataclass
 
 from glosbe.app_managing import AppManager, Context

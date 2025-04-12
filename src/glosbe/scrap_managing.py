@@ -1,10 +1,8 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable, Any
+from typing import Iterable
 
-import pandas
 from box import Box
-from fontTools.ttLib.tables.ttProgram import tt_instructions_error
 from pandas import DataFrame
 from requests import Session
 

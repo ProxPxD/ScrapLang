@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
 from io import StringIO
 from itertools import chain
-from typing import Iterable, Any, re
+from typing import Iterable, Any
 
 import pandas as pd
 import pydash as _
@@ -160,7 +161,7 @@ class ParsedDefinition:
     examples: list[str]
 
 
-dataclass(frozen=True)
+@dataclass(frozen=True)
 class ParsedDefinition:
     text: str
     examples: list[str]

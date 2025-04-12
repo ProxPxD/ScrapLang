@@ -4,9 +4,9 @@ from typing import Iterator
 from requests import Session
 
 from .context import Context
+from .printer import Printer
 from .scrap_managing import ScrapManager
 from .scrapping import Scrapper
-from .printer import Printer
 from .web_pather import get_default_headers
 
 
