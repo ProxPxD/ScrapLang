@@ -564,9 +564,10 @@ class CLI:
             logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} to_lang{"" if singular else "s"}')
             parsed.to_langs.extend(pot.lang)
             pot.lang = []
-        if pot.lang:
+        if pot.word:
+            singular = len(pot.word) == 1
             logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} word{"" if singular else "s"}')
-            parsed.words.extend(pot.lang)
+            parsed.words.extend(pot.word)
         return parsed
 
     def _assume_first_word(self, pot: Box) -> str:

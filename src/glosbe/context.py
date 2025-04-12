@@ -57,9 +57,15 @@ class Context:
     @property
     def grouped_url_triples(self) -> Iterable:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
-            is_first = i % self.n_members == 0
-            is_last = i % self.n_members == self.n_members - 1
+            is_first = self._is_first(i)
+            is_last = self._is_last(i)
             yield is_first, is_last, (from_lang, to_lang, word)
+
+    def _is_first(self, i) -> bool:
+        return self.n_members == 0 or i % self.n_members == 0
+
+    def _is_last(self, i) -> bool:
+        return self.n_members == 0 or i % self.n_members == self.n_members - 1
 
     @property
     def prefix_type(self) -> str:
