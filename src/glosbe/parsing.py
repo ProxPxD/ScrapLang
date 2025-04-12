@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import operator as op
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -162,6 +163,10 @@ class ParsedDefinition:
 
 
 class DefinitionParser(Parser):
+    pos_form = re.compile('(?P<pos>.+)\n\n(?P<def>.+)', re.DOTALL)
+    clean = c().join('').trim().trim(';')
+    to_text = lambda tag: tag.text
+
     @classmethod
     @Parser.ensure_tag
     def parse(cls, tag: Tag) -> ParsingException | Iterable[ParsedDefinition]:
@@ -174,10 +179,31 @@ class DefinitionParser(Parser):
         """
         Expects: The definition part up to a py-2 class that is a batch of examples
         """
-        # TODO: correct PoS
-        clean = c().join('').trim().trim(';')
-        to_text = lambda tag: tag.text
+        return ParsedDefinition(
+            text=cls._parse_text(def_tag),
+            examples=cls._parse_examples(def_tag)
+        )
 
-        definition = c(def_tag.contents).take_while(c().get('attrs.class',  []).filter_(c().is_equal('py-2')).is_empty()).map_(to_text).apply(clean).value()
-        examples = (batch := def_tag.find('div', class_='py-2')) and c(batch).apply(lambda tag: tag.find_all('div')).map_(to_text).map_(clean).filter_().value()
-        return ParsedDefinition(definition, examples or [])
+    @classmethod
+    def _parse_text(cls, def_tag: Tag) -> str:
+        text = c(def_tag.contents)\
+            .take_while(c().get('attrs.class',  []).filter_(c().is_equal('py-2')).is_empty())\
+            .map_(cls.to_text)\
+            .apply(cls.clean)\
+            .value()
+        if not (matched := cls.pos_form.search(text)):  # No PoS
+            return text
+        pos = matched.group('pos').replace('\n', ' ')
+        return f"({pos}) {matched.group('def')}"
+
+    @classmethod
+    def _parse_examples(cls, def_tag: Tag) -> list:
+        if not (batch := def_tag.find('div', class_='py-2')):
+            return []
+        examples = c(batch)\
+            .apply(lambda tag: tag.find_all('div'))\
+            .map_(cls.to_text)\
+            .map_(cls.clean)\
+            .filter_()\
+            .value()
+        return examples or []

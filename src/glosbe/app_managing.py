@@ -26,10 +26,8 @@ class AppManager:
             session.close()
 
     def run(self, context: Context = None):
-        context = context or self.context
-        if not context:
+        if not (context := context or self.context):
             raise ValueError('No context provided!')
-        # TODO: think when to raise if no word
 
         with self.connect() as session:
             scrap_results = ScrapManager(session).scrap(context)
