@@ -1,12 +1,12 @@
 import os
+from textwrap import wrap
 from typing import Iterable, Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-from pandas import DataFrame
+from pandas.core.interchange.dataframe_protocol import DataFrame
 from tabulate import tabulate
 
 from .context import Context
-from .parsing import ParsedDefinition
 from .scrap_managing import ScrapResult, ScrapKinds
 
 os.environ['TZ'] = 'Europe/Warsaw'
@@ -46,8 +46,12 @@ class Printer:
         if result.is_fail():
             self.printer(result.content.args[0])
             return
-        table = result.content
-        self.printer(tabulate(table, tablefmt='rounded_outline'))
+        table: DataFrame = result.content
+        table_str = tabulate(table, tablefmt='rounded_outline')
+        if (olen := len(table_str.split('\n', 1)[0])) > 128:
+            table = table.map(lambda x: "\n".join(wrap(x, width=16)))
+            table_str = tabulate(table, tablefmt='rounded_grid')
+        self.printer(table_str)
         if not any((self.context.definition, self.context.inflection)):
             self.printer('')
 

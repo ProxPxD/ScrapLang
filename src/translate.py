@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import shlex
 import sys
+import warnings
 from collections import ChainMap
 from dataclasses import dataclass
 
@@ -21,6 +22,7 @@ def setup_logging():
             logging.FileHandler(Paths.LOG_DIR)
         ]
     )
+    warnings.filterwarnings("ignore")
 
 
 @dataclass(frozen=True)

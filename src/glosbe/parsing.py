@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import operator as op
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -152,7 +151,7 @@ class InflectionParser(Parser):
         if not (table_tags := tag.select('div #grammar_0_0 table')):
             return ParsingException('No inflection table!')
         tables = [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
-        return tables[-1]
+        return tables[0]
 
 
 @dataclass(frozen=True)
