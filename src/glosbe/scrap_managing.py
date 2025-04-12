@@ -2,7 +2,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Iterable, Any
 
+import pandas
 from box import Box
+from fontTools.ttLib.tables.ttProgram import tt_instructions_error
+from pandas import DataFrame
 from requests import Session
 
 from .context import Context
@@ -15,16 +18,18 @@ from .scrapping import Scrapper
 
 class ScrapKinds(Enum):  # TODO: think of auto
     INFLECTION: str = 'inflection'
-    TRANSLATION: str = 'translation'
+    MAIN_TRANSLATION: str = 'translation'
+    INDIRECT_TRANSLATION: str = 'indirect'
     DEFINITION: str = 'definition'
     SEPERATOR: str = 'seperator'
+    NEWLINE: str = '\n'
 
 
 @dataclass(frozen=True)
 class ScrapResult:
     kind: ScrapKinds
     args: Box = field(default_factory=Box)  # TODO: think of restricting
-    content: Any | ParsedTranslation = None
+    content: DataFrame | Iterable[ParsedTranslation] = None
 
 
 class ScrapManager:
@@ -39,9 +44,13 @@ class ScrapManager:
             if context.inflection and first:
                 yield self.scrap_inflections(from_lang, word)
             if to_lang:
-                yield self.scrap_translations(from_lang, to_lang, word)
+                yield self.scrap_main_translations(from_lang, to_lang, word)
+                if context.indirect in ('on', 'fail'):
+                    yield self.scrap_indirect_translations(from_lang, to_lang, word)
             if context.definition and last:
                 yield self.scrap_definitions(from_lang, word)
+            if not last:
+                yield ScrapResult(ScrapKinds.NEWLINE)
 
     def scrap_inflections(self, lang: str, word: str) -> ScrapResult:
         return ScrapResult(  # TODO: handle double tables?
@@ -50,11 +59,18 @@ class ScrapManager:
             content=self.scrapper.scrap_inflection(**args)
         )
 
-    def scrap_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
+    def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
         return ScrapResult(
-            kind=ScrapKinds.TRANSLATION,
+            kind=ScrapKinds.MAIN_TRANSLATION,
             args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word)),
-            content=self.scrapper.scrap_translation(**args)
+            content=self.scrapper.scrap_main_translations(**args)
+        )
+
+    def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
+        return ScrapResult(
+            kind=ScrapKinds.INDIRECT_TRANSLATION,
+            args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word)),
+            content=self.scrapper.scrap_indirect_translations(**args)
         )
 
     def scrap_definitions(self, lang: str, word: str) -> ScrapResult:

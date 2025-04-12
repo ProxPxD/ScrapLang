@@ -33,11 +33,13 @@ class Scrapper:
         response.raise_for_status()
         return parse(response)
 
-    def scrap_translation(self, from_lang: str, to_lang: str, word: str) -> Iterable[ParsedTranslation] | HTTPError | ParsingException:
+    def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> Iterable[ParsedTranslation] | HTTPError | ParsingException:
         url = GlosbePather.get_word_trans_url(from_lang, to_lang, word)
-        yield from self.scrap(url, TranslationParser.parse)
+        return self.scrap(url, TranslationParser.parse)
+
+    def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> Iterable[ParsedTranslation] | HTTPError | ParsingException:
         url = GlosbePather.get_indirect_translations_url(from_lang, to_lang, word)
-        yield from self.scrap(url, TranslationParser.parse_indirect_translations)
+        return self.scrap(url, TranslationParser.parse_indirect_translations)
 
     def scrap_inflection(self, lang: str, word: str) -> Any | HTTPError | ParsingException:
         url = GlosbePather.get_details_url(lang, word)

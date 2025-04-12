@@ -1,8 +1,10 @@
 import os
+from itertools import groupby
+from lib2to3.pgen2.tokenize import group
 from typing import Iterable, Any, Callable
 
-import pandas
 from apscheduler.schedulers.blocking import BlockingScheduler
+from pandas import DataFrame
 from tabulate import tabulate
 
 from .context import Context
@@ -20,39 +22,54 @@ class Printer:
         self.context = context
 
     def print_all_results(self, scrap_results: Iterable[ScrapResult]) -> None:
+        success = True
         for result in scrap_results:
             match result.kind:
                 case ScrapKinds.SEPERATOR:
                     self.print_separator(result.content)
                 case ScrapKinds.INFLECTION:
                     self.print_inflection(result.content)
-                case ScrapKinds.TRANSLATION:
-                    self.print_translations(result)
+                case ScrapKinds.MAIN_TRANSLATION:
+                    success = self.print_main_translations(result)
+                case ScrapKinds.INDIRECT_TRANSLATION:
+                    if self.context.indirect == 'on' or self.context.indirect == 'fail' and not success:
+                        self.print_indirect_translations(result)
                 case ScrapKinds.DEFINITION:
                     self.print_definitions(result.content)
+                case ScrapKinds.NEWLINE:
+                    self.printer('')
                 case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
 
     def print_separator(self, group: str) -> None:
         sep = '-'  # TODO: add as configurable together with numbers
         self.printer(f'{sep*8} {group} {sep*25}')
 
-    def print_inflection(self, table: pandas.DataFrame) -> None:
+    def print_inflection(self, table: DataFrame) -> None:
         self.printer(tabulate(table, tablefmt='rounded_outline'))
         if not any((self.context.definition, self.context.inflection)):
             self.printer('')
 
-    def print_translations(self, result: ScrapResult) -> None:
+    def print_main_translations(self, result: ScrapResult) -> bool:
         prefix: str = result.args[self.context.prefix_type]
-        translation_row = ', '.join(translation.formatted for translation in result.content)
+        match result.content:
+            case Exception():
+                translation_row = result.content.args[0]
+                success = False
+            case _ if isinstance(result.content, Iterable):
+                translation_row = ', '.join(translation.formatted for translation in result.content)
+                success = True
+            case _: raise ValueError(f'Unexpected main translation content: {result.content}!')
         self.printer(f'{prefix}: {translation_row}')
-        if not self.context.definition:
-            self.printer('')
+        return success
+
+    def print_indirect_translations(self, result: ScrapResult) -> None:
+        translation_row = ', '.join(translation.formatted for translation in result.content)
+        self.printer(f'{" "*4}{translation_row}')
 
     def print_definitions(self, definitions: Iterable[ParsedDefinition]) -> None:
-        self.printer('Definitions:')
+        self.printer('\nDefinitions:')
         for defi in definitions:
             defi_row = f'- {defi.text}{":" if defi.examples else ""}'
             self.printer(defi_row)
             for example in defi.examples:
                 self.printer(f'   - {example}')
-        self.printer('')

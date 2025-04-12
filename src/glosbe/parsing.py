@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
 from io import StringIO
+from itertools import chain
 from typing import Iterable, Any
 
 import pandas as pd
@@ -83,11 +84,14 @@ class ParsedTranslation:
 class TranslationParser(Parser):
     @classmethod
     @Parser.ensure_tag
-    def parse(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
-        yield from cls._parse_main_translations(tag)
+    def parse(cls, tag: Tag) -> Iterable[ParsedTranslation] | ParsingException:
+        match mains := cls._parse_main_translations(tag):
+            case Exception(): return mains
+            case _: pass
         match less_freqs := cls.parse_less_frequent_translations(tag):
-            case Exception(): pass
-            case _: yield from less_freqs
+            case Exception(): less_freqs = []
+            case _: pass
+        return chain(mains, less_freqs)
 
     @classmethod
     def _parse_main_translations(cls, tag: Tag) -> Iterable[ParsedTranslation] | ParsingException:

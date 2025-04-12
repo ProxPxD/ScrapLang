@@ -12,10 +12,13 @@ class Context:
     words: tuple[str]
     from_lang: str
     to_langs: tuple[str]
-    debug: bool
-    groupby: str
+
     inflection: bool
     definition: bool
+
+    debug: bool
+    groupby: str
+    indirect: bool
 
     _to_filter: ClassVar[tuple[str]] = ('assume', 'args')
 

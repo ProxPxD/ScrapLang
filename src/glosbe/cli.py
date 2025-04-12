@@ -518,7 +518,7 @@ class CLI:
 
         parser.add_argument('--inflection', '--infl', '-infl', '--conj', '-cong', '-c', '--decl', '-decl', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', action='store_true', default=False, help='#todo')
-
+        parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
         parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
         # Display Conf
@@ -534,7 +534,7 @@ class CLI:
         parsed = self.parser.parse_args(args, namespace)
         # use keyboard-layout for adjustment
         parsed = self._distribute_args(parsed)
-        parsed = self._fill_defaults(parsed)
+        parsed = self._fill_default_args(parsed)
         logging.debug(f'Parsed: {parsed}')
         return parsed
 
@@ -579,7 +579,7 @@ class CLI:
         logging.debug(f'Assuming: "{word}" is word')
         return word
 
-    def _fill_defaults(self, parsed: Namespace) -> Namespace:
+    def _fill_default_args(self, parsed: Namespace) -> Namespace:
         used = _.filter_([parsed.from_lang] + parsed.to_langs)
         pot_defaults = [lang for lang in self.conf.langs if lang not in used]
         logging.debug(f'Potential defaults: {pot_defaults}')
