@@ -530,7 +530,7 @@ class CLI:
     def parse(self, args=None, namespace=None) -> Namespace:
         if len(args or sys.argv) == 1:
             self.parser.print_help()
-            raise Exception('No args to parse')  # change
+            exit(0)  # change
         sys.argv = [a for arg in sys.argv for a in arg.split('\xa0')]
         parsed = self.parser.parse_args(args, namespace)
         # use keyboard-layout for adjustment
