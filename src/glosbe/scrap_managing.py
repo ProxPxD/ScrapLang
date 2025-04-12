@@ -31,6 +31,11 @@ class ScrapResult:
     args: Box = field(default_factory=Box)  # TODO: think of restricting
     content: DataFrame | Iterable[ParsedTranslation] = None
 
+    def is_fail(self) -> bool:
+        return isinstance(self.content, Exception)
+
+    def is_success(self) -> bool:
+        return not self.is_fail()
 
 class ScrapManager:
     def __init__(self, session: Session):
