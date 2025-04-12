@@ -1,0 +1,4 @@
+langs: [pl, es, en, de, zh, eo, fr, ru, uk, sq, mis_tok]
+assume: lang
+groupby: word
+indirect: fail
