@@ -1,7 +1,5 @@
 venv
-.gitignore
 src/resources/configurations.json
 .idea
 src/resources
-resources
 /src/testing_utils.py

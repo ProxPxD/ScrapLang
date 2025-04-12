@@ -72,7 +72,7 @@ class Printer:
             self.printer(result.content.args[0])
             return
         filler = f' of "{result.args.word}"' if not self.context.to_langs else ''
-        self.printer(f'Definitions{filler}:')
+        self.printer(f'\nDefinitions{filler}:')
         for defi in result.content:
             defi_row = f'- {defi.text}{":" if defi.examples else ""}'
             self.printer(defi_row)
