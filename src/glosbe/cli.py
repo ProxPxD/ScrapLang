@@ -555,8 +555,8 @@ class CLI:
         pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in supported_languages]), default_box=True)
         parsed.args = []
 
-        if not parsed.words:
-            parsed.words.append(self._assume_first_word(pot))
+        if not parsed.words and (assumed_word := self._assume_first_word(pot)):
+            parsed.words.append(assumed_word)
         logging.debug(f'Potential langs: {pot.lang}')
         if pot.lang and not parsed.from_lang:
             from_lang = pot.lang.pop(0)
@@ -579,7 +579,7 @@ class CLI:
         elif len(pot.lang) > 2:
             word = pot.lang.pop(0)
         else:
-            raise ValueError('No word provided!')
+            return
         logging.debug(f'Assuming: "{word}" is word')
         return word
 
