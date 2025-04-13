@@ -3,6 +3,7 @@ from typing import Iterator
 
 from requests import Session
 
+from .configurating import ConfUpdater
 from .context import Context
 from .printer import Printer
 from .scrap_managing import ScrapManager
@@ -34,4 +35,6 @@ class AppManager:
         with self.connect() as session:
             scrap_results = ScrapManager(session).scrap(context)
             Printer(context).print_all_results(scrap_results)
+
+        ConfUpdater.update_conf(context)
 

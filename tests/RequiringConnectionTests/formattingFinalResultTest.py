@@ -3,7 +3,7 @@ from time import sleep
 from more_itertools import take
 from parameterized import parameterized
 
-from src.glosbe.configurations import Configurations
+from src.glosbe.configurating import Configurations
 from src.glosbe.constants import FLAGS as F
 from src.glosbe.scrapping import TranslationTypes
 from src.glosbe.translatingPrinting.formatting import TranslationFormatter

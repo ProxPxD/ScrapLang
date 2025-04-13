@@ -2,7 +2,7 @@ import abc
 import unittest
 from typing import Iterable
 
-from src.glosbe.configurations import Configurations
+from src.glosbe.configurating import Configurations
 from src.glosbe.constants import FLAGS as F
 
 

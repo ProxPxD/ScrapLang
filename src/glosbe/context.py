@@ -30,6 +30,10 @@ class Context:
             object.__setattr__(self, key, val)
 
     @property
+    def all_langs(self) -> list:
+        return [self.from_lang, *self.to_langs]
+
+    @property
     def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
         to_langs = self.to_langs or [None]
         match self.groupby:

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from glosbe.app_managing import AppManager, Context
 from glosbe.cli import CLI
-from glosbe.configurations import ConfLoader
+from glosbe.configurating import ConfHandler
 from glosbe.constants import Paths
 
 
@@ -34,7 +34,7 @@ def main():
     setup_logging()
     try:
         # Configurations.init()
-        default_conf = ConfLoader.load(Paths.CONF_FILE)
+        default_conf = ConfHandler.load(Paths.CONF_FILE)
         parsed = CLI(default_conf).parse()
         context = Context(vars(parsed), default_conf)
         if context.debug:

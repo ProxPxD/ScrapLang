@@ -1,6 +1,6 @@
 from parameterized import parameterized
 
-from src.glosbe.configurations import Configurations
+from src.glosbe.configurating import Configurations
 from src.glosbe.constants import FLAGS as F
 from tests.abstractCliTest import AbstractCliTest
 

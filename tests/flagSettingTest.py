@@ -1,7 +1,7 @@
 from parameterized import parameterized
 from smartcli.nodes.smartList import SmartList
 
-from src.glosbe.configurations import Configurations
+from src.glosbe.configurating import Configurations
 from src.glosbe.constants import FLAGS as F
 from src.glosbe.scrapping import TranslationTypes
 from src.glosbe.printer import Printer
