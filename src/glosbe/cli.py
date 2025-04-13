@@ -516,7 +516,7 @@ class CLI:
         parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
 
-        parser.add_argument('--inflection', '--infl', '-infl', '--conj', '-cong', '-c', '--decl', '-decl', action='store_true', default=False, help='#todo')
+        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conj', '-conj', '-c', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
