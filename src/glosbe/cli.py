@@ -513,11 +513,11 @@ class CLI:
         # Main args
         parser.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
         parser.add_argument('--words', '-w', nargs='+', default=[], help='Words to translate')
-        parser.add_argument('--from', '--from-lang', '-f', '-s', '-l', dest='from_lang', help=supported_langs_msg)
-        parser.add_argument('--to', '--to-lang', '-t', '-d', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
-
+        parser.add_argument('--from', '--from-lang', '-f', dest='from_lang', help=supported_langs_msg)
+        parser.add_argument('--to', '--to-lang', '-t', '-l', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
+        # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
         parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conj', '-conj', '-c', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
-        parser.add_argument('--definition', '--definitions', '--def', '-def', action='store_true', default=False, help='#todo')
+        parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
         parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
