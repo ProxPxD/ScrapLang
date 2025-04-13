@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -95,6 +96,7 @@ class TranslationParser(Parser):
 
     @classmethod
     def _parse_main_translations(cls, tag: Tag) -> Iterable[ParsedTranslation] | ParsingException:
+        logging.debug('Parsing main translations')
         if not (trans_divs := tag.find_all('div', {'class': 'inline leading-10'})):
             return ParsingException('No translation div!')
         translations = []
@@ -111,7 +113,7 @@ class TranslationParser(Parser):
     @classmethod
     @Parser.ensure_tag
     def parse_less_frequent_translations(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
-        # <ul class="columns-2 md:columns-4 text-primary-700 break-words font-medium text-base cursor-pointer py-2 pl-6" lang="de">
+        logging.debug('Parsing less frequent translations')
         less_freq_tag = tag.find('ul', {'id': 'less-frequent-translations-container-0'})
         if not less_freq_tag:
             return ParsingException('No less frequent translations!')
@@ -124,6 +126,7 @@ class TranslationParser(Parser):
     @classmethod
     @Parser.ensure_tag
     def parse_indirect_translations(cls, tag: Tag) -> Iterable[ParsedTranslation]:
+        logging.debug('Parsing indirect translations')
         translation_buttons = tag.find_all('button', {'class': 'font-medium break-all flex-inline focus:outline-none'})
         kinds = TranslationKind
         indirects = []
@@ -149,6 +152,7 @@ class InflectionParser(Parser):
     @classmethod
     @Parser.ensure_tag
     def parse(cls, tag: Tag) -> Iterable[DataFrame] | ParsingException:
+        logging.debug('Parsing inflection table')
         if not (table_tags := tag.select('div #grammar_0_0 table')):
             return ParsingException('No inflection table!')
         tables = [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
@@ -175,6 +179,7 @@ class DefinitionParser(Parser):
     @classmethod
     @Parser.ensure_tag
     def parse(cls, tag: Tag) -> ParsingException | Iterable[ParsedDefinition]:
+        logging.debug('Parsing definitions')
         if not (definition_tags := tag.find_all('li', {'class': 'pb-2'})):
             return ParsingException('No inflection table!')
         return map(cls._parse_definition, definition_tags)

@@ -2,6 +2,7 @@ import logging
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
+from typing import Optional
 
 import pydash as _
 from box import Box
@@ -573,13 +574,14 @@ class CLI:
             parsed.words.extend(pot.word)
         return parsed
 
-    def _assume_first_word(self, pot: Box) -> str:
+    def _assume_first_word(self, pot: Box) -> Optional[str]:
         if pot.word:
             word = pot.word.pop(0)
         elif len(pot.lang) > 2:
             word = pot.lang.pop(0)
         else:
-            return
+            logging.debug('No word to assume!')
+            return None
         logging.debug(f'Assuming: "{word}" is word')
         return word
 
@@ -607,6 +609,7 @@ class CLI:
     def _reverse_if_needed(self, parsed: Namespace) -> Namespace:
         if parsed.reverse:
             old_from, old_first_to = parsed.from_lang, parsed.to_langs[0]
+            logging.debug(f'Reversing: {old_from, old_first_to} => {old_first_to, old_from}')
             parsed.from_lang = old_first_to
             parsed.to_langs[0] = old_from
         return parsed
