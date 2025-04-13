@@ -516,7 +516,7 @@ class CLI:
         parser.add_argument('--from', '--from-lang', '-f', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-l', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
-        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conj', '-conj', '-c', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
+        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
