@@ -4,7 +4,9 @@ import logging
 import shlex
 import sys
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+
+from box import Box
 
 from glosbe.app_managing import AppManager, Context
 from glosbe.cli import CLI
@@ -12,16 +14,17 @@ from glosbe.configurating import ConfHandler
 from glosbe.constants import Paths
 
 
-def setup_logging():
+def setup_logging(context: Context = None):
+    handlers = [logging.StreamHandler(sys.stdout)]
+    context = Box(asdict(context) if context else {}, default_box=True)
+    if context.debug:
+        handlers.append(logging.FileHandler(Paths.LOG_DIR))
     logging.basicConfig(
         level=logging.INFO,  # Set minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         format='%(levelname)s: %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(Paths.LOG_DIR)
-        ]
+        handlers=handlers,
     )
-    warnings.filterwarnings("ignore")
+    warnings.filterwarnings('default' if context.debug else 'ignore')
 
 
 @dataclass(frozen=True)
@@ -37,6 +40,7 @@ def main():
         default_conf = ConfHandler.load(Paths.CONF_FILE)
         parsed = CLI(default_conf).parse()
         context = Context(vars(parsed), default_conf)
+        setup_logging(context)
         if context.debug:
             logging.basicConfig(level=logging.DEBUG)
         AppManager(context).run()
