@@ -521,6 +521,7 @@ class CLI:
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
         parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
+        parser.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang with the first to_lang')
         # Display Conf
         parser.add_argument('--groupby', '-by', choices=['lang', 'word'], help='What to group the result translations by')
         # Developer Conf
@@ -536,6 +537,7 @@ class CLI:
         # use keyboard-layout for adjustment
         parsed = self._distribute_args(parsed)
         parsed = self._fill_default_args(parsed)
+        parsed = self._reverse_if_needed(parsed)
         logging.debug(f'Parsed: {parsed}')
         return parsed
 
@@ -600,4 +602,11 @@ class CLI:
             to_lang = to_fill.pop(0)
             logging.debug(f'Filling to_lang with {to_lang}')
             parsed.to_langs.append(to_lang)
+        return parsed
+
+    def _reverse_if_needed(self, parsed: Namespace) -> Namespace:
+        if parsed.reverse:
+            old_from, old_first_to = parsed.from_lang, parsed.to_langs[0]
+            parsed.from_lang = old_first_to
+            parsed.to_langs[0] = old_from
         return parsed

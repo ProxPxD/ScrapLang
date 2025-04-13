@@ -20,7 +20,7 @@ class Context:
     groupby: str
     indirect: bool
 
-    _to_filter: ClassVar[tuple[str]] = ('assume', 'args')
+    _to_filter: ClassVar[tuple[str]] = ('assume', 'args', 'reverse')
 
     def __init__(self, *confs: dict):
         own = c({}).merge_with(*confs, iteratee=_.curry(lambda a, b: a or b)).omit(self._to_filter).value()
