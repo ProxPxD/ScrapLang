@@ -42,7 +42,7 @@ class ConfHandler:
     def save_yaml(cls, path: str | Path, conf: dict) -> None:
         import yaml
         with open(path, 'w+') as f:
-            yaml.safe_dump(dict(conf), f, default_flow_style=None)
+            yaml.safe_dump(dict(conf), f, default_flow_style=None, allow_unicode=True, encoding='utf-8')
 
     @classmethod
     def save_toml(cls, path: str | Path, conf: dict) -> None:

@@ -2,6 +2,7 @@ import logging
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
+from functools import reduce
 from typing import Optional
 
 import pydash as _
@@ -539,6 +540,7 @@ class CLI:
         parsed = self._distribute_args(parsed)
         parsed = self._fill_default_args(parsed)
         parsed = self._reverse_if_needed(parsed)
+        parsed = self._apply_mapping(parsed)
         logging.debug(f'Parsed: {parsed}')
         return parsed
 
@@ -612,4 +614,14 @@ class CLI:
             logging.debug(f'Reversing: {old_from, old_first_to} => {old_first_to, old_from}')
             parsed.from_lang = old_first_to
             parsed.to_langs[0] = old_from
+        return parsed
+
+    def _apply_mapping(self, parsed: Namespace) -> Namespace:
+        if from_lang_map := self.conf.mappings.get(parsed.from_lang):
+            mapped_words = []
+            for word in parsed.words:
+                for orig, dest in from_lang_map.items():
+                    word = word.replace(orig, dest)
+                mapped_words.append(word)
+            parsed.words = mapped_words
         return parsed
