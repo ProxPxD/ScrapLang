@@ -28,10 +28,14 @@ class Scrapper:
     def __init__(self, session: Session = None):
         self.session: Optional[Session] = session
 
-    def scrap(self, url: str, parse: Callable[[Response], Iterable[ParsedTranslation]]) -> Any | HTTPError | ParsingException:
-        response = self.session.get(url, allow_redirects=True)
-        response.raise_for_status()
-        return parse(response)
+    def scrap(self, url: str, parse: Callable[[Response], Iterable[ParsedTranslation] | ParsingException]) -> Iterable[ParsedTranslation] | HTTPError | ParsingException:
+        try:
+            response = self.session.get(url, allow_redirects=True)
+            response.raise_for_status()
+        except HTTPError as e:
+            return e
+        else:
+            return parse(response)
 
     def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> Iterable[ParsedTranslation] | HTTPError | ParsingException:
         url = GlosbePather.get_word_trans_url(from_lang, to_lang, word)
