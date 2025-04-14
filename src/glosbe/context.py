@@ -42,7 +42,7 @@ class Context:
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
-    def source_pairs(self) -> Iterable[tuple[[str, str]]]:
+    def source_pairs(self) -> Iterable[tuple[str, str]]:
         return zip(repeat(self.from_lang), self.words)
 
     @property
