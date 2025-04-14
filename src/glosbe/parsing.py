@@ -216,4 +216,4 @@ class DefinitionParser(Parser):
             .map_(cls.clean)\
             .filter_()\
             .value()
-        return examples or []
+        return examples
