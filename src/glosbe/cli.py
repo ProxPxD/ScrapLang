@@ -2,6 +2,7 @@ import logging
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
+from functools import reduce
 from typing import Optional
 
 import pydash as _
@@ -618,11 +619,10 @@ class CLI:
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         if from_lang_map := self.conf.mappings.get(parsed.from_lang):
+            logging.debug(f'Applying mapping for {parsed.from_lang}')
             from_lang_map = sorted(from_lang_map.items(), key=c().get(0).size(), reverse=True)
-            mapped_words = []
-            for word in parsed.words:
-                for orig, dest in from_lang_map:
-                    word = word.replace(orig, dest)
-                mapped_words.append(word)
-            parsed.words = mapped_words
+            parsed.words = [
+                reduce(lambda w, orig_dest: w.replace(*orig_dest), from_lang_map, word)
+                for word in parsed.words
+            ]
         return parsed
