@@ -181,7 +181,7 @@ class DefinitionParser(Parser):
     def parse(cls, tag: Tag) -> ParsingException | Iterable[ParsedDefinition]:
         logging.debug('Parsing definitions')
         if not (definition_tags := tag.find_all('li', {'class': 'pb-2'})):
-            return ParsingException('No inflection table!')
+            return ParsingException('No Definition Tags!')
         return map(cls._parse_definition, definition_tags)
 
     @classmethod

@@ -30,13 +30,13 @@ class ConfHandler:
     def load_yaml(cls, path: str | Path) -> Box:
         import yaml
         with open(path, 'r') as f:
-            return Box(yaml.safe_load(f))
+            return Box(yaml.safe_load(f), default_box=True)
 
     @classmethod
     def load_toml(cls, path: str | Path) -> Box:
         import toml
         with open(path, 'r') as f:
-            return Box(toml.load(f))
+            return Box(toml.load(f),  default_box=True)
 
     @classmethod
     def save_yaml(cls, path: str | Path, conf: dict) -> None:
