@@ -53,7 +53,7 @@ class ScrapManager:
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
             if context.definition and last:
                 yield self.scrap_definitions(from_lang, word)
-            if not last:
+            if context.member_sep and not last:
                 yield ScrapResult(ScrapKinds.NEWLINE)
 
     def scrap_inflections(self, lang: str, word: str) -> ScrapResult:

@@ -28,10 +28,10 @@ class Printer:
                 case ScrapKinds.INFLECTION:
                     self.print_inflection(result)
                 case ScrapKinds.MAIN_TRANSLATION:
-                    success = self.print_main_translations(result)
+                    success = self.print_translation(result)
                 case ScrapKinds.INDIRECT_TRANSLATION:
                     if self.context.indirect == 'on' or self.context.indirect == 'fail' and not success:
-                        self.print_indirect_translations(result)
+                        self.print_translation(result)
                 case ScrapKinds.DEFINITION:
                     self.print_definitions(result)
                 case ScrapKinds.NEWLINE:
@@ -55,21 +55,24 @@ class Printer:
         if not any((self.context.definition, self.context.inflection)):
             self.printer('')
 
-    def print_main_translations(self, result: ScrapResult) -> bool:
-        prefix: str = result.args[self.context.prefix_type]
-        if success := result.is_success():
-            translation_row = ', '.join(translation.formatted for translation in result.content)
-        else:
-            translation_row = result.content.args[0]
-        self.printer(f'{prefix}: {translation_row}')
-        return success
+    def print_translation(self, result: ScrapResult) -> bool:
+        prefix: str = self.get_translation_prefix(result)
+        translation_row = self.create_translation_row(result)
+        self.printer(f'{prefix}{translation_row}')
+        return result.is_success()
 
-    def print_indirect_translations(self, result: ScrapResult) -> None:
-        if result.is_fail():
-            self.printer(result.content.args[0])
-            return
-        translation_row = ', '.join(translation.formatted for translation in result.content)
-        self.printer(f'{" "*4}{translation_row}')
+    def get_translation_prefix(self, result: ScrapResult) -> str:
+        match result.kind:
+            case ScrapKinds.MAIN_TRANSLATION: return f'{result.args[self.context.member_prefix_arg]}: '
+            case ScrapKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
+            case _: raise ValueError(f'Unexpected transltation type: {result.kind}')
+
+    @classmethod
+    def create_translation_row(cls, result: ScrapResult) -> str:
+        match result.is_success():
+            case True: return ', '.join(translation.formatted for translation in result.content)
+            case False: return result.content.args[0]
+            case _: return ...
 
     def print_definitions(self, result: ScrapResult) -> None:
         if result.is_fail():
