@@ -1,4 +1,5 @@
 import logging
+import shlex
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
@@ -503,9 +504,9 @@ class CLI:
     def __init__(self, conf: Box):
         self.conf = conf
         logging.debug(f'Conf: {conf.to_yaml()}')
-        self.parser = self._create_parser()
 
-    def _create_parser(self) -> ArgumentParser:
+    @property
+    def parser(self) -> ArgumentParser:
         parser = ArgumentParser(
             prog='GlosbeTranslator',
             description='Translation Program',
@@ -518,6 +519,10 @@ class CLI:
         parser.add_argument('--words', '-w', nargs='+', default=[], help='Words to translate')
         parser.add_argument('--from', '--from-lang', '-f', dest='from_lang', help=supported_langs_msg)
         parser.add_argument('--to', '--to-lang', '-t', '-l', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
+        # Loop Control
+        loop_control = parser.add_mutually_exclusive_group()
+        loop_control.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
+        loop_control.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
         parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
@@ -532,10 +537,10 @@ class CLI:
         return parser
 
     def parse(self, args=None, namespace=None) -> Namespace:
-        if len(args or sys.argv) == 1:
+        if len(args := args or sys.argv) == 1:
             self.parser.print_help()
             exit(0)  # change
-        sys.argv = [a for arg in sys.argv for a in arg.split('\xa0')]
+        args = [a for arg in args for a in arg.split('\xa0')][1:]
         parsed = self.parser.parse_args(args, namespace)
         # use keyboard-layout for adjustment
         parsed = self._distribute_args(parsed)

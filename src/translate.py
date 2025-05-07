@@ -2,29 +2,12 @@ from __future__ import annotations
 
 import logging
 import shlex
-import sys
-import warnings
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
-from box import Box
-
-from glosbe.app_managing import AppManager, Context
+from glosbe.app_managing import AppManager, Context, setup_logging
 from glosbe.cli import CLI
 from glosbe.configurating import ConfHandler
 from glosbe.constants import Paths
-
-
-def setup_logging(context: Context = None):
-    handlers = [logging.StreamHandler(sys.stdout)]
-    context = Box(asdict(context) if context else {}, default_box=True)
-    if context.debug:
-        handlers.append(logging.FileHandler(Paths.LOG_DIR))
-    logging.basicConfig(
-        level=logging.INFO,  # Set minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        format='%(levelname)s: %(message)s',
-        handlers=handlers,
-    )
-    warnings.filterwarnings('default' if context.debug else 'ignore')
 
 
 @dataclass(frozen=True)
@@ -34,16 +17,10 @@ class ErrorMessages:
 
 
 def main():
-    setup_logging()
     try:
         # Configurations.init()
         default_conf = ConfHandler.load(Paths.CONF_FILE)
-        parsed = CLI(default_conf).parse()
-        context = Context(vars(parsed), default_conf)
-        setup_logging(context)
-        if context.debug:
-            logging.basicConfig(level=logging.DEBUG)
-        AppManager(context).run()
+        AppManager(default_conf).run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()
     except:

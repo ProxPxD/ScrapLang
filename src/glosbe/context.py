@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 from itertools import product, repeat
 from typing import ClassVar, Iterable, Optional
@@ -9,18 +9,20 @@ from pydash import chain as c
 
 @dataclass(frozen=True, init=False)
 class Context:
-    words: tuple[str]
-    from_lang: str
-    to_langs: tuple[str]
+    words: tuple[str] = tuple()
+    from_lang: str = None
+    to_langs: tuple[str] = tuple()
 
-    inflection: bool
-    definition: bool
+    inflection: bool = False
+    definition: bool = False
 
-    debug: bool
-    groupby: str
-    indirect: bool
+    debug: bool = False
+    groupby: str = 'lang'
+    indirect: bool = 'fail'
     member_sep: bool = False
     colour: str = ''
+
+    loop: bool = False
 
     _to_filter: ClassVar[tuple[str]] = ('assume', 'args', 'reverse', 'mappings')
 
@@ -91,6 +93,9 @@ class Context:
             case 1: return self.grouparg
             case _: return self.memberarg
 
+    @property
+    def exit(self) -> bool:
+        return not self.loop
 
 @dataclass(frozen=True)
 class SubContext:
