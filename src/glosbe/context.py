@@ -19,9 +19,10 @@ class Context:
     debug: bool
     groupby: str
     indirect: bool
-    member_sep: bool
+    member_sep: bool = False
+    colour: str = ''
 
-    _to_filter: ClassVar[tuple[str]] = ('assume', 'args', 'reverse')
+    _to_filter: ClassVar[tuple[str]] = ('assume', 'args', 'reverse', 'mappings')
 
     def __init__(self, *confs: dict):
         own = c({}).merge_with(*confs, iteratee=_.curry(lambda a, b: a if a is not None else b)).omit(self._to_filter).value()

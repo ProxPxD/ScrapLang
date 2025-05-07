@@ -5,11 +5,14 @@ from typing import Iterable, Any, Callable
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas.core.interchange.dataframe_protocol import DataFrame
 from tabulate import tabulate
+from termcolor import colored
 
 from .context import Context
 from .scrap_managing import ScrapResult, ScrapKinds
 
 os.environ['TZ'] = 'Europe/Warsaw'
+
+
 
 
 class Printer:
@@ -58,7 +61,8 @@ class Printer:
     def print_translation(self, result: ScrapResult) -> bool:
         prefix: str = self.get_translation_prefix(result)
         translation_row = self.create_translation_row(result)
-        self.printer(f'{prefix}{translation_row}')
+        coloured_prefix = colored(prefix, self.context.colour) if self.context.colour != 'no' else prefix
+        self.printer(f'{coloured_prefix}{translation_row}')
         return result.is_success()
 
     def get_translation_prefix(self, result: ScrapResult) -> str:
