@@ -56,6 +56,13 @@ class AppManager:
         ConfUpdater.update_conf(self.context)
 
     def run_single(self, args: list[str] = None) -> None:
+        # TODO:
+        # To make a proper loop:
+        # 0. Context and parsing should be by default uncertain (None)
+        # 1. Default infra app context
+        # 2. User Conf
+        # 3. User Call
+        # 4. Loop is a prev context's absorption of the new call based on what's new
         parsed = self.cli.parse(args)
         # new_context = Context(vars(parsed))
         # if new_context.is_setting_context():
