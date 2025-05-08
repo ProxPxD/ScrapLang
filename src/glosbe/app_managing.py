@@ -57,15 +57,21 @@ class AppManager:
 
     def run_single(self, args: list[str] = None) -> None:
         parsed = self.cli.parse(args)
+        # new_context = Context(vars(parsed))
+        # if new_context.is_setting_context():
+        #     self.context.absorb_context(new_context)
+        # else:
+        #     new_context.absorb_context(self.context)
+        #     parsed = self.cli.process_parsed(parsed)
+        #     new_context = Context(vars(parsed))
         self.context = Context(vars(parsed), asdict(self.context))
         setup_logging(self.context)
-        if self.context.exit:
+        if self.context.exit and args:
             return
-        self.run_scrap()
+        if self.context.words:
+            self.run_scrap()
 
     def run_scrap(self) -> None:
-        if not self.context:
-            raise ValueError('No context provided!')
         # TODO: think when to raise if no word
 
         with self.connect() as session:

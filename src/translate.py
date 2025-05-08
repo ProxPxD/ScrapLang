@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import logging
 import shlex
 from dataclasses import dataclass
 
-from glosbe.app_managing import AppManager, Context, setup_logging
-from glosbe.cli import CLI
+from glosbe.app_managing import AppManager
 from glosbe.configurating import ConfHandler
 from glosbe.constants import Paths
 

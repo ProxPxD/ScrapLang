@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
-from functools import cache
+from __future__ import annotations
+
+from dataclasses import dataclass
 from itertools import product, repeat
 from typing import ClassVar, Iterable, Optional
 
@@ -7,7 +8,7 @@ import pydash as _
 from pydash import chain as c
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=False, init=False)
 class Context:
     words: tuple[str] = tuple()
     from_lang: str = None
@@ -34,6 +35,12 @@ class Context:
                 val = tuple(val)
             object.__setattr__(self, key, val)
 
+    def absorb_context(self, context: Context) -> None:
+        to_absorbs = 'from_lang', 'to_langs'# add when None evalution is implemented, 'inflection', 'definition', 'debug', 'groupby', 'indirect', 'member_sep'
+        for to_absorb in to_absorbs:
+            if getaval := getattr(context, to_absorb):
+                setattr(self, to_absorb, getaval)
+
     @property
     def all_langs(self) -> list:
         return [self.from_lang, *self.to_langs]
@@ -56,7 +63,6 @@ class Context:
             yield self.from_lang, to_lang, word
 
     @property
-    @cache
     def n_members(self) -> int:
         match self.groupby:
             case 'lang': return len(self.words)
@@ -97,12 +103,5 @@ class Context:
     def exit(self) -> bool:
         return not self.loop
 
-@dataclass(frozen=True)
-class SubContext:
-    from_lang: str
-    to_lang: str
-    word: str
-
-    @property
-    def lang(self) -> str:
-        return self.from_lang or self.to_lang
+    def is_setting_context(self) -> bool:
+        return not self.words and self.loop
