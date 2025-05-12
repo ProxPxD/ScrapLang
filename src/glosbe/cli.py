@@ -82,7 +82,7 @@ class CLI:
             raise ValueError(f'Could not resolve arguments: {parsed.args}')
 
         # assume == lang
-        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in supported_languages]), default_box=True)
+        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in supported_languages]), default_box=True, default_box_attr=[])
         parsed.args = []
 
         if not parsed.words and (assumed_word := self._assume_first_word(pot)):
@@ -100,7 +100,7 @@ class CLI:
         if pot.word:
             singular = len(pot.word) == 1
             logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} word{"" if singular else "s"}')
-            parsed.words = pot.word + parsed.words
+            parsed.words += pot.word
         return parsed
 
     def _assume_first_word(self, pot: Box) -> Optional[str]:
