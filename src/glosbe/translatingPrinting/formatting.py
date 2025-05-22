@@ -290,7 +290,7 @@ class TranslationFormatter(AbstractFormatter, AbstractIntoStringFormatter, Abstr
 	@classmethod
 	def _get_pre_one(cls, translation: TranslationResult, prefix_style: str = '', **kwargs) -> str:
 		prefix = ''
-		if translation.kind in (TranslationTypes.DOUBLE, TranslationTypes.WORD_INFO):  # TODO: add tests for printing word info
+		if translation.kind in (TranslationTypes.DOUBLE, TranslationTypes.WORD_INFO):  # TODO: add legacy_tests for printing word info
 			match prefix_style:
 				case TranslationTypes.DOUBLE:
 					prefix = f'{translation.trans_args.to_lang}-{translation.trans_args.word}'

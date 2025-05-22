@@ -45,7 +45,7 @@ def get_test_arguments():
     # TOOO: add test for "mieć pl -c"
     # TODO: add test for no saved lang exception
     # TODO: add test for mis_tok
-    # TODO: add tests for definitions
+    # TODO: add legacy_tests for definitions
     # TODO: t anomic en pl
 
 
