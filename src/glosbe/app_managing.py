@@ -4,7 +4,7 @@ import sys
 import warnings
 from contextlib import contextmanager
 from dataclasses import asdict
-from typing import Iterator, Optional
+from typing import Iterator
 
 from box import Box
 from requests import Session

@@ -1,4 +1,5 @@
 import logging
+import shlex
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
@@ -10,6 +11,10 @@ from box import Box
 from pydash import chain as c
 
 from .constants import supported_languages
+
+
+def filter_input(args: list[str]) -> list[str]:
+    return [a for arg in args for a in arg.split('\xa0')]
 
 
 class CLI:
@@ -36,7 +41,13 @@ class CLI:
         loop_control.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
         loop_control.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
-        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
+        parser.add_argument(
+            '--inflection', '--infl', '-infl', '-i',
+            '--conjugation', '--conj', '-conj', '-c',
+            '--declension', '--decl', '-decl',
+            '--table', '-tab',
+            action='store_true', default=False, help='#todo'
+        )
         parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
@@ -48,20 +59,24 @@ class CLI:
         parser.add_argument('--debug', action='store_true')
         return parser
 
-    def parse(self, args=None) -> Namespace:
+    def parse(self, args: Optional[str | list[str]] = None) -> Namespace:
         parsed = self.parse_base(args)
         self.process_parsed(parsed)
         return parsed
 
-    def parse_base(self, args: list[str]):
-        if len(args := args or sys.argv) == 1:
+    def parse_base(self, args: Optional[str | list[str]]):
+        match args:
+            case None: args = filter_input(sys.argv)[1:]
+            case str(): args = filter_input(shlex.split(args))
+            case list(): pass
+            case _: raise ValueError(f'Parsing exception. Cannot parse args of type {type(args)}')
+
+        if not args:
             self.parser.print_help()
             exit(0)  # change
 
-        args = [a for arg in args for a in arg.split('\xa0')][1:]
-        parsed = self.parser.parse_args(args)
-        parsed = self._distribute_args(parsed)
-        logging.debug(f'base Parsed: {parsed}')
+        parsed = self.parser.parse_args(args);  logging.debug(f'raw parsed: {parsed}')
+        parsed = self._distribute_args(parsed); logging.debug(f'base parsed: {parsed}')
         return parsed
 
     def process_parsed(self, parsed: Namespace) -> Namespace:
