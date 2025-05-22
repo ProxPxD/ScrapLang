@@ -115,6 +115,15 @@ class CLI:
         return word
 
     def _fill_default_args(self, parsed: Namespace) -> Namespace:
+        parsed = self._predict_langs(parsed)
+        parsed = self._fill_last_used(parsed)
+        return parsed
+
+    def _predict_langs(self, parsed: Namespace) -> Namespace:
+        # How to handle Cyrillic written with latin and memory?
+        return parsed
+
+    def _fill_last_used(self, parsed: Namespace) -> Namespace:
         used = _.filter_([parsed.from_lang] + parsed.to_langs)
         pot_defaults = [lang for lang in self.conf.langs if lang not in used]
         logging.debug(f'Potential defaults: {pot_defaults}')
