@@ -1,16 +1,9 @@
 from dataclasses import dataclass
 
-import pytest
 from box import Box
 
 from src.glosbe.cli import CLI
 from tests.TCG import TCG
-
-
-@dataclass
-class ConfParsed:
-    conf: dict
-    parsed: dict
 
 
 @dataclass
@@ -24,18 +17,48 @@ class TC:
 class CliTCG(TCG):
     tcs = [
         TC(
-            descr='single trans with conf',
+            descr='single trans with conf word first',
             input='obituary en pl',
             e_parsed=dict(
                 words=['obituary'],
                 from_lang='en',
                 to_langs=['pl']
             ),
-            conf={
+            conf=(base_conf := {
                 'assume': 'lang',
-                'langs': ['de', 'zh'],
+                'langs': ['en', 'pl'],
                 'mappings': {},
-            }
+            })
+        ),
+        TC(
+            descr='single trans with conf word last',
+            input='en pl obituary',
+            e_parsed=dict(
+                words=['obituary'],
+                from_lang='en',
+                to_langs=['pl']
+            ),
+            conf=base_conf,
+        ),
+        TC(
+            descr='multiple word trans with conf',
+            input='en pl -w obituary cat',
+            e_parsed=dict(
+                words=['obituary', 'cat'],
+                from_lang='en',
+                to_langs=['pl']
+            ),
+            conf=base_conf,
+        ),
+        TC(
+            descr='single word trans with conf with from/to flags',
+            input='obituary -f en -t pl',
+            e_parsed=dict(
+                words=['obituary'],
+                from_lang='en',
+                to_langs=['pl']
+            ),
+            conf=base_conf,
         )
     ]
 
