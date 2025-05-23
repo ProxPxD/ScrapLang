@@ -89,18 +89,13 @@ class CLI:
             parsed.words.append(assumed_word)
         logging.debug(f'Potential langs: {pot.lang}')
         if pot.lang and not parsed.from_lang:
-            from_lang = pot.lang.pop(0)
-            logging.debug(f'Assuming: "{from_lang}" is from_lang')
+            from_lang = pot.lang.pop(0); logging.debug(f'Assuming "{from_lang}" should be in from_lang')
             parsed.from_lang = from_lang
         if pot.lang and not parsed.to_langs:
-            singular = len(pot.lang) == 1
-            logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} to_lang{"" if singular else "s"}')
-            parsed.to_langs = pot.lang + parsed.to_langs
+            parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming {pot.lang} should be in to_langs')
             pot.lang = []
         if pot.word:
-            singular = len(pot.word) == 1
-            logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} word{"" if singular else "s"}')
-            parsed.words += pot.word
+            parsed.words += pot.word; logging.debug(f'Assuming {pot.word} should be in words')
         return parsed
 
     def _assume_first_word(self, pot: Box) -> Optional[str]:
@@ -111,7 +106,7 @@ class CLI:
         else:
             logging.debug('No word to assume!')
             return None
-        logging.debug(f'Assuming: "{word}" is word')
+        logging.debug(f'Assuming "{word}" should be in words')
         return word
 
     def _fill_default_args(self, parsed: Namespace) -> Namespace:
@@ -125,22 +120,18 @@ class CLI:
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
         used = _.filter_([parsed.from_lang] + parsed.to_langs)
-        pot_defaults = [lang for lang in self.conf.langs if lang not in used]
-        logging.debug(f'Potential defaults: {pot_defaults}')
+        pot_defaults = [lang for lang in self.conf.langs if lang not in used]; logging.debug(f'Potential defaults: {pot_defaults}')
         if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
         if not parsed.to_langs and (parsed.definition or parsed.inflection):
             n_needed -= 1
-        to_fill = pot_defaults[:n_needed]
-        logging.debug(f'Chosen defaults: {to_fill}')
+        to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
         if not parsed.from_lang and to_fill:
-            from_lang = to_fill.pop(0)
-            logging.debug(f'Filling from_lang with {from_lang}')
+            from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with {from_lang}')
             parsed.from_lang = from_lang
         if not parsed.to_langs and to_fill:
-            to_lang = to_fill.pop(0)
-            logging.debug(f'Filling to_lang with {to_lang}')
+            to_lang = to_fill.pop(0); logging.debug(f'Filling to_lang with {to_lang}')
             parsed.to_langs.append(to_lang)
         return parsed
 
