@@ -89,7 +89,7 @@ class TranslationParser(Parser):
         if isinstance(mains := cls._parse_main_translations(tag), Exception):
             return mains
         if isinstance(less_freqs := cls.parse_less_frequent_translations(tag), Exception):
-            return less_freqs
+            less_freqs = []
         return chain(mains, less_freqs)
 
     @classmethod
