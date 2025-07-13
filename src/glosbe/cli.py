@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
@@ -10,6 +11,7 @@ from box import Box
 from pydash import chain as c
 
 from .constants import supported_languages
+from .logutils import setup_logging
 
 
 class CLI:
@@ -60,6 +62,7 @@ class CLI:
 
         args = [a for arg in args for a in arg.split('\xa0')][1:]
         parsed = self.parser.parse_args(args)
+        setup_logging(parsed)
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
         return parsed
@@ -145,7 +148,7 @@ class CLI:
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         if from_lang_map := self.conf.mappings.get(parsed.from_lang):
-            logging.debug(f'Applying mapping for {parsed.from_lang}')
+            logging.debug(f'Applying mapping for {parsed.from_lang} with map:\n{json.dumps(from_lang_map, indent=4)}')
             from_lang_map = sorted(from_lang_map.items(), key=c().get(0).size(), reverse=True)
             parsed.words = [
                 reduce(lambda w, orig_dest: w.replace(*orig_dest), from_lang_map, word)

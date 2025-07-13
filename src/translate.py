@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import shlex
 import sys
 from dataclasses import dataclass
@@ -22,7 +24,7 @@ class ErrorMessages:
 def main():
     try:
         # Configurations.init()
-        default_conf = ConfHandler.load(Paths.CONF_FILE)
+        default_conf = ConfHandler.load(Paths.CONF_FILE); logging.debug(f'Default Config: {json.dumps(default_conf, indent=4)}')
         AppManager(default_conf).run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()
