@@ -95,7 +95,7 @@ class Context:
 
     @property
     def member_prefix_arg(self) -> str:
-        match len(self.words):
+        match len(getattr(self, f'{self.memberarg}s')):
             case 1: return self.grouparg
             case _: return self.memberarg
 
