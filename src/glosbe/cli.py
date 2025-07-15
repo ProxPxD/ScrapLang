@@ -61,7 +61,8 @@ class CLI:
             exit(0)  # change
 
         args = [a for arg in args for a in arg.split('\xa0')][1:]
-        parsed = self.parser.parse_args(args)
+        parsed, remaining = self.parser.parse_known_args(args)
+        parsed.args += remaining  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
@@ -76,7 +77,7 @@ class CLI:
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
         assume = parsed.assume or self.conf.assume
-
+        # parsed.args += parsed.remaining  # Add end args to the initial ones
         if assume == 'word':
             logging.debug(f'Assuming {parsed.args} are words!')
             parsed.words = parsed.args + parsed.words
