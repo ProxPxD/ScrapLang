@@ -1,7 +1,7 @@
 import json
 import logging
+import re
 import sys
-# from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from typing import Optional
@@ -148,11 +148,18 @@ class CLI:
         return parsed
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
-        if from_lang_map := self.conf.mappings.get(parsed.from_lang):
-            logging.debug(f'Applying mapping for {parsed.from_lang} with map:\n{json.dumps(from_lang_map, indent=4)}')
-            from_lang_map = sorted(from_lang_map.items(), key=c().get(0).size(), reverse=True)
+        # todo: test żurawel (regex)
+        lang_mapping: Box
+        if not (lang_mapping := self.conf.mappings.get(parsed.from_lang)):
+            return parsed
+        ordered_lang_mapping = [lang_mapping] if isinstance(lang_mapping, dict) else lang_mapping
+        logging.debug(f'Applying mapping for {parsed.from_lang} with map:\n{json.dumps(lang_mapping, indent=4, ensure_ascii=False)}')
+        for lang_mapping in ordered_lang_mapping:
+            patts, repls = zip(*sorted(lang_mapping.to_dict().items(), key=c().get(0).size(), reverse=True))
+            lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
+            logging.debug(f'from_lang_map: {lang_mapping}')
             parsed.words = [
-                reduce(lambda w, orig_dest: w.replace(*orig_dest), from_lang_map, word)
+                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), lang_mapping, word)
                 for word in parsed.words
             ]
         return parsed
