@@ -24,7 +24,7 @@ class ErrorMessages:
 def main():
     try:
         # Configurations.init()
-        default_conf = ConfHandler.load(Paths.CONF_FILE); logging.debug(f'Default Config: {json.dumps(default_conf, indent=4)}')
+        default_conf = ConfHandler.load(Paths.CONF_FILE); logging.debug(f'Default Config: {json.dumps(default_conf, indent=4, ensure_ascii=False)}')
         AppManager(default_conf).run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()
