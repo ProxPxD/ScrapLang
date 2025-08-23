@@ -3,3 +3,4 @@ venv
 src/resources/
 resources/
 /src/testing_utils.py
+**/__pycache__/

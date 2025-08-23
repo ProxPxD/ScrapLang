@@ -42,14 +42,14 @@ class ScrapManager:
 
     def scrap(self, context: Context) -> Iterable[ScrapResult]:
         for first, last, (from_lang, to_lang, word) in context.grouped_url_triples:
-            if first and not last:
+            if is_first_in_group := first and not last:
                 group = to_lang if context.groupby == 'lang' else word
                 yield ScrapResult(ScrapKinds.SEPERATOR, content=group)
-            if context.inflection and first:
+            if is_first_to_inflect := context.inflection and first:  # Should take into account grouping method?
                 yield self.scrap_inflections(from_lang, word)
-            if to_lang:
-                yield self.scrap_main_translations(from_lang, to_lang, word)
-                if context.indirect in ('on', 'fail'):
+            if is_translating := to_lang:
+                yield (main := self.scrap_main_translations(from_lang, to_lang, word))
+                if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
             if context.definition:
                 yield self.scrap_definitions(from_lang, word)

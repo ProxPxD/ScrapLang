@@ -1,7 +1,4 @@
-import logging
 import shlex
-import sys
-import warnings
 from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Iterator
@@ -9,27 +6,14 @@ from typing import Iterator
 from box import Box
 from requests import Session
 
+from .logutils import setup_logging
 from .cli import CLI
 from .configurating import ConfUpdater
-from .constants import Paths
 from .context import Context
 from .printer import Printer
 from .scrap_managing import ScrapManager
 from .scrapping import Scrapper
 from .web_pather import get_default_headers
-
-
-def setup_logging(context: Context = None):
-    handlers = [logging.StreamHandler(sys.stdout)]
-    context = Box(asdict(context) if context else {}, default_box=True)
-    if context.debug:
-        handlers.append(logging.FileHandler(Paths.LOG_DIR))
-    logging.basicConfig(
-        level=logging.INFO,  # Set minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        format='%(levelname)s: %(message)s',
-        handlers=handlers,
-    )
-    warnings.filterwarnings('default' if context.debug else 'ignore')
 
 
 class AppManager:

@@ -26,11 +26,12 @@ class Context:
     loop: bool = False
 
     _to_filter: ClassVar[tuple[str]] = ('assume', 'args', 'reverse', 'mappings')
+    _map: ClassVar[dict[str, tuple[str]]] = dict(color='colour')
 
     def __init__(self, *confs: dict):
         own = c({}).merge_with(*confs, iteratee=_.curry(lambda a, b: a if a is not None else b)).omit(self._to_filter).value()
         for key, val in own.items():
-            key = key.replace('-', '_')
+            key = self._map.get(key, key).replace('-', '_')
             if isinstance(val, list):
                 val = tuple(val)
             object.__setattr__(self, key, val)
@@ -95,7 +96,7 @@ class Context:
 
     @property
     def member_prefix_arg(self) -> str:
-        match len(self.words):
+        match len(getattr(self, f'{self.memberarg}s')):
             case 1: return self.grouparg
             case _: return self.memberarg
 

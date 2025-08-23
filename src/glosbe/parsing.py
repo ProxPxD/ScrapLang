@@ -86,12 +86,10 @@ class TranslationParser(Parser):
     @classmethod
     @Parser.ensure_tag
     def parse(cls, tag: Tag) -> Iterable[ParsedTranslation] | ParsingException:
-        match mains := cls._parse_main_translations(tag):
-            case Exception(): return mains
-            case _: pass
-        match less_freqs := cls.parse_less_frequent_translations(tag):
-            case Exception(): less_freqs = []
-            case _: pass
+        if isinstance(mains := cls._parse_main_translations(tag), Exception):
+            return mains
+        if isinstance(less_freqs := cls.parse_less_frequent_translations(tag), Exception):
+            less_freqs = []
         return chain(mains, less_freqs)
 
     @classmethod
@@ -112,7 +110,7 @@ class TranslationParser(Parser):
 
     @classmethod
     @Parser.ensure_tag
-    def parse_less_frequent_translations(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException]:
+    def parse_less_frequent_translations(cls, tag: Tag) -> Iterable[ParsedTranslation | ParsingException] | ParsingException:
         logging.debug('Parsing less frequent translations')
         less_freq_tag = tag.find('ul', {'id': 'less-frequent-translations-container-0'})
         if not less_freq_tag:

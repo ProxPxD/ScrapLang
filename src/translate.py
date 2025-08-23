@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import json
+import logging
 import shlex
+import sys
 from dataclasses import dataclass
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 
 from glosbe.app_managing import AppManager
 from glosbe.configurating import ConfHandler
@@ -17,7 +24,7 @@ class ErrorMessages:
 def main():
     try:
         # Configurations.init()
-        default_conf = ConfHandler.load(Paths.CONF_FILE)
+        default_conf = ConfHandler.load(Paths.CONF_FILE); logging.debug(f'Default Config: {json.dumps(default_conf, indent=4, ensure_ascii=False)}')
         AppManager(default_conf).run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()

@@ -1,4 +1,6 @@
+import json
 import logging
+import re
 import shlex
 import sys
 # from smartcli import Parameter, HiddenNode, Cli, Root, CliCollection, Flag
@@ -11,6 +13,7 @@ from box import Box
 from pydash import chain as c
 
 from .constants import supported_languages
+from .logutils import setup_logging
 
 
 def filter_input(args: list[str]) -> list[str]:
@@ -41,13 +44,7 @@ class CLI:
         loop_control.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
         loop_control.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
-        parser.add_argument(
-            '--inflection', '--infl', '-infl', '-i',
-            '--conjugation', '--conj', '-conj', '-c',
-            '--declension', '--decl', '-decl',
-            '--table', '-tab',
-            action='store_true', default=False, help='#todo'
-        )
+        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
@@ -75,8 +72,11 @@ class CLI:
             self.parser.print_help()
             exit(0)  # change
 
-        parsed = self.parser.parse_args(args);  logging.debug(f'raw parsed: {parsed}')
-        parsed = self._distribute_args(parsed); logging.debug(f'base parsed: {parsed}')
+        parsed, remaining = self.parser.parse_known_args(args);  logging.debug(f'raw parsed: {parsed}')
+        parsed.args += remaining;  logging.debug(f'parsed with remaining: {parsed}')
+        # make test for this fix: t ksiądz -i pl
+        setup_logging(parsed)
+        parsed = self._distribute_args(parsed);  logging.debug(f'distributed parsed: {parsed}')
         return parsed
 
     def process_parsed(self, parsed: Namespace) -> Namespace:
@@ -104,18 +104,13 @@ class CLI:
             parsed.words.append(assumed_word)
         logging.debug(f'Potential langs: {pot.lang}')
         if pot.lang and not parsed.from_lang:
-            from_lang = pot.lang.pop(0)
-            logging.debug(f'Assuming: "{from_lang}" is from_lang')
+            from_lang = pot.lang.pop(0); logging.debug(f'Assuming "{from_lang}" should be in from_lang')
             parsed.from_lang = from_lang
         if pot.lang and not parsed.to_langs:
-            singular = len(pot.lang) == 1
-            logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} to_lang{"" if singular else "s"}')
-            parsed.to_langs = pot.lang + parsed.to_langs
+            parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming {pot.lang} should be in to_langs')
             pot.lang = []
         if pot.word:
-            singular = len(pot.word) == 1
-            logging.debug(f'Assuming: {pot.lang} {"is" if singular else "are"} word{"" if singular else "s"}')
-            parsed.words += pot.word
+            parsed.words += pot.word; logging.debug(f'Assuming {pot.word} should be in words')
         return parsed
 
     def _assume_first_word(self, pot: Box) -> Optional[str]:
@@ -126,7 +121,7 @@ class CLI:
         else:
             logging.debug('No word to assume!')
             return None
-        logging.debug(f'Assuming: "{word}" is word')
+        logging.debug(f'Assuming "{word}" should be in words')
         return word
 
     def _fill_default_args(self, parsed: Namespace) -> Namespace:
@@ -140,22 +135,18 @@ class CLI:
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
         used = _.filter_([parsed.from_lang] + parsed.to_langs)
-        pot_defaults = [lang for lang in self.conf.langs if lang not in used]
-        logging.debug(f'Potential defaults: {pot_defaults}')
+        pot_defaults = [lang for lang in self.conf.langs if lang not in used]; logging.debug(f'Potential defaults: {pot_defaults}')
         if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
         if not parsed.to_langs and (parsed.definition or parsed.inflection):
             n_needed -= 1
-        to_fill = pot_defaults[:n_needed]
-        logging.debug(f'Chosen defaults: {to_fill}')
+        to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
         if not parsed.from_lang and to_fill:
-            from_lang = to_fill.pop(0)
-            logging.debug(f'Filling from_lang with {from_lang}')
+            from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with {from_lang}')
             parsed.from_lang = from_lang
         if not parsed.to_langs and to_fill:
-            to_lang = to_fill.pop(0)
-            logging.debug(f'Filling to_lang with {to_lang}')
+            to_lang = to_fill.pop(0); logging.debug(f'Filling to_lang with {to_lang}')
             parsed.to_langs.append(to_lang)
         return parsed
 
@@ -168,11 +159,18 @@ class CLI:
         return parsed
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
-        if from_lang_map := self.conf.mappings.get(parsed.from_lang):
-            logging.debug(f'Applying mapping for {parsed.from_lang}')
-            from_lang_map = sorted(from_lang_map.items(), key=c().get(0).size(), reverse=True)
+        # todo: test żurawel (regex)
+        lang_mapping: Box
+        if not (lang_mapping := self.conf.mappings.get(parsed.from_lang)):
+            return parsed
+        ordered_lang_mapping = [lang_mapping] if isinstance(lang_mapping, dict) else lang_mapping
+        logging.debug(f'Applying mapping for {parsed.from_lang} with map:\n{json.dumps(lang_mapping, indent=4, ensure_ascii=False)}')
+        for lang_mapping in ordered_lang_mapping:
+            patts, repls = zip(*sorted(lang_mapping.to_dict().items(), key=c().get(0).size(), reverse=True))
+            lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
+            logging.debug(f'from_lang_map: {lang_mapping}')
             parsed.words = [
-                reduce(lambda w, orig_dest: w.replace(*orig_dest), from_lang_map, word)
+                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), lang_mapping, word)
                 for word in parsed.words
             ]
         return parsed

@@ -13,8 +13,6 @@ from .scrap_managing import ScrapResult, ScrapKinds
 os.environ['TZ'] = 'Europe/Warsaw'
 
 
-
-
 class Printer:
     def __init__(self, context: Context, printer: Callable[[Any], None] = print, interval: int = 0):
         self.interval = interval
