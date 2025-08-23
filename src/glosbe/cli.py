@@ -72,8 +72,10 @@ class CLI:
             self.parser.print_help()
             exit(0)  # change
 
-        parsed, remaining = self.parser.parse_known_args(args);  logging.debug(f'raw parsed: {parsed}')
-        parsed.args += remaining;  logging.debug(f'parsed with remaining: {parsed}')
+        parsed, remaining = self.parser.parse_known_args(args);
+        logging.debug(f'raw parsed: {parsed}')
+        parsed.args += remaining;
+        logging.debug(f'parsed with remaining: {parsed}')
         # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
         parsed = self._distribute_args(parsed);  logging.debug(f'distributed parsed: {parsed}')
