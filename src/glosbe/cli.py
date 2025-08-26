@@ -30,9 +30,9 @@ class CLI:
 
         # Main args
         parser.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
-        parser.add_argument('--words', '-w', nargs='+', default=[], help='Words to translate')
-        parser.add_argument('--from', '--from-lang', '-f', dest='from_lang', help=supported_langs_msg)
-        parser.add_argument('--to', '--to-lang', '-t', '-l', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
+        parser.add_argument('--words', '-words', '-w', nargs='+', default=[], help='Words to translate')
+        parser.add_argument('--from-lang', '--from', '-from', '-f', dest='from_lang', help=supported_langs_msg)
+        parser.add_argument('--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=supported_langs_msg)
         # Loop Control
         loop_control = parser.add_mutually_exclusive_group()
         loop_control.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
