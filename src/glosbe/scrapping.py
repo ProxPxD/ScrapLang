@@ -5,7 +5,7 @@ from requests import Session, Response
 from requests.exceptions import HTTPError
 
 from .parsing import InflectionParser, TranslationParser, ParsingException, ParsedTranslation, ParsedDefinition, DefinitionParser
-from .web_pather import GlosbePather
+from .web_pathing import GlosbePather
 
 
 @dataclass(frozen=True)

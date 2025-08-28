@@ -13,7 +13,7 @@ from .context import Context
 from .printer import Printer
 from .scrap_managing import ScrapManager
 from .scrapping import Scrapper
-from .web_pather import get_default_headers
+from .web_pathing import get_default_headers
 
 
 class AppManager:
