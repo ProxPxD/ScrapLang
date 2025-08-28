@@ -8,7 +8,7 @@ from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
-from .scrap_managing import ScrapResult, ScrapKinds
+from .scrapping import ScrapResult, ScrapKinds
 
 os.environ['TZ'] = 'Europe/Warsaw'
 

@@ -11,9 +11,8 @@ from .cli import CLI
 from .configurating import ConfUpdater
 from .context import Context
 from .printer import Printer
-from .scrap_managing import ScrapManager
-from .scrapping import Scrapper
-from .web_pathing import get_default_headers
+from .scrapping import ScrapManager
+from .scrapping.web_pathing import get_default_headers
 
 
 class AppManager:
@@ -21,7 +20,6 @@ class AppManager:
         setup_logging()
         self.cli = CLI(conf)
         self.context: Context = Context(conf)
-        self.scrapper = Scrapper()
 
     @contextmanager
     def connect(self) -> Iterator[Session]:

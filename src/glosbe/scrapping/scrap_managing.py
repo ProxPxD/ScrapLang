@@ -6,7 +6,7 @@ from box import Box
 from pandas import DataFrame
 from requests import Session
 
-from .context import Context
+from ..context import Context
 from .parsing import ParsedTranslation
 from .scrapping import Scrapper
 
