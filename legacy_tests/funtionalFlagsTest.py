@@ -2,7 +2,7 @@ import unittest
 
 from parameterized import parameterized
 
-from src.glosbe.configurating import Configurations
+from src.configurating import Configurations
 from tests.abstractCliTest import AbstractCliTest
 
 

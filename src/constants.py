@@ -4,7 +4,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Paths:
-    WORKING_DIR = Path(__file__).parent.parent.parent
+    WORKING_DIR = Path(__file__).parent.parent
     RESOURCES_DIR = WORKING_DIR / 'resources'
     LOG_DIR = RESOURCES_DIR / 'logs.log'
     CONF_FILE: str = RESOURCES_DIR / 'conf.yaml'

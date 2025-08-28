@@ -10,9 +10,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-from glosbe.app_managing import AppManager
-from glosbe.configurating import ConfHandler
-from glosbe.constants import Paths
+from src.app_managing import AppManager
+from src.configurating import ConfHandler
+from src.constants import Paths
 
 
 @dataclass(frozen=True)
