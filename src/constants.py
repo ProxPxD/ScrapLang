@@ -10,8 +10,6 @@ class Paths:
     CONF_FILE: str = RESOURCES_DIR / 'conf.yaml'
 
 
-
-
 supported_languages = {
     'af': "afrikaans Afrikaans",
     'sq': "albański Albanian, shqip",
