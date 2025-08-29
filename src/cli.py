@@ -38,7 +38,7 @@ class CLI:
         loop_control.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
         loop_control.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
-        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
+        parser.add_argument('--inflection', '--infl', '-infl', '-i', '--table', '--tab', '-tab', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
         # Cli Conf
