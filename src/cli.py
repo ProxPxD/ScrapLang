@@ -26,27 +26,34 @@ class CLI:
             description='Translation Program',
             epilog=''
         )
-        supported_langs_msg = f'Supported languages: {" ".join(supported_languages.keys())}'
+        parser = _.flow(self._add_base_args, self._add_loop_control_args, self._add_execution_mode_args)(parser)
+        return parser
 
-        # Main args
+    def _add_base_args(self, parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
         parser.add_argument('--words', '-words', '-w', nargs='+', default=[], help='Words to translate')
         parser.add_argument('--from-lang', '--from', '-from', '-f', dest='from_lang', help=(lang_help := 'Languages supported by glosbe.com'))
         parser.add_argument('--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
-        # Loop Control
+        # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
+        return parser
+
+    def _add_loop_control_args(self, parser: ArgumentParser) -> ArgumentParser:
         loop_control = parser.add_mutually_exclusive_group()
         loop_control.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
         loop_control.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
-        # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
+        return parser
+
+    def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
+        # Translationd Mode
         parser.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         parser.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         parser.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
-        # Cli Conf
+        # Cli Mode
         parser.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
         parser.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang with the first to_lang')
-        # Display Conf
+        # Display Mode
         parser.add_argument('--groupby', '-by', choices=['lang', 'word'], help='What to group the result translations by')
-        # Developer Conf
+        # Developer Mode
         parser.add_argument('--debug', action='store_true')
         return parser
 
