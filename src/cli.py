@@ -22,17 +22,19 @@ class Outstemming:
     @classmethod
     def outstem(cls, complex_word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
+        # TODO: Idea: join args with the neighbours have parenthesis/brackets like: [to ]thumb
         flat_outstem = c().map(cls.outstem).flatten()
-
+        logging.debug(f'outstemming "{complex_word}"')
         if matched := cls.parenthesised(complex_word):
+            logging.debug(f'matched "{matched}"')
             pattern = matched.group(0)
             alts = re.split('[/|]', pattern[1:-1])
             if len(alts) == 1:
-                outstemmeds = [orig := complex_word.replace(pattern, ''), orig + pattern[1:-1]]
-            else:
-                outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
+                alts = ['', alts[0]]
+            outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
             return flat_outstem(outstemmeds)
         if matched := cls.slashed(complex_word):
+            logging.debug(f'matched "{matched}"')
             start = matched.start(0) - len(matched.group(0))
             end = matched.end(0)
             bare = complex_word[:start]
