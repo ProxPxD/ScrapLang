@@ -35,7 +35,6 @@ class AppManager:
         self.run_single()
         while self.context.loop:
             self.run_single(['t'] + shlex.split(input()))
-        ConfUpdater.update_conf(self.context)
 
     def run_single(self, args: list[str] = None) -> None:
         # TODO:
@@ -46,6 +45,9 @@ class AppManager:
         # 3. User Call
         # 4. Loop is a prev context's absorption of the new call based on what's new
         parsed = self.cli.parse(args)
+        if parsed.set or parsed.add or parsed.delete:
+            self.context.loop = False
+            ConfUpdater.update_conf(parsed)
         # new_context = Context(vars(parsed))
         # if new_context.is_setting_context():
         #     self.context.absorb_context(new_context)
@@ -59,6 +61,7 @@ class AppManager:
             return
         if self.context.words:
             self.run_scrap()
+        ConfUpdater.update_lang_order(self.context.all_langs)
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
