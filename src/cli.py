@@ -21,12 +21,16 @@ class Outstemming:
 
     @classmethod
     def outstem(cls, complex_word: str) -> list:
+        # TODO: anhi test (and improve for "normal[ize[d]]")
         flat_outstem = c().map(cls.outstem).flatten()
 
         if matched := cls.parenthesised(complex_word):
             pattern = matched.group(0)
             alts = re.split('[/|]', pattern[1:-1])
-            outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
+            if len(alts) == 1:
+                outstemmeds = [orig := complex_word.replace(pattern, ''), orig + pattern[1:-1]]
+            else:
+                outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
             return flat_outstem(outstemmeds)
         if matched := cls.slashed(complex_word):
             start = matched.start(0) - len(matched.group(0))
