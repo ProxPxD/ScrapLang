@@ -141,7 +141,7 @@ class CLI:
             raise ValueError(f'Could not resolve arguments: {parsed.args}')
 
         # assume == lang
-        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in supported_languages]), default_box=True, default_box_attr=[])
+        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in self.conf.langs]), default_box=True, default_box_attr=[])
         parsed.args = []
 
         if not parsed.words and (assumed_word := self._assume_first_word(pot)):
