@@ -89,6 +89,20 @@ class CLI:
         parser.add_argument('--debug', action='store_true')
         return parser
 
+    def _add_setting_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
+        setting_group = parser.add_argument_group(title='Setting')
+        setting_group.add_argument('--set', '-set', '-s', action='append', nargs='+', default=[])
+        setting_group.add_argument('--add', '-add', '-a', action='append', nargs='+', default=[])
+        setting_group.add_argument('--delete', '-delete', '--del', '-del', action='append', nargs='+', default=[])
+        return parser
+
+    def _add_loop_control_args(self, parser: ArgumentParser) -> ArgumentParser:
+        loop_control_group = parser.add_argument_group(title='Loop Control')
+        loop_control_exclusive = loop_control_group.add_mutually_exclusive_group()
+        loop_control_exclusive.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
+        loop_control_exclusive.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
+        return parser
+
     def parse(self, args=None) -> Namespace:
         parsed = self.parse_base(args)
         parsed = self.process_parsed(parsed)
