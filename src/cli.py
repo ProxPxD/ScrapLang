@@ -14,6 +14,39 @@ from .constants import supported_languages
 from .logutils import setup_logging
 
 
+class Outstemming:
+    parenthesised = re.compile('[(\[][^])]+[)\]]').search
+    slashed = re.compile('/+').search
+    baskslashed = re.compile('\+').search
+
+    @classmethod
+    def outstem(cls, complex_word: str) -> list:
+        # TODO: anhi test (and improve for "normal[ize[d]]")
+        # TODO: Idea: join args with the neighbours have parenthesis/brackets like: [to ]thumb
+        flat_outstem = c().map(cls.outstem).flatten()
+        logging.debug(f'outstemming "{complex_word}"')
+        if matched := cls.parenthesised(complex_word):
+            logging.debug(f'matched "{matched}"')
+            pattern = matched.group(0)
+            alts = re.split('[/|]', pattern[1:-1])
+            if len(alts) == 1:
+                alts = ['', alts[0]]
+            outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
+            return flat_outstem(outstemmeds)
+        if matched := cls.slashed(complex_word):
+            logging.debug(f'matched "{matched}"')
+            start = matched.start(0) - len(matched.group(0))
+            end = matched.end(0)
+            bare = complex_word[:start]
+            orig = bare + complex_word[start]
+            novel = bare + complex_word[end:]
+            return flat_outstem([orig, novel])
+        # TODO: anhi: make baskslashes
+        return [complex_word]
+
+
+
+
 class CLI:
     def __init__(self, conf: Box):
         self.conf = conf
@@ -58,7 +91,7 @@ class CLI:
 
     def parse(self, args=None) -> Namespace:
         parsed = self.parse_base(args)
-        self.process_parsed(parsed)
+        parsed = self.process_parsed(parsed)
         return parsed
 
     def parse_base(self, args: list[str]):
@@ -75,6 +108,7 @@ class CLI:
         return parsed
 
     def process_parsed(self, parsed: Namespace) -> Namespace:
+        parsed = self._word_outstemming(parsed)
         parsed = self._fill_default_args(parsed)
         parsed = self._reverse_if_needed(parsed)
         parsed = self._apply_mapping(parsed)
@@ -118,6 +152,10 @@ class CLI:
             return None
         logging.debug(f'Assuming "{word}" should be in words')
         return word
+
+    def _word_outstemming(self, parsed: Namespace) -> Namespace:
+        parsed.words = [outstemmed for word in parsed.words for outstemmed in Outstemming.outstem(word)]
+        return parsed
 
     def _fill_default_args(self, parsed: Namespace) -> Namespace:
         parsed = self._predict_langs(parsed)
