@@ -89,6 +89,7 @@ class CLI:
         parser.add_argument('--debug', action='store_true')
         return parser
 
+    # TODO: anhi: add and think through the displayal mode
     def _add_setting_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         setting_group = parser.add_argument_group(title='Setting')
         setting_group.add_argument('--set', '-set', '-s', action='append', nargs='+', default=[])
