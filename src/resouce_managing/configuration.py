@@ -1,24 +1,15 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from argparse import Namespace
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pydash as _
 from box import Box
 from pydantic import BaseModel, Field
 
 from .file import FileManager
-
-
-@dataclass(frozen=True)
-class ConfigMessages:
-    LANGUAGE_IN_SAVED: str = 'Language {} is already saved'
-    LANGUAGE_NOT_IN_SAVED: str = 'Language {} has not been in saved'
 
 
 class ConfSchema(BaseModel):
