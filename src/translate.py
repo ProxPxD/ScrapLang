@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import logging
 import shlex
 import sys
 from dataclasses import dataclass
@@ -11,8 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 from src.app_managing import AppManager
-from src.configurating import FileManager
-from src.constants import Paths
 
 
 @dataclass(frozen=True)

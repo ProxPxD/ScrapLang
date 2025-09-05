@@ -3,13 +3,12 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Iterator
 
-from box import Box
 from requests import Session
 
 from .constants import Paths
 from .logutils import setup_logging
 from .cli import CLI
-from .configurating import ConfManager
+from .resouce_managing.configurating import ConfManager
 from .context import Context
 from .printer import Printer
 from .scrapping import ScrapManager

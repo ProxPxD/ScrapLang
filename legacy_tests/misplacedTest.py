@@ -1,6 +1,6 @@
 from parameterized import parameterized
 
-from src.configurating import Configurations
+from src.resouce_managing.configurating import Configurations
 from src.cli import CURRENT_MODES_COL
 from tests.abstractCliTest import AbstractCliTest
 
