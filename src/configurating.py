@@ -1,17 +1,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from argparse import Namespace
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import pydash as _
 from box import Box
-
-from .constants import Paths
-from .context import Context
-from pydantic import BaseModel, Field, validator, field_validator
+from pydantic import BaseModel, Field
 
 
 @dataclass(frozen=True)
@@ -20,7 +19,7 @@ class ConfigMessages:
     LANGUAGE_NOT_IN_SAVED: str = 'Language {} has not been in saved'
 
 
-class ConfHandler:
+class FileManager:
     @classmethod
     def load(cls, path: str | Path) -> Box:
         match Path(path).suffix:
@@ -66,53 +65,54 @@ class ConfSchema(BaseModel):
     # @classmethod
     # def validate_bool_strings(cls, v): ...
 
-class ConfUpdater:
-    
-    @classmethod
-    def load_conf(cls) -> Box:
-        return ConfHandler.load(Paths.CONF_FILE)
-    
-    @classmethod
-    def update_conf(cls, parsed: Namespace) -> None:
+class ConfManager:
+    def __init__(self, conf_file: Path | str):
+        self._conf_file: Path = Path(conf_file)
+        self._conf: Optional[Box] = None
+
+    @property
+    def conf(self) -> Box:
+        return self._conf or self.load_conf()
+
+    def load_conf(self) -> Box:
+        self._conf = FileManager.load(self._conf_file); logging.debug(f'Default Config: {json.dumps(self._conf, indent=4, ensure_ascii=False)}')
+        return self._conf
+
+    def update_conf(self, parsed: Namespace) -> None:
         logging.debug('Updating Conf')
-        conf: Box = cls.load_conf()
         if parsed.set:
             raise NotImplementedError('Setting values is not yet supported')
-        cls._update_add_conf(parsed.add, conf)  # TODO: bad pattern, modifying inside
-        cls._update_del_conf(parsed.delete, conf)
+        self._update_add_conf(parsed.add)  # TODO: bad pattern, modifying inside
+        self._update_del_conf(parsed.delete)
 
         # cls.update_lang_order(context.all_langs, conf)
-        ConfHandler.save_yaml(Paths.CONF_FILE, conf.to_dict())
+        FileManager.save_yaml(self._conf_file, self.conf.to_dict())
 
-    @classmethod
-    def _update_add_conf(cls, add_bundles: list[list[str]], conf: Box) -> None:
+    def _update_add_conf(self, add_bundles: list[list[str]]) -> None:
         for add_bundle in add_bundles:
             key, *vals = add_bundle
             # TODO: Replace with schema  # TODO: make both lang(s) work
             if key.startswith('lang'):
-                conf.langs.extend(vals)
+                self.conf.langs.extend(vals)
             else:
                 raise NotImplementedError('Only lang-adding is currently supported')
 
-    @classmethod
-    def _update_del_conf(cls, del_bundles: list[list[str]], conf: Box) -> None:
+    def _update_del_conf(self, del_bundles: list[list[str]]) -> None:
         for add_bundle in del_bundles:
             key, *vals = add_bundle
             # TODO: Replace with schema  # TODO: make both lang(s) work
             if key.startswith('lang'):
                 for val in vals:
-                    if val in conf.langs:
-                        conf.langs.remove(val)
+                    if val in self.conf.langs:
+                        self.conf.langs.remove(val)
             else:
                 raise NotImplementedError('Only lang-removing is currently supported')
 
-    @classmethod
-    def update_lang_order(cls, used_langs: list[str], conf: Box = None) -> None:
+    def update_lang_order(self, used_langs: list[str]) -> None:
         logging.debug('Updating lang order')
-        conf = conf or cls.load_conf()
-        saved_used = _.filter_(used_langs, conf.langs.__contains__)
-        saved_unused = _.reject(conf.langs, saved_used.__contains__)
+        saved_used = _.filter_(used_langs, self.conf.langs.__contains__)
+        saved_unused = _.reject(self.conf.langs, saved_used.__contains__)
         newly_ordered_saved = saved_used + saved_unused
-        logging.debug(f'Saved used: {saved_used}\nOld Order: {conf.langs}\nNew Order: {newly_ordered_saved}')
-        conf.langs = newly_ordered_saved
-        ConfHandler.save_yaml(Paths.CONF_FILE, conf.to_dict())
+        logging.debug(f'Saved used: {saved_used}\nOld Order: {self.conf.langs}\nNew Order: {newly_ordered_saved}')
+        self.conf.langs = newly_ordered_saved
+        FileManager.save_yaml(self._conf_file, self.conf.to_dict())

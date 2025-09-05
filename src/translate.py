@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 from src.app_managing import AppManager
-from src.configurating import ConfHandler
+from src.configurating import FileManager
 from src.constants import Paths
 
 
@@ -24,8 +24,7 @@ class ErrorMessages:
 def main():
     try:
         # Configurations.init()
-        default_conf = ConfHandler.load(Paths.CONF_FILE); logging.debug(f'Default Config: {json.dumps(default_conf, indent=4, ensure_ascii=False)}')
-        AppManager(default_conf).run()
+        AppManager().run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()
     except:

@@ -6,9 +6,10 @@ from typing import Iterator
 from box import Box
 from requests import Session
 
+from .constants import Paths
 from .logutils import setup_logging
 from .cli import CLI
-from .configurating import ConfUpdater
+from .configurating import ConfManager
 from .context import Context
 from .printer import Printer
 from .scrapping import ScrapManager
@@ -16,10 +17,11 @@ from .scrapping.web_pathing import get_default_headers
 
 
 class AppManager:
-    def __init__(self, conf: Box):
+    def __init__(self):
         setup_logging()
-        self.cli = CLI(conf)
-        self.context: Context = Context(conf)
+        self.conf_manager = ConfManager(Paths.CONF_FILE)
+        self.cli = CLI(self.conf_manager.conf)
+        self.context: Context = Context(self.conf_manager.conf)
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -47,7 +49,7 @@ class AppManager:
         parsed = self.cli.parse(args)
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
-            ConfUpdater.update_conf(parsed)
+            self.conf_manager.update_conf(parsed)
         # new_context = Context(vars(parsed))
         # if new_context.is_setting_context():
         #     self.context.absorb_context(new_context)
@@ -61,7 +63,7 @@ class AppManager:
             return
         if self.context.words:
             self.run_scrap()
-        ConfUpdater.update_lang_order(self.context.all_langs)
+        self.conf_manager.update_lang_order(self.context.all_langs)
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
