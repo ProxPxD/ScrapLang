@@ -1,7 +1,7 @@
 from parameterized import parameterized
 from smartcli.nodes.smartList import SmartList
 
-from src.resouce_managing.configurating import Configurations
+from src.resouce_managing.configuration import Configurations
 from src.constants import FLAGS as F
 from src.scrapping import TranslationTypes
 from src.printer import Printer

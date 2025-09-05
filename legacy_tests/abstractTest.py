@@ -2,7 +2,7 @@ import abc
 import unittest
 from typing import Iterable
 
-from src.resouce_managing.configurating import Configurations
+from src.resouce_managing.configuration import Configurations
 from src.constants import FLAGS as F
 
 

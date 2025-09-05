@@ -2,7 +2,7 @@ import unittest
 
 from parameterized import parameterized
 
-from src.resouce_managing.configurating import Configurations
+from src.resouce_managing.configuration import Configurations
 from tests.abstractCliTest import AbstractCliTest
 
 

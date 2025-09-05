@@ -3,7 +3,7 @@ from time import sleep
 from more_itertools import take
 from parameterized import parameterized
 
-from src.resouce_managing.configurating import Configurations
+from src.resouce_managing.configuration import Configurations
 from src.constants import FLAGS as F
 from src.scrapping import TranslationTypes
 from src.glosbe import TranslationFormatter

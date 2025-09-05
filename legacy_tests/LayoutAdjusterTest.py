@@ -1,6 +1,6 @@
 from parameterized import parameterized
 
-from src.resouce_managing.configurating import Configurations
+from src.resouce_managing.configuration import Configurations
 from src.constants import FLAGS
 from src.glosbe import LayoutAdjustmentsMethods
 from tests.abstractCliTest import AbstractCliTest
