@@ -1,0 +1,1 @@
+from configurating import ConfManager

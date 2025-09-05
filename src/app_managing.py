@@ -8,7 +8,7 @@ from requests import Session
 from .constants import Paths
 from .logutils import setup_logging
 from .cli import CLI
-from .resouce_managing.configurating import ConfManager
+from .resouce_managing import ConfManager
 from .context import Context
 from .printer import Printer
 from .scrapping import ScrapManager
