@@ -1,12 +1,11 @@
 from argparse import Namespace
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Optional
 
-from box import Box
-from pydantic import BaseModel, Field, field_validator, AfterValidator
+from pydantic import BaseModel, Field
 
-from src.resouce_managing.file import FileMgr
+from .file import FileMgr
 
 
 class MemRecord(BaseModel):
@@ -24,7 +23,7 @@ class ShortMemSchema(BaseModel):
 
 
 class ShortMemMgr:
-    def __init__(self, conf_file: Path | str, length: int = 20):
+    def __init__(self, conf_file: Path | str, length: int = 8):
         self._file_mgr = FileMgr(conf_file)
         self._length = length
         self._mem: Optional[ShortMemSchema] = None
@@ -43,8 +42,15 @@ class ShortMemMgr:
             self.mem.inflection.append(MemRecord(langs=[parsed.from_lang]))
         if parsed.definition:
             self.mem.defnition.append(MemRecord(langs=[parsed.from_lang]))
-        self._trim_lengths()
+        self._trim_records()
         self._file_mgr.save(self.mem.model_dump())
+
+    def _trim_records(self) -> None:
+        self._filter_by_date()
+        self._trim_lengths()
+
+    def _filter_by_date(self) -> None:
+        ...  # TODO: anhi implement
 
     def _trim_lengths(self) -> None:
         for key in ShortMemSchema().model_dump().keys():
