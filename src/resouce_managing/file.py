@@ -44,7 +44,7 @@ class FileMgr:
         load = getattr(cls, f'load_{ext}')
         content = load(path); logging.debug(f'Loaded file "{path}": {json.dumps(content, indent=4, ensure_ascii=False)}')
         if as_box:
-            content = Box(content, default_box=True)
+            content = Box(content or {}, default_box=True)
         return content
 
     @classmethod

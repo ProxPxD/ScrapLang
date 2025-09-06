@@ -108,6 +108,7 @@ class CLI:
 
     def parse(self, args=None) -> Namespace:
         parsed = self.parse_base(args)
+        self.shor_mem_mgr.add(parsed)
         parsed = self.process_parsed(parsed)
         return parsed
 

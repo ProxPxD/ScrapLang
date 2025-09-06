@@ -27,7 +27,7 @@ class ConfSchema(BaseModel):
 
 class ConfMgr:
     def __init__(self, conf_file: Path | str):
-        self.mgr = FileMgr(conf_file)
+        self._file_mgr = FileMgr(conf_file)
 
     @property
     def conf(self) -> Box:
