@@ -13,7 +13,7 @@ class ValidArgs(RootModel):
     def val_keys(self, d: dict):
         supported = set(supported_languages.keys())
         actual = set(d.keys())
-        if not (invalid := actual / supported):
+        if not (invalid := actual - supported):
             raise ValueError(f'"{list(invalid)}" languages are not supported')
         return d
 
