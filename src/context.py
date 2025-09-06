@@ -18,6 +18,7 @@ class Context:
     definition: bool = False
 
     debug: bool = False
+    test: bool = False
     groupby: str = 'lang'
     indirect: bool = 'fail'
     member_sep: bool = False

@@ -87,6 +87,7 @@ class CLI:
         display_group.add_argument('--groupby', '-by', choices=['lang', 'word'], help='What to group the result translations by')
         # Developer Modes (groupless)
         parser.add_argument('--debug', action='store_true')
+        parser.add_argument('--test', action='store_true')
         return parser
 
     # TODO: anhi: add and think through the displayal mode
