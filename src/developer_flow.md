@@ -10,9 +10,9 @@
 3. Implement: 
    1. **Parser**
    2. **Scrapper**
-   3. **Scrap Manager**:
+   3. **Scrap Mgr**:
       1. Scrapping Method
       2. Scrap Kind
       3. Conditions and order of execution in main method
-   4. **App Manager** behaviour
+   4. **App Mgr** behaviour
 4. ...

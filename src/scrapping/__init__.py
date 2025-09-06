@@ -1,1 +1,1 @@
-from .scrap_managing import ScrapManager, ScrapResult, ScrapKinds
+from .scrap_managing import ScrapMgr, ScrapResult, ScrapKinds

@@ -36,7 +36,7 @@ class ScrapResult:
         return not self.is_fail()
 
 
-class ScrapManager:
+class ScrapMgr:
     def __init__(self, session: Session):
         self.scrapper = Scrapper(session)
 

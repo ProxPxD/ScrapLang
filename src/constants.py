@@ -8,6 +8,7 @@ class Paths:
     RESOURCES_DIR = WORKING_DIR / 'resources'
     LOG_DIR = RESOURCES_DIR / 'logs.log'
     CONF_FILE: str = RESOURCES_DIR / 'conf.yaml'
+    SHORT_MEM_FILE: str = RESOURCES_DIR / 'short_mem.yaml'
 
 
 supported_languages = {

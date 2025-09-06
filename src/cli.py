@@ -12,6 +12,7 @@ from pydash import chain as c
 
 from .constants import supported_languages
 from .logutils import setup_logging
+from .resouce_managing.short_mem import ShortMemMgr
 
 
 class Outstemming:
@@ -48,9 +49,9 @@ class Outstemming:
 
 
 class CLI:
-    def __init__(self, conf: Box):
+    def __init__(self, conf: Box, short_mem_mgr: ShortMemMgr):
         self.conf = conf
-        logging.debug(f'Conf: {conf.to_yaml()}')
+        self.shor_mem_mgr = short_mem_mgr
 
     @property
     def parser(self) -> ArgumentParser:

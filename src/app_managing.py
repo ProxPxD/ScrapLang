@@ -8,19 +8,20 @@ from requests import Session
 from .constants import Paths
 from .logutils import setup_logging
 from .cli import CLI
-from .resouce_managing import ConfManager
+from .resouce_managing import ConfMgr
 from .context import Context
 from .printer import Printer
-from .scrapping import ScrapManager
+from .resouce_managing.short_mem import ShortMemMgr
+from .scrapping import ScrapMgr
 from .scrapping.web_pathing import get_default_headers
 
 
-class AppManager:
+class AppMgr:
     def __init__(self):
         setup_logging()
-        self.conf_manager = ConfManager(Paths.CONF_FILE)
-        self.cli = CLI(self.conf_manager.conf)
-        self.context: Context = Context(self.conf_manager.conf)
+        self.conf_mgr = ConfMgr(Paths.CONF_FILE)
+        self.cli = CLI(self.conf_mgr.conf, ShortMemMgr(Paths.SHORT_MEM_FILE))
+        self.context: Context = Context(self.conf_mgr.conf)
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -48,7 +49,7 @@ class AppManager:
         parsed = self.cli.parse(args)
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
-            self.conf_manager.update_conf(parsed)
+            self.conf_mgr.update_conf(parsed)
         # new_context = Context(vars(parsed))
         # if new_context.is_setting_context():
         #     self.context.absorb_context(new_context)
@@ -62,11 +63,11 @@ class AppManager:
             return
         if self.context.words:
             self.run_scrap()
-        self.conf_manager.update_lang_order(self.context.all_langs)
+        self.conf_mgr.update_lang_order(self.context.all_langs)
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
 
         with self.connect() as session:
-            scrap_results = ScrapManager(session).scrap(self.context)
+            scrap_results = ScrapMgr(session).scrap(self.context)
             Printer(self.context).print_all_results(scrap_results)

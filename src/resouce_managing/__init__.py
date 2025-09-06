@@ -1,1 +1,1 @@
-from .configuration import ConfManager
+from .configuration import ConfMgr

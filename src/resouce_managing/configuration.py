@@ -9,7 +9,7 @@ import pydash as _
 from box import Box
 from pydantic import BaseModel, Field
 
-from .file import FileManager
+from .file import FileMgr
 
 
 class ConfSchema(BaseModel):
@@ -25,13 +25,13 @@ class ConfSchema(BaseModel):
     # @classmethod
     # def validate_bool_strings(cls, v): ...
 
-class ConfManager:
+class ConfMgr:
     def __init__(self, conf_file: Path | str):
-        self._file_manager = FileManager(conf_file)
+        self.mgr = FileMgr(conf_file)
 
     @property
     def conf(self) -> Box:
-        return self._file_manager.content
+        return self._file_mgr.content
 
     def update_conf(self, parsed: Namespace) -> None:
         logging.debug('Updating Conf')
@@ -39,7 +39,7 @@ class ConfManager:
             raise NotImplementedError('Setting values is not yet supported')
         self._update_add_conf(parsed.add)  # TODO: bad pattern, modifying inside
         self._update_del_conf(parsed.delete)
-        self._file_manager.save()
+        self._file_mgr.save()
 
     def _update_add_conf(self, add_bundles: list[list[str]]) -> None:
         for add_bundle in add_bundles:
@@ -68,4 +68,4 @@ class ConfManager:
         newly_ordered_saved = saved_used + saved_unused
         logging.debug(f'Saved used: {saved_used}\nOld Order: {self.conf.langs}\nNew Order: {newly_ordered_saved}')
         self.conf.langs = newly_ordered_saved
-        self._file_manager.save()
+        self._file_mgr.save()

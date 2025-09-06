@@ -5,7 +5,7 @@ from pathlib import Path
 from box import Box
 
 
-class FileManager:
+class FileMgr:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self._content = None
@@ -17,8 +17,8 @@ class FileManager:
     def refresh(self) -> None:
         self._content = None
 
-    def load(self):
-        self._content = self.load_file(self.path)
+    def load(self, as_box=True):
+        self._content = self.load_file(self.path, as_box=as_box)
         return self._content
 
     def save(self, content = None) -> None:
@@ -29,6 +29,7 @@ class FileManager:
         match Path(path).suffix:
             case '.yaml' | '.yml': return 'yaml'
             case '.toml': return 'toml'
+            case '.json' | '.jsonl': return 'json'
             case _: raise ValueError(f'Unsupported file format: {path}')
 
     @classmethod
@@ -38,23 +39,31 @@ class FileManager:
             case _: return dict(content)
 
     @classmethod
-    def load_file(cls, path: str | Path = None) -> Box:
+    def load_file(cls, path: str | Path = None, as_box=True) -> Box:
         ext = cls._get_file_extension(path)
         load = getattr(cls, f'load_{ext}')
         content = load(path); logging.debug(f'Loaded file "{path}": {json.dumps(content, indent=4, ensure_ascii=False)}')
+        if as_box:
+            content = Box(content, default_box=True)
         return content
 
     @classmethod
-    def load_yaml(cls, path: str | Path) -> Box:
+    def load_yaml(cls, path: str | Path) -> dict | list | str:
         import yaml
         with open(path, 'r') as f:
-            return Box(yaml.safe_load(f), default_box=True)
+            return yaml.safe_load(f)
 
     @classmethod
-    def load_toml(cls, path: str | Path) -> Box:
+    def load_toml(cls, path: str | Path) -> dict | list | str:
         import toml
         with open(path, 'r') as f:
-            return Box(toml.load(f),  default_box=True)
+            return toml.load(f)
+
+    @classmethod
+    def load_json(cls, path: str | Path) -> dict | list | str:
+        import json
+        with open(path, 'r') as f:
+            return json.load(f)
 
     @classmethod
     def save_file(cls, path: str | Path = None, content = None) -> None:

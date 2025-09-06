@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-from src.app_managing import AppManager
+from src.app_managing import AppMgr
 
 
 @dataclass(frozen=True)
@@ -20,7 +20,7 @@ class ErrorMessages:
 def main():
     try:
         # Configurations.init()
-        AppManager().run()
+        AppMgr().run()
         #Configurations.change_last_used_languages(*cli.langs)
         #Configurations.save_and_close()
     except:
