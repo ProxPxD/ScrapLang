@@ -16,7 +16,7 @@ class MemRecord(BaseModel):
     def time(self) -> datetime:
         return datetime.fromisoformat(self.timestamp)
 
-class ShortMemSchema(BaseModel):
+class ShortMem(BaseModel):
     translation: list[MemRecord] = []
     inflection: list[MemRecord] = []
     definition: list[MemRecord] = []
@@ -26,11 +26,11 @@ class ShortMemMgr:
     def __init__(self, conf_file: Path | str, length: int = 8):
         self._file_mgr = FileMgr(conf_file)
         self._length = length
-        self._mem: Optional[ShortMemSchema] = None
+        self._mem: Optional[ShortMem] = None
 
     @property
-    def mem(self) -> ShortMemSchema:
-        self._mem = self._mem or ShortMemSchema(**self._file_mgr.load())
+    def mem(self) -> ShortMem:
+        self._mem = self._mem or ShortMem(**self._file_mgr.load())
         return self._mem
 
     def add(self, parsed: Namespace) -> None:
@@ -53,6 +53,6 @@ class ShortMemMgr:
         ...  # TODO: anhi implement
 
     def _trim_lengths(self) -> None:
-        for key in ShortMemSchema().model_dump().keys():
+        for key in ShortMem().model_dump().keys():
             records = getattr(self.mem, key)
             setattr(self.mem, key, records[-self._length:])

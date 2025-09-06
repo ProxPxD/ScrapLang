@@ -7,8 +7,9 @@ class Paths:
     WORKING_DIR = Path(__file__).parent.parent
     RESOURCES_DIR = WORKING_DIR / 'resources'
     LOG_DIR = RESOURCES_DIR / 'logs.log'
-    CONF_FILE: str = RESOURCES_DIR / 'conf.yaml'
-    SHORT_MEM_FILE: str = RESOURCES_DIR / 'short_mem.yaml'
+    CONF_FILE = RESOURCES_DIR / 'conf.yaml'
+    SHORT_MEM_FILE = RESOURCES_DIR / 'short_mem.yaml'
+    VALID_ARGS_FILE = RESOURCES_DIR / 'valid_args.yaml'
 
 
 supported_languages = {
