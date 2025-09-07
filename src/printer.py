@@ -8,7 +8,7 @@ from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
-from .scrapping import ScrapResult, ScrapKinds
+from .scrapping import ScrapResult, ResultKinds
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -24,18 +24,18 @@ class Printer:
         success = True
         for result in scrap_results:
             match result.kind:
-                case ScrapKinds.SEPERATOR:
+                case ResultKinds.SEPERATOR:
                     self.print_separator(result.content)
-                case ScrapKinds.INFLECTION:
+                case ResultKinds.INFLECTION:
                     self.print_inflection(result)
-                case ScrapKinds.MAIN_TRANSLATION:
+                case ResultKinds.MAIN_TRANSLATION:
                     success = self.print_translation(result)
-                case ScrapKinds.INDIRECT_TRANSLATION:
+                case ResultKinds.INDIRECT_TRANSLATION:
                     if self.context.indirect == 'on' or self.context.indirect == 'fail' and not success:
                         self.print_translation(result)
-                case ScrapKinds.DEFINITION:
+                case ResultKinds.DEFINITION:
                     self.print_definitions(result)
-                case ScrapKinds.NEWLINE:
+                case ResultKinds.NEWLINE:
                     self.printer('')
                 case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
 
@@ -65,8 +65,8 @@ class Printer:
 
     def get_translation_prefix(self, result: ScrapResult) -> str:
         match result.kind:
-            case ScrapKinds.MAIN_TRANSLATION: return f'{result.args[self.context.member_prefix_arg]}: '
-            case ScrapKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
+            case ResultKinds.MAIN_TRANSLATION: return f'{result.args[self.context.member_prefix_arg]}: '
+            case ResultKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
             case _: raise ValueError(f'Unexpected transltation type: {result.kind}')
 
     @classmethod
