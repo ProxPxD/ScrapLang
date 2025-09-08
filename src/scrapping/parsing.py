@@ -94,7 +94,7 @@ class TranslationParser(Parser):
     @classmethod
     def _parse_main_translations(cls, tag: Tag) -> list[ParsedTranslation] | ParsingException:
         logging.debug('Parsing main translations')
-        if not (trans_divs := tag.find_all('div', {'class': 'inline leading-10'})):
+        if not (trans_divs := tag.select_one('article div div section').find_all('div', {'class': 'inline leading-10'})):
             return ParsingException('No translation div!')
         translations = []
         kinds = TranslationKind
