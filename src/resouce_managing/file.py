@@ -3,6 +3,8 @@ import logging
 from pathlib import Path
 
 from box import Box
+import pandas as pd
+from pandas import DataFrame
 
 
 class FileMgr:
@@ -22,7 +24,7 @@ class FileMgr:
         return self._content
 
     def save(self, content = None) -> None:
-        self.save_file(self.path, content or self.content)
+        self.save_file(self.path, content if content is not None else self.content)
 
     @classmethod
     def _get_file_extension(cls, path: str | Path) -> str:
@@ -30,6 +32,7 @@ class FileMgr:
             case '.yaml' | '.yml': return 'yaml'
             case '.toml': return 'toml'
             case '.json' | '.jsonl': return 'json'
+            case '.csv': return 'csv'
             case _: raise ValueError(f'Unsupported file format: {path}')
 
     @classmethod
@@ -42,8 +45,10 @@ class FileMgr:
     def load_file(cls, path: str | Path = None, as_box=True) -> Box:
         ext = cls._get_file_extension(path)
         load = getattr(cls, f'load_{ext}')
-        content = load(path); logging.debug(f'Loaded file "{path}": {json.dumps(content, indent=4, ensure_ascii=False)}')
-        if as_box:
+        content = load(path)
+        content_view = json.dumps(content, indent=4, ensure_ascii=False) if isinstance(content, (dict, list)) else str(content)
+        logging.debug(f'Loaded file "{path}": {content_view}')
+        if as_box and isinstance(content, (dict, list)):
             content = Box(content or {}, default_box=True)
         return content
 
@@ -66,11 +71,16 @@ class FileMgr:
             return json.load(f)
 
     @classmethod
+    def load_csv(cls, path: str | Path) -> DataFrame:
+        return pd.read_csv(path)
+
+    @classmethod
     def save_file(cls, path: str | Path = None, content = None) -> None:
         ext = cls._get_file_extension(path)
         save = getattr(cls, f'save_{ext}')
-        content = save(path, content); logging.debug(f'Saved file "{path}": {json.dumps(content, indent=4, ensure_ascii=False)}')
-        return content
+        save(path, content)
+        content_view = json.dumps(content, indent=4, ensure_ascii=False) if isinstance(content, (dict, list)) else str(content)
+        logging.debug(f'Loaded file "{path}": {content_view}')
 
     @classmethod
     def save_yaml(cls, path: str | Path, conf: dict | Box) -> None:
@@ -83,3 +93,6 @@ class FileMgr:
         with open(path, 'w+') as f:
             raise NotImplementedError
 
+    @classmethod
+    def save_csv(cls, path: str | Path, data: DataFrame) -> None:
+        data.to_csv(path, index=False)

@@ -14,6 +14,8 @@ class Context:
     from_lang: str = None
     to_langs: tuple[str] = tuple()
 
+    mapped: list[bool] = tuple()
+
     inflection: bool = False
     definition: bool = False
 

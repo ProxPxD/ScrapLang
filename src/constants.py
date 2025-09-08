@@ -9,7 +9,12 @@ class Paths:
     LOG_DIR = RESOURCES_DIR / 'logs.log'
     CONF_FILE = RESOURCES_DIR / 'conf.yaml'
     SHORT_MEM_FILE = RESOURCES_DIR / 'short_mem.yaml'
-    VALID_ARGS_FILE = RESOURCES_DIR / 'valid_args.yaml'
+    VALID_ARGS_FILE = RESOURCES_DIR / 'valid_data.csv'
+
+
+@dataclass(frozen=True)
+class ResourceConstants:
+    SHORT_MEMORY_LENGTH = 20
 
 
 supported_languages = {

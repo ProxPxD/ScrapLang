@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from box import Box
 from pydantic import BaseModel, Field
 
 from .file import FileMgr
@@ -30,7 +31,7 @@ class ShortMemMgr:
 
     @property
     def mem(self) -> ShortMem:
-        self._mem = self._mem or ShortMem(**self._file_mgr.load())
+        self._mem = self._mem or ShortMem(**(self._file_mgr.load() or ShortMem().model_dump()))
         return self._mem
 
     def add(self, parsed: Namespace) -> None:

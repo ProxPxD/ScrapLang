@@ -3,15 +3,19 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Iterator
 
+from more_itertools.more import seekable, side_effect
 from requests import Session
+import pydash as _
+from pydash import chain as c
 
-from .constants import Paths
-from .logutils import setup_logging
 from .cli import CLI
-from .resouce_managing import ConfMgr
+from .constants import Paths, ResourceConstants
 from .context import Context
+from .logutils import setup_logging
 from .printer import Printer
+from .resouce_managing import ConfMgr
 from .resouce_managing.short_mem import ShortMemMgr
+from .resouce_managing.valid_data import ValidArgsMgr
 from .scrapping import ScrapMgr
 from .scrapping.web_pathing import get_default_headers
 
@@ -20,8 +24,10 @@ class AppMgr:
     def __init__(self):
         setup_logging()
         self.conf_mgr = ConfMgr(Paths.CONF_FILE)
-        self.cli = CLI(self.conf_mgr.conf, ShortMemMgr(Paths.SHORT_MEM_FILE))
+        self.cli = CLI(self.conf_mgr.conf, ShortMemMgr(Paths.SHORT_MEM_FILE, length=ResourceConstants.SHORT_MEMORY_LENGTH))
         self.context: Context = Context(self.conf_mgr.conf)
+        self.printer = Printer(self.context)
+        self.valid_args_mgr = ValidArgsMgr(Paths.VALID_ARGS_FILE, self.context)
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -57,7 +63,7 @@ class AppMgr:
         #     new_context.absorb_context(self.context)
         #     parsed = self.cli.process_parsed(parsed)
         #     new_context = Context(vars(parsed))
-        self.context = Context(vars(parsed), asdict(self.context))
+        self.context = Context(vars(parsed), asdict(self.context))  # TODO: update context instead of reassigning
         setup_logging(self.context)
         if self.context.exit and args:
             return
@@ -69,5 +75,7 @@ class AppMgr:
         # TODO: think when to raise if no word
 
         with self.connect() as session:
-            scrap_results = ScrapMgr(session).scrap(self.context)
-            Printer(self.context).print_all_results(scrap_results)
+            scrap_results = seekable(ScrapMgr(session).scrap(self.context))
+            _.for_each(scrap_results, Printer(self.context).print_result)
+            scrap_results.seek(0)
+            self.valid_args_mgr.gather(scrap_results)

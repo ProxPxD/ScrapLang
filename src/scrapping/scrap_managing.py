@@ -41,10 +41,9 @@ class ResultKinds(MainScrapKinds, HelperScrapKinds):
     ...
 
 
-
 @dataclass
 class ScrapResult:
-    kind: str
+    kind: str | ResultKinds  # Incorect syntax, but there's no right solution
     args: Box = field(default_factory=Box)  # TODO: think of restricting
     content: DataFrame | Iterable[ParsedTranslation] = None
 
@@ -82,27 +81,27 @@ class ScrapMgr:
     def scrap_inflections(self, lang: str, word: str) -> ScrapResult:
         return ScrapResult(  # TODO: handle double tables?
             kind=ResultKinds.INFLECTION,
-            args=(args := Box(lang=lang, word=word)),
+            args=(args := Box(lang=lang, word=word, frozen_box=True)),
             content=self.scrapper.scrap_inflection(**args)
         )
 
     def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
         return ScrapResult(
             kind=ResultKinds.MAIN_TRANSLATION,
-            args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word)),
+            args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word, frozen_box=True)),
             content=self.scrapper.scrap_main_translations(**args)
         )
 
     def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
         return ScrapResult(
             kind=ResultKinds.INDIRECT_TRANSLATION,
-            args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word)),
+            args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word, frozen_box=True)),
             content=self.scrapper.scrap_indirect_translations(**args)
         )
 
     def scrap_definitions(self, lang: str, word: str) -> ScrapResult:
         return ScrapResult(
             kind=ResultKinds.DEFINITION,
-            args=(args := Box(lang=lang, word=word)),
+            args=(args := Box(lang=lang, word=word, frozen_box=True)),
             content=self.scrapper.scrap_definition(**args)
         )

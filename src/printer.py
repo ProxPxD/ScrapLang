@@ -20,24 +20,20 @@ class Printer:
         self.printer = printer
         self.context = context
 
-    def print_all_results(self, scrap_results: Iterable[ScrapResult]) -> None:
-        success = True
-        for result in scrap_results:
-            match result.kind:
-                case ResultKinds.SEPERATOR:
-                    self.print_separator(result.content)
-                case ResultKinds.INFLECTION:
-                    self.print_inflection(result)
-                case ResultKinds.MAIN_TRANSLATION:
-                    success = self.print_translation(result)
-                case ResultKinds.INDIRECT_TRANSLATION:
-                    if self.context.indirect == 'on' or self.context.indirect == 'fail' and not success:
-                        self.print_translation(result)
-                case ResultKinds.DEFINITION:
-                    self.print_definitions(result)
-                case ResultKinds.NEWLINE:
-                    self.printer('')
-                case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
+    def print_result(self, result: ScrapResult) -> None:
+        match result.kind:
+            case ResultKinds.SEPERATOR:
+                self.print_separator(result.content)
+            case ResultKinds.INFLECTION:
+                self.print_inflection(result)
+            case ResultKinds.MAIN_TRANSLATION | ResultKinds.INDIRECT_TRANSLATION:
+                self.print_translation(result)
+            case ResultKinds.DEFINITION:
+                self.print_definitions(result)
+            case ResultKinds.NEWLINE:
+                self.printer('')
+            case _:
+                raise ValueError(f'Unknown scrap kind: {result.kind}')
 
     def print_separator(self, group: str) -> None:
         sep = '-'  # TODO: add as configurable together with numbers
