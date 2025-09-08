@@ -1,10 +1,12 @@
 import json
 import logging
 from pathlib import Path
+from typing import Optional
 
 from box import Box
 import pandas as pd
 from pandas import DataFrame
+from pandas.errors import EmptyDataError
 
 
 class FileMgr:
@@ -71,8 +73,11 @@ class FileMgr:
             return json.load(f)
 
     @classmethod
-    def load_csv(cls, path: str | Path) -> DataFrame:
-        return pd.read_csv(path)
+    def load_csv(cls, path: str | Path) -> Optional[DataFrame]:
+        try:
+            return pd.read_csv(path)
+        except EmptyDataError:
+            return None
 
     @classmethod
     def save_file(cls, path: str | Path = None, content = None) -> None:

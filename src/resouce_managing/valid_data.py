@@ -48,7 +48,7 @@ class ValidArgsMgr:
             self._gather_for_to_langs(success_results)
         ), columns=['lang', 'word'])
         if not success_data.empty:
-            valid_data = pd.concat([self._valid_data_mgr.load(as_box=False), success_data], ignore_index=True)
+            valid_data = pd.concat([self._valid_data_mgr.load(), success_data], ignore_index=True)
             valid_data.sort_values(by=['lang', 'word'], inplace=True)
             self._valid_data_mgr.save(valid_data.drop_duplicates())
 
