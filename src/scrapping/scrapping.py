@@ -31,7 +31,7 @@ class Scrapper:
         self.session: Optional[Session] = session
 
     def scrap(self, url: str, parse: Callable[[Response], list[ParsedTranslation | ParsingException] | ParsingException]) -> list[ParsedTranslation] | HTTPError | ParsingException:
-        #sleep(5)
+        # sleep(6)
         try:
             response = self.session.get(url, allow_redirects=True)
             response.raise_for_status()
