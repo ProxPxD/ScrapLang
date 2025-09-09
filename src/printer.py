@@ -1,5 +1,7 @@
 import os
+import random
 from textwrap import wrap
+from time import sleep
 from typing import Iterable, Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -65,11 +67,15 @@ class Printer:
             case ResultKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
             case _: raise ValueError(f'Unexpected transltation type: {result.kind}')
 
-    @classmethod
-    def create_translation_row(cls, result: ScrapResult) -> str:
+    def create_translation_row(self, result: ScrapResult) -> str:
         match result.is_success():
             case True: return ', '.join(translation.formatted for translation in result.content)
-            case False: return result.content.args[0]
+            case False:
+                exception = result.content
+                if self.context.debug:
+                    raise exception
+                else:
+                    return exception.args[0]
             case _: return ...
 
     def print_definitions(self, result: ScrapResult) -> None:
