@@ -73,9 +73,9 @@ class AppMgr:
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
-
         with self.connect() as session:
             scrap_results = seekable(ScrapMgr(session).scrap(self.context))
             _.for_each(scrap_results, Printer(self.context).print_result)
-            scrap_results.seek(0)
-            self.valid_args_mgr.gather(scrap_results)
+        self.conf_mgr.update_lang_order(self.context.all_langs)
+        scrap_results.seek(0)
+        self.valid_args_mgr.gather(scrap_results)
