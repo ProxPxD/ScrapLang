@@ -23,6 +23,10 @@ class ParsingException(ValueError):
     pass
 
 
+class CaptchaException(ParsingException):
+    pass
+
+
 UNSET = object()
 
 
@@ -35,6 +39,18 @@ def map_exceptions(func, *args, into: Any, raises: bool = True, **kwargs):
             raise into
         return into
 
+def ensure_tag(to_parse: Response | Tag | str) -> Tag:
+    match to_parse:
+        case Tag(): return to_parse
+        case str(): return BeautifulSoup(to_parse, features="html.parser")
+        case Response(): return ensure_tag(to_parse.text)
+        case _: raise ValueError(f'Cannot handle type {type(to_parse)} of {to_parse}!')
+
+def with_ensured_tag(func):
+    @wraps(func)
+    def wrapper(self, tag):
+        return func(self, ensure_tag(tag))
+    return wrapper
 
 # TODO: Rename from "Parser" to HtmlParser?
 class Parser(ABC):
@@ -42,24 +58,15 @@ class Parser(ABC):
         super().__init__(**kwargs)
 
     @classmethod
-    def _ensure_tag(cls, to_parse: Response | Tag | str) -> Tag:
-        match to_parse:
-            case Tag(): return to_parse
-            case str(): return BeautifulSoup(to_parse, features="html.parser")
-            case Response(): return cls._ensure_tag(to_parse.text)
-            case _: raise ValueError(f'Cannot handle type {type(to_parse)} of {to_parse}!')
-
-    @classmethod
-    def ensure_tag(cls, func):
-        @wraps(func)
-        def wrapper(self, tag):
-            return func(self, cls._ensure_tag(tag))
-        return wrapper
-
-    @classmethod
     @abstractmethod
     def parse(cls, to_parse: Response | Tag | str) -> list:
         raise NotImplementedError
+
+    @classmethod
+    @with_ensured_tag
+    def is_captcha(cls, tag: Tag) -> bool:
+        return bool(tag.find('div', {'class': 'g-recaptcha'}))
+
 
 
 class TranslationKind(Enum):
@@ -83,7 +90,7 @@ class ParsedTranslation:
 
 class TranslationParser(Parser):
     @classmethod
-    @Parser.ensure_tag
+    @with_ensured_tag
     def parse(cls, tag: Tag) -> list[ParsedTranslation] | ParsingException:
         if isinstance(mains := cls._parse_main_translations(tag), Exception):
             return mains
@@ -94,8 +101,8 @@ class TranslationParser(Parser):
     @classmethod
     def _parse_main_translations(cls, tag: Tag) -> list[ParsedTranslation] | ParsingException:
         logging.debug('Parsing main translations')
-        if not (trans_divs := tag.select_one('article div div section').find_all('div', {'class': 'inline leading-10'})):
-            return ParsingException('No translation div!')
+        if not (main_section := tag.select_one('article div div section')) or not (trans_divs := main_section.find_all('div', {'class': 'inline leading-10'})):
+            return ParsingException('No translation div!', tag)
         translations = []
         kinds = TranslationKind
         for trans_div in trans_divs:
@@ -108,7 +115,7 @@ class TranslationParser(Parser):
         return translations
 
     @classmethod
-    @Parser.ensure_tag
+    @with_ensured_tag
     def parse_less_frequent_translations(cls, tag: Tag) -> list[ParsedTranslation | ParsingException] | ParsingException:
         logging.debug('Parsing less frequent translations')
         less_freq_tag = tag.find('ul', {'id': 'less-frequent-translations-container-0'})
@@ -121,7 +128,7 @@ class TranslationParser(Parser):
         return less_freqs
 
     @classmethod
-    @Parser.ensure_tag
+    @with_ensured_tag
     def parse_indirect_translations(cls, tag: Tag) -> list[ParsedTranslation]:
         logging.debug('Parsing indirect translations')
         translation_buttons = tag.find_all('button', {'class': 'font-medium break-all flex-inline focus:outline-none'})
@@ -147,7 +154,7 @@ class TranslationParser(Parser):
 
 class InflectionParser(Parser):
     @classmethod
-    @Parser.ensure_tag
+    @with_ensured_tag
     def parse(cls, tag: Tag) -> DataFrame | ParsingException:
         logging.debug('Parsing inflection table')
         if not (table_tags := tag.select('div #grammar_0_0 table')):
@@ -174,7 +181,7 @@ class DefinitionParser(Parser):
     to_text = lambda tag: tag.text
 
     @classmethod
-    @Parser.ensure_tag
+    @with_ensured_tag
     def parse(cls, tag: Tag) -> ParsingException | list[ParsedDefinition]:
         logging.debug('Parsing definitions')
         if not (definition_tags := tag.find_all('li', {'class': 'pb-2'})):
