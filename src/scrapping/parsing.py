@@ -129,14 +129,14 @@ class TranslationParser(Parser):
 
     @classmethod
     @with_ensured_tag
-    def parse_indirect_translations(cls, tag: Tag) -> list[ParsedTranslation]:
+    def parse_indirect_translations(cls, tag: Tag) -> list[ParsedTranslation] | ParsingException:
         logging.debug('Parsing indirect translations')
-        translation_buttons = tag.find_all('button', {'class': 'font-medium break-all flex-inline focus:outline-none'})
-        kinds = TranslationKind
+        if not (translation_buttons := tag.find_all('button', {'class': 'font-medium break-all flex-inline focus:outline-none'})):
+            return ParsingException('No indirect translations')
         indirects = []
         for button in translation_buttons:
             translation = button.find('span', {'class': 'text-primary-700 break-words font-medium text-base cursor-pointer'})
-            indirects.append(ParsedTranslation(kinds.INDIRECT, translation.text.replace('\n', '')))
+            indirects.append(ParsedTranslation(TranslationKind.INDIRECT, translation.text.replace('\n', '')))
         return indirects
 
         # https://glosbe.com/uk/en/%D0%B7%D0%B1%D0%B8%D1%80%D0%B0%D1%82%D0%B8%D1%81%D1%8F/fragment/indirect

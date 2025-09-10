@@ -1,8 +1,7 @@
 import os
-import random
+import traceback
 from textwrap import wrap
-from time import sleep
-from typing import Iterable, Any, Callable
+from typing import Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas.core.interchange.dataframe_protocol import DataFrame
@@ -28,8 +27,11 @@ class Printer:
                 self.print_separator(result.content)
             case ResultKinds.INFLECTION:
                 self.print_inflection(result)
-            case ResultKinds.MAIN_TRANSLATION | ResultKinds.INDIRECT_TRANSLATION:
+            case ResultKinds.MAIN_TRANSLATION:
                 self.print_translation(result)
+            case ResultKinds.INDIRECT_TRANSLATION:
+                if result.is_success():
+                    self.print_translation(result)
             case ResultKinds.DEFINITION:
                 self.print_definitions(result)
             case ResultKinds.NEWLINE:
@@ -70,13 +72,15 @@ class Printer:
     def create_translation_row(self, result: ScrapResult) -> str:
         match result.is_success():
             case True: return ', '.join(translation.formatted for translation in result.content)
-            case False:
-                exception = result.content
-                if self.context.debug:
-                    raise exception
-                else:
-                    return exception.args[0]
-            case _: return ...
+            case False: return self._get_stacktrace_or_exception(result)
+            case _: raise ValueError('Unexpected branching')
+
+    def _get_stacktrace_or_exception(self, result: ScrapResult) -> str:
+            exception = result.content
+            if self.context.debug:
+                return traceback.format_exc()
+            else:
+                return exception.args[0]
 
     def print_definitions(self, result: ScrapResult) -> None:
         if result.is_fail():
