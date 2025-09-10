@@ -3,10 +3,9 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Iterator
 
-from more_itertools.more import seekable, side_effect
-from requests import Session
 import pydash as _
-from pydash import chain as c
+from more_itertools.more import seekable
+from requests import Session
 
 from .cli import CLI
 from .constants import Paths, ResourceConstants
@@ -14,8 +13,8 @@ from .context import Context
 from .logutils import setup_logging
 from .printer import Printer
 from .resouce_managing import ConfMgr
+from .resouce_managing.data_gathering import DataGatherer
 from .resouce_managing.short_mem import ShortMemMgr
-from .resouce_managing.valid_data import ValidArgsMgr
 from .scrapping import ScrapMgr
 from .scrapping.web_pathing import get_default_headers
 
@@ -24,10 +23,10 @@ class AppMgr:
     def __init__(self):
         setup_logging()
         self.conf_mgr = ConfMgr(Paths.CONF_FILE)
-        self.cli = CLI(self.conf_mgr.conf, ShortMemMgr(Paths.SHORT_MEM_FILE, length=ResourceConstants.SHORT_MEMORY_LENGTH))
         self.context: Context = Context(self.conf_mgr.conf)
-        self.printer = Printer(self.context)
-        self.valid_args_mgr = ValidArgsMgr(Paths.VALID_ARGS_FILE, self.context)
+        self.data_gatherer = DataGatherer(context=self.context)
+        self.cli = CLI(self.conf_mgr.conf, context=self.context, data_gatherer=self.data_gatherer)
+        self.printer = Printer(context=self.context)
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -76,6 +75,7 @@ class AppMgr:
         with self.connect() as session:
             scrap_results = seekable(ScrapMgr(session).scrap(self.context))
             _.for_each(scrap_results, Printer(self.context).print_result)
+
         self.conf_mgr.update_lang_order(self.context.all_langs)
         scrap_results.seek(0)
-        self.valid_args_mgr.gather(scrap_results)
+        self.data_gatherer.gather_valid_args(scrap_results)

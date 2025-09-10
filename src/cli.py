@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, SUPPRESS
 from functools import reduce
 from typing import Optional
 
@@ -10,8 +10,9 @@ import pydash as _
 from box import Box
 from pydash import chain as c
 
-from .constants import supported_languages
+from .context import Context
 from .logutils import setup_logging
+from .resouce_managing.data_gathering import DataGatherer
 from .resouce_managing.short_mem import ShortMemMgr
 
 
@@ -46,12 +47,11 @@ class Outstemming:
         return [complex_word]
 
 
-
-
 class CLI:
-    def __init__(self, conf: Box, short_mem_mgr: ShortMemMgr):
-        self.conf = conf
-        self.shor_mem_mgr = short_mem_mgr
+    def __init__(self, conf: Box, context: Context, data_gatherer: DataGatherer = None):
+        self.conf: Box = conf
+        self.context = context  # TODO: convert to using context and data_gatherer instead of conf
+        self.data_gatherer = data_gatherer or DataGatherer(context)
 
     @property
     def parser(self) -> ArgumentParser:
@@ -78,17 +78,19 @@ class CLI:
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
         translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--indirect', choices=['on', 'off', 'fail'], help='Turn on indirect translation')
+        translation_mode_group.add_argument('--indirect', choices=['on', 'off', 'fail', 'conf'], help='Turn on indirect translation')
         # CLI Reasoning Modes
         cli_reasoning_group = parser.add_argument_group(title='CLI Reasoning Modes')
-        cli_reasoning_group.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
         cli_reasoning_group.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang with the first to_lang')
+        cli_reasoning_group.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
+        cli_reasoning_group.add_argument('--gather-data', '--gd', '-gd', choices=['all', 'ai', 'time', 'off', 'conf'], help='What to gather user input for')
+        cli_reasoning_group.add_argument('--infervia', '--iv', '-iv', choices=['all', 'ai', 'time', 'last', 'off', 'conf'], help='How to infer the lang(s)')
         # Display Modes
         display_group = parser.add_argument_group(title='Display Modes')
         display_group.add_argument('--groupby', '-by', choices=['lang', 'word'], help='What to group the result translations by')
         # Developer Modes (groupless)
-        parser.add_argument('--debug', action='store_true')
-        parser.add_argument('--test', action='store_true')
+        parser.add_argument('--debug', action='store_true', help=SUPPRESS)
+        parser.add_argument('--test', action='store_true', help=SUPPRESS)
         return parser
 
     # TODO: anhi: add and think through the displayal mode
@@ -108,7 +110,8 @@ class CLI:
 
     def parse(self, args=None) -> Namespace:
         parsed = self.parse_base(args)
-        self.shor_mem_mgr.add(parsed)
+        if self.context.gather_data in ['all', 'time']: # TODO: Replace to context
+            self.data_gatherer.gather_short_mem(parsed)
         parsed = self.process_parsed(parsed)
         return parsed
 
