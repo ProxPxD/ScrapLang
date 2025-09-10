@@ -17,14 +17,13 @@ from .resouce_managing.short_mem import ShortMemMgr
 
 
 class Outstemming:
-    parenthesised = re.compile('[(\[][^])]+[)\]]').search
+    parenthesised = re.compile(r'[(\[][^([\])]+[)\]]').search
     slashed = re.compile('/+').search
     baskslashed = re.compile('\+').search
 
     @classmethod
     def outstem(cls, complex_word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
-        # TODO: Idea: join args with the neighbours have parenthesis/brackets like: [to ]thumb
         flat_outstem = c().map(cls.outstem).flatten()
         logging.debug(f'outstemming "{complex_word}"')
         if matched := cls.parenthesised(complex_word):
