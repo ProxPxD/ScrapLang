@@ -158,7 +158,6 @@ class CLI:
         return parsed
 
     def process_parsed(self, parsed: Namespace) -> Namespace:
-        parsed.words = Outstemming.join_outstem_syntax(parsed.words)
         parsed = self._word_outstemming(parsed)
         parsed = self._fill_default_args(parsed)
         parsed = self._reverse_if_needed(parsed)
@@ -188,24 +187,10 @@ class CLI:
             from_lang = pot.lang.pop(0); logging.debug(f'Assuming "{from_lang}" should be in from_lang')
             parsed.from_lang = from_lang
         if pot.lang and not parsed.to_langs:
-            parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming {pot.lang} should be in to_langs')
+            parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming "{pot.lang}" should be in to_langs')
             pot.lang = []
         if pot.word:
-            parsed.words += pot.word; logging.debug(f'Assuming {pot.word} should be in words')
-        return parsed
-
-    def _join_outstem_syntax(self, parsed: Namespace) -> Namespace:
-        words = list(parsed.words)
-        parsed.words = []
-        buffer, count = [], 0
-        while any(p in ''.join(words) for p in Outstemming.P):
-            buffer.append(part := words.pop(0))
-            if any(p in part for p in Outstemming.LP): count += 1
-            if any(p in part for p in Outstemming.RP): count -= 1
-            if not count:
-                parsed.words.append(' '.join(buffer))
-                buffer = []
-        parsed.words.extend(words)
+            parsed.words += pot.word; logging.debug(f'Assuming "{pot.word}" should be in words')
         return parsed
 
     def _assume_first_word(self, pot: Box) -> Optional[str]:
@@ -220,6 +205,7 @@ class CLI:
         return word
 
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
+        parsed.words = Outstemming.join_outstem_syntax(parsed.words)
         parsed.words = [outstemmed for word in parsed.words for outstemmed in Outstemming.outstem(word)]
         return parsed
 
@@ -229,7 +215,7 @@ class CLI:
         return parsed
 
     def _predict_langs(self, parsed: Namespace) -> Namespace:
-        # How to handle Cyrillic written with latin and memory?
+        # TODO: How to handle Cyrillic written with latin and memory?
         return parsed
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
@@ -242,10 +228,10 @@ class CLI:
             n_needed -= 1
         to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
         if not parsed.from_lang and to_fill:
-            from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with {from_lang}')
+            from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with "{from_lang}"')
             parsed.from_lang = from_lang
         if not parsed.to_langs and to_fill:
-            to_lang = to_fill.pop(0); logging.debug(f'Filling to_lang with {to_lang}')
+            to_lang = to_fill.pop(0); logging.debug(f'Filling to_lang with "{to_lang}"')
             parsed.to_langs.append(to_lang)
         return parsed
 
@@ -263,7 +249,7 @@ class CLI:
         if not (lang_mapping := self.conf.mappings.get(parsed.from_lang)):
             return parsed
         ordered_lang_mapping = [lang_mapping] if isinstance(lang_mapping, dict) else lang_mapping
-        logging.debug(f'Applying mapping for {parsed.from_lang} with map:\n{json.dumps(lang_mapping, indent=4, ensure_ascii=False)}')
+        logging.debug(f'Applying mapping for "{parsed.from_lang}" with map:\n{json.dumps(lang_mapping, indent=4, ensure_ascii=False)}')
         for lang_mapping in ordered_lang_mapping:
             patts, repls = zip(*sorted(lang_mapping.to_dict().items(), key=c().get(0).size(), reverse=True))
             lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
