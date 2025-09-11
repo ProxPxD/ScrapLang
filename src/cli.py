@@ -145,11 +145,11 @@ class CLI:
         return parsed
 
     def parse_base(self, args: list[str]):
-        if len(args := args or sys.argv) == 1:
+        if len(args := args or sys.argv[1:]) == 0:
             self.parser.print_help()
             exit(0)  # change
 
-        args = [a for arg in args for a in arg.split('\xa0')][1:]
+        args = [a for arg in args for a in arg.split('\xa0')]
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += remaining  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
