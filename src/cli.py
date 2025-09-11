@@ -170,7 +170,6 @@ class CLI:
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
         assume = parsed.assume or self.conf.assume
-        # parsed.args += parsed.remaining  # Add end args to the initial ones
         if assume == 'word':
             logging.debug(f'Assuming {parsed.args} are words!')
             parsed.words = parsed.args + parsed.words
