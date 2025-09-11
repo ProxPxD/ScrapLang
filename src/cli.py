@@ -5,6 +5,7 @@ import sys
 from argparse import ArgumentParser, Namespace, SUPPRESS
 from functools import reduce
 from typing import Optional
+from xml.dom.expatbuilder import parseFragmentString
 
 import pydash as _
 from box import Box
@@ -13,11 +14,23 @@ from pydash import chain as c
 from .context import Context
 from .logutils import setup_logging
 from .resouce_managing.data_gathering import DataGatherer
-from .resouce_managing.short_mem import ShortMemMgr
 
 
 class Outstemming:
-    parenthesised = re.compile(r'[(\[][^([\])]+[)\]]').search
+    """
+    P - Parenthesis
+    L/R - Left/Right
+    E - Escaped
+    """
+
+    LP = '[('
+    RP = '])'
+    P = LP + RP
+    ELP = f'\\{LP}'
+    ERP = f'\\{RP}'
+    EP = ELP + ERP
+
+    parenthesised = re.compile(fr'[{ELP}][^{ELP}{ERP}]+[{ERP}]').search
     slashed = re.compile('/+').search
     baskslashed = re.compile('\+').search
 
@@ -44,6 +57,24 @@ class Outstemming:
             return flat_outstem([orig, novel])
         # TODO: anhi: make baskslashes
         return [complex_word]
+
+    @classmethod
+    def count(cls, string: str, chars: str) -> int:
+        return sum(string.count(ch) for ch in chars)
+
+    @classmethod
+    def join_outstem_syntax(cls, words: list[str]) -> list[str]:
+        parenthesis_diff = [cls.count(word, cls.LP) - cls.count(word, cls.RP) for word in words]
+        if _.every(parenthesis_diff, c().eq(0)):
+            return words
+        joined_words, buffer, gauge = [], [], 0
+        for word, diff in zip(words, parenthesis_diff):
+            buffer.append(word)
+            gauge += diff
+            if not gauge:
+                joined_words.append(' '.join(buffer))
+                buffer = []
+        return joined_words
 
 
 class CLI:
@@ -128,6 +159,7 @@ class CLI:
         return parsed
 
     def process_parsed(self, parsed: Namespace) -> Namespace:
+        parsed.words = Outstemming.join_outstem_syntax(parsed.words)
         parsed = self._word_outstemming(parsed)
         parsed = self._fill_default_args(parsed)
         parsed = self._reverse_if_needed(parsed)
@@ -162,6 +194,20 @@ class CLI:
             pot.lang = []
         if pot.word:
             parsed.words += pot.word; logging.debug(f'Assuming {pot.word} should be in words')
+        return parsed
+
+    def _join_outstem_syntax(self, parsed: Namespace) -> Namespace:
+        words = list(parsed.words)
+        parsed.words = []
+        buffer, count = [], 0
+        while any(p in ''.join(words) for p in Outstemming.P):
+            buffer.append(part := words.pop(0))
+            if any(p in part for p in Outstemming.LP): count += 1
+            if any(p in part for p in Outstemming.RP): count -= 1
+            if not count:
+                parsed.words.append(' '.join(buffer))
+                buffer = []
+        parsed.words.extend(words)
         return parsed
 
     def _assume_first_word(self, pot: Box) -> Optional[str]:
