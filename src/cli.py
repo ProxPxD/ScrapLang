@@ -140,8 +140,7 @@ class CLI:
 
     def parse(self, args=None) -> Namespace:
         parsed = self.parse_base(args)
-        if self.context.gather_data in ['all', 'time']: # TODO: Replace to context
-            self.data_gatherer.gather_short_mem(parsed)
+        self.data_gatherer.gather_short_mem(parsed)
         parsed = self.process_parsed(parsed)
         return parsed
 
