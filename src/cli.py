@@ -162,9 +162,9 @@ class CLI:
         parsed = self._word_outstemming(parsed)
         parsed = self._fill_default_args(parsed)
         parsed = self._reverse_if_needed(parsed)
-        orig = list(parsed.words)
+        origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
-        parsed.mapped = [o != m for o, m in zip(orig, parsed.words)]
+        parsed.mapped = [o != m for o, m in zip(origs, parsed.words)]
         logging.debug(f'Processed: {parsed}')
         return parsed
 
