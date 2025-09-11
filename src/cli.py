@@ -138,14 +138,14 @@ class CLI:
         loop_control_exclusive.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         return parser
 
-    def parse(self, args=None) -> Namespace:
-        parsed = self.parse_base(args)
+    def parse(self, args: list[str] = None) -> Namespace:
+        parsed = self.parse_base(args or sys.argv[1:])
         self.data_gatherer.gather_short_mem(parsed)
         parsed = self.process_parsed(parsed)
         return parsed
 
     def parse_base(self, args: list[str]):
-        if len(args := args or sys.argv[1:]) == 0:
+        if len(args) == 0:
             self.parser.print_help()
             exit(0)  # change
 
