@@ -68,8 +68,8 @@ class Outstemming:
         if _.every(parenthesis_diff, c().eq(0)):
             return words
         joined_words, buffer, gauge = [], [], 0
-        for word, diff in zip(words, parenthesis_diff):
-            buffer.append(word)
+        for part, diff in zip(words, parenthesis_diff):
+            buffer.append(part)
             gauge += diff
             if not gauge:
                 joined_words.append(' '.join(buffer))
