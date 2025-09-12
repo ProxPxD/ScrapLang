@@ -1,5 +1,5 @@
 from dataclasses import replace
-from itertools import repeat, chain
+from itertools import repeat
 from pathlib import Path
 from typing import Iterable
 
@@ -8,13 +8,12 @@ import pydash as _
 from box import Box
 from pandas import DataFrame
 from pydantic import BaseModel, field_validator
-from pydash import chain as c
 
 from .file import FileMgr
 from ..constants import supported_languages
 from ..context import Context
-from ..scrapping import ScrapResult, MainScrapKinds
-from ..scrapping.parsing import TranslationKind
+from ..scrapping import Outcome, MainOutcomeKinds
+from ..scrapping.glosbe.parsing import TransResultKind
 
 
 class ValidArgs(BaseModel):
@@ -38,8 +37,8 @@ class ValidDataMgr:
         self.context: Context = context
         self._n_parsed: int = n_parsed
 
-    def gather(self, scrap_results: Iterable[ScrapResult]) -> None:
-        is_gatherable = lambda sr: sr.is_success() and sr.kind in MainScrapKinds.all() and sr.kind != MainScrapKinds.INDIRECT_TRANSLATION
+    def gather(self, scrap_results: Iterable[Outcome]) -> None:
+        is_gatherable = lambda sr: sr.is_success() and sr.kind in MainOutcomeKinds.all() and sr.kind != MainOutcomeKinds.INDIRECT_TRANSLATION
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if is_gatherable(sr)]
         success_data = DataFrame(_.concat(
             self._gather_for_from_langs(success_results),
@@ -51,11 +50,11 @@ class ValidDataMgr:
             valid_data.sort_values(by=['lang', 'word'], inplace=True)
             self._valid_data_file_mgr.save(valid_data.drop_duplicates())
 
-    def _gather_for_langs(self, scrap_results: Iterable[ScrapResult]) -> list[list[str]]:
+    def _gather_for_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
         return [_.at(sr.args, 'lang', 'word') for sr in scrap_results if sr.args.lang]
 
-    def _gather_for_from_langs(self, scrap_results: Iterable[ScrapResult]) -> list[list[str]]:
+    def _gather_for_from_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
         return [_.at(sr.args, 'from_lang', 'word') for sr in scrap_results if sr.args.from_lang]
 
-    def _gather_for_to_langs(self, scrap_results: Iterable[ScrapResult]) -> list[list[str]]:
-        return [[lang, trans.word] for sr in scrap_results for lang, trans in zip(repeat(sr.args.to_lang), sr.content) if sr.args.to_lang and trans.kind == TranslationKind.MAIN]
+    def _gather_for_to_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
+        return [[lang, trans.word] for sr in scrap_results for lang, trans in zip(repeat(sr.args.to_lang), sr.content) if sr.args.to_lang and trans.kind == TransResultKind.MAIN]

@@ -9,7 +9,7 @@ from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
-from .scrapping import ScrapResult, ResultKinds
+from .scrapping import Outcome, OutcomeKinds
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -21,33 +21,33 @@ class Printer:
         self.printer = printer
         self.context = context
 
-    def print_result(self, result: ScrapResult) -> None:
-        match result.kind:
-            case ResultKinds.SEPERATOR:
-                self.print_separator(result.content)
-            case ResultKinds.INFLECTION:
-                self.print_inflection(result)
-            case ResultKinds.MAIN_TRANSLATION:
-                self.print_translation(result)
-            case ResultKinds.INDIRECT_TRANSLATION:
-                if result.is_success():
-                    self.print_translation(result)
-            case ResultKinds.DEFINITION:
-                self.print_definitions(result)
-            case ResultKinds.NEWLINE:
+    def print_result(self, outcome: Outcome) -> None:
+        match outcome.kind:
+            case OutcomeKinds.SEPERATOR:
+                self.print_separator(outcome.content)
+            case OutcomeKinds.INFLECTION:
+                self.print_inflection(outcome)
+            case OutcomeKinds.MAIN_TRANSLATION:
+                self.print_translation(outcome)
+            case OutcomeKinds.INDIRECT_TRANSLATION:
+                if outcome.is_success():
+                    self.print_translation(outcome)
+            case OutcomeKinds.DEFINITION:
+                self.print_definitions(outcome)
+            case OutcomeKinds.NEWLINE:
                 self.printer('')
             case _:
-                raise ValueError(f'Unknown scrap kind: {result.kind}')
+                raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
     def print_separator(self, group: str) -> None:
         sep = '-'  # TODO: add as configurable together with numbers
         self.printer(f'{sep*8} {group} {sep*25}')
 
-    def print_inflection(self, result: ScrapResult) -> None:
-        if result.is_fail():
-            self.printer(result.content.args[0])
+    def print_inflection(self, outcome: Outcome) -> None:
+        if outcome.is_fail():
+            self.printer(outcome.content.args[0])
             return
-        table: DataFrame = result.content
+        table: DataFrame = outcome.content
         table_str = tabulate(table, tablefmt='rounded_outline')
         if (olen := len(table_str.split('\n', 1)[0])) > 128:
             table = table.map(lambda x: "\n".join(wrap(x, width=16)))
@@ -56,40 +56,40 @@ class Printer:
         if not any((self.context.definition, self.context.inflection)):
             self.printer('')
 
-    def print_translation(self, result: ScrapResult) -> bool:
-        prefix: str = self.get_translation_prefix(result)
-        translation_row = self.create_translation_row(result)
+    def print_translation(self, outcome: Outcome) -> bool:
+        prefix: str = self.get_translation_prefix(outcome)
+        translation_row = self.create_translation_row(outcome)
         coloured_prefix = colored(prefix, self.context.colour) if self.context.colour != 'no' else prefix
         self.printer(f'{coloured_prefix}{translation_row}')
-        return result.is_success()
+        return outcome.is_success()
 
-    def get_translation_prefix(self, result: ScrapResult) -> str:
-        match result.kind:
-            case ResultKinds.MAIN_TRANSLATION: return f'{result.args[self.context.member_prefix_arg]}: '
-            case ResultKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
-            case _: raise ValueError(f'Unexpected transltation type: {result.kind}')
+    def get_translation_prefix(self, outcome: Outcome) -> str:
+        match outcome.kind:
+            case OutcomeKinds.MAIN_TRANSLATION: return f'{outcome.args[self.context.member_prefix_arg]}: '
+            case OutcomeKinds.INDIRECT_TRANSLATION: return ' ' * 4 if outcome.is_success() else ''
+            case _: raise ValueError(f'Unexpected transltation type: {outcome.kind}')
 
-    def create_translation_row(self, result: ScrapResult) -> str:
-        match result.is_success():
-            case True: return ', '.join(translation.formatted for translation in result.content)
-            case False: return self._get_stacktrace_or_exception(result)
+    def create_translation_row(self, outcome: Outcome) -> str:
+        match outcome.is_success():
+            case True: return ', '.join(trans_result.formatted for trans_result in outcome.content)
+            case False: return self._get_stacktrace_or_exception(outcome)
             case _: raise ValueError('Unexpected branching')
 
-    def _get_stacktrace_or_exception(self, result: ScrapResult) -> str:
-            exception = result.content
+    def _get_stacktrace_or_exception(self, outcome: Outcome) -> str:
+            exception = outcome.content
             if self.context.debug:
                 return traceback.format_exc()
             else:
                 return exception.args[0]
 
-    def print_definitions(self, result: ScrapResult) -> None:
-        if result.is_fail():
-            self.printer(result.content.args[0])
+    def print_definitions(self, outcome: Outcome) -> None:
+        if outcome.is_fail():
+            self.printer(outcome.content.args[0])
             return
         pot_newline = ('', '\n')[bool(self.context.to_langs)]
-        ending = f' of "{result.args.word}"' if not self.context.to_langs else ''
+        ending = f' of "{outcome.args.word}"' if not self.context.to_langs else ''
         self.printer(f'{pot_newline}Definitions{ending}:')
-        for defi in result.content:
+        for defi in outcome.content:
             defi_row = f'- {defi.text}{":" if defi.examples else ""}'
             self.printer(defi_row)
             for example in defi.examples:

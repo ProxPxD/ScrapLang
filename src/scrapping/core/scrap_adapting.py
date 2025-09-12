@@ -1,0 +1,30 @@
+from dataclasses import dataclass
+from typing import Optional, Callable
+
+from bs4 import Tag
+from requests import Session, Response
+from requests.exceptions import HTTPError
+
+from .parsing import Result, ParsingException, CaptchaException, Parser
+
+
+@dataclass(frozen=True)
+class Outcome:
+    pass
+
+
+class ScrapAdapter:
+    def __init__(self, session: Session = None):
+        self.session: Optional[Session] = session
+
+    def scrap(self, url: str, parse: Callable[[Response | Tag], list[Result] | ParsingException]) -> list[Result] | HTTPError | ParsingException:
+        # sleep(6)
+        try:
+            response = self.session.get(url, allow_redirects=True)
+            response.raise_for_status()
+        except HTTPError as e:
+            return e
+        else:
+            if Parser.is_captcha(response):
+                return CaptchaException('Captcha appeared, robot identified!')
+            return parse(response)

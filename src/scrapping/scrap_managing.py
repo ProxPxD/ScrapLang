@@ -6,8 +6,8 @@ from box import Box
 from pandas import DataFrame
 from requests import Session
 
-from .parsing import ParsedTranslation
-from .scrapping import Scrapper
+from .core.parsing import Result
+from .glosbe.scrap_adapting import GlosbeScrapAdapter
 from ..context import Context
 
 
@@ -15,7 +15,6 @@ from ..context import Context
 
 @dataclass(frozen=True)
 class BaseDC:
-
     @classmethod
     @cache
     def all(cls) -> Iterable[str]:
@@ -23,33 +22,33 @@ class BaseDC:
 
 
 @dataclass(frozen=True)
-class MainScrapKinds(BaseDC):
-    INFLECTION: str = 'inflection'
+class MainOutcomeKinds(BaseDC):
     MAIN_TRANSLATION: str = 'translation'
     INDIRECT_TRANSLATION: str = 'indirect'
+    INFLECTION: str = 'inflection'
     DEFINITION: str = 'definition'
 
 
 @dataclass(frozen=True)
-class HelperScrapKinds(BaseDC):
+class HelperOutcomeKinds(BaseDC):
     SEPERATOR: str = 'seperator'
     NEWLINE: str = '\n'
 
 
 @dataclass(frozen=True)
-class ResultKinds(MainScrapKinds, HelperScrapKinds):
+class OutcomeKinds(MainOutcomeKinds, HelperOutcomeKinds):
     ...
 
 
 @dataclass
-class ScrapResult:
-    kind: str | ResultKinds  # Incorect syntax, but there's no right solution
+class Outcome:
+    kind: str | OutcomeKinds  # Incorect syntax, but there's no right solution
     args: Box = field(default_factory=Box)  # TODO: think of restricting
-    content: DataFrame | Iterable[ParsedTranslation] = None
+    content: DataFrame | Iterable[Result] = None
 
     def __post_init__(self):
-        if self.kind not in ResultKinds().all():
-            raise ValueError(f'Result kind is {self.kind}, but expected one of {ResultKinds.all()}')
+        if self.kind not in OutcomeKinds().all():
+            raise ValueError(f'Outcome kind is {self.kind}, but expected one of {OutcomeKinds.all()}')
 
     def is_fail(self) -> bool:
         return isinstance(self.content, Exception)
@@ -60,13 +59,13 @@ class ScrapResult:
 
 class ScrapMgr:
     def __init__(self, session: Session):
-        self.scrapper = Scrapper(session)
+        self.glosbe_scrapper = GlosbeScrapAdapter(session)
 
-    def scrap(self, context: Context) -> Iterable[ScrapResult]:
+    def scrap(self, context: Context) -> Iterable[Outcome]:
         for first, last, (from_lang, to_lang, word) in context.grouped_url_triples:
             if is_first_in_group := first and not last:
                 group = to_lang if context.groupby == 'lang' else word
-                yield ScrapResult(ResultKinds.SEPERATOR, content=group)
+                yield Outcome(OutcomeKinds.SEPERATOR, content=group)
             if is_first_to_inflect := context.inflection and first:  # Should take into account grouping method?
                 yield self.scrap_inflections(from_lang, word)
             if is_translating := to_lang:
@@ -76,32 +75,32 @@ class ScrapMgr:
             if context.definition:
                 yield self.scrap_definitions(from_lang, word)
             if context.member_sep and context.definition:
-                yield ScrapResult(ResultKinds.NEWLINE)
+                yield Outcome(OutcomeKinds.NEWLINE)
 
-    def scrap_inflections(self, lang: str, word: str) -> ScrapResult:
-        return ScrapResult(  # TODO: handle double tables?
-            kind=ResultKinds.INFLECTION,
+    def scrap_inflections(self, lang: str, word: str) -> Outcome:
+        return Outcome(  # TODO: handle double tables?
+            kind=OutcomeKinds.INFLECTION,
             args=(args := Box(lang=lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_inflection(**args)
+            content=self.glosbe_scrapper.scrap_inflection(**args)
         )
 
-    def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
-        return ScrapResult(
-            kind=ResultKinds.MAIN_TRANSLATION,
+    def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.MAIN_TRANSLATION,
             args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_main_translations(**args)
+            content=self.glosbe_scrapper.scrap_main_translations(**args)
         )
 
-    def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
-        return ScrapResult(
-            kind=ResultKinds.INDIRECT_TRANSLATION,
+    def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.INDIRECT_TRANSLATION,
             args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_indirect_translations(**args)
+            content=self.glosbe_scrapper.scrap_indirect_translations(**args)
         )
 
-    def scrap_definitions(self, lang: str, word: str) -> ScrapResult:
-        return ScrapResult(
-            kind=ResultKinds.DEFINITION,
+    def scrap_definitions(self, lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.DEFINITION,
             args=(args := Box(lang=lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_definition(**args)
+            content=self.glosbe_scrapper.scrap_definition(**args)
         )
