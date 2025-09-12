@@ -9,7 +9,8 @@ class Paths:
     LOG_DIR = RESOURCES_DIR / 'logs.log'
     CONF_FILE = RESOURCES_DIR / 'conf.yaml'
     SHORT_MEM_FILE = RESOURCES_DIR / 'short_mem.yaml'
-    VALID_ARGS_FILE = RESOURCES_DIR / 'valid_data.csv'
+    VALID_DATA_FILE = RESOURCES_DIR / 'valid_data.csv'
+    LANG_TO_SCRIPT_FILE = RESOURCES_DIR / 'lang_to_script.yaml'
 
 
 @dataclass(frozen=True)

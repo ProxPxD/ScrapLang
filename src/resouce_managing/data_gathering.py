@@ -4,14 +4,14 @@ from typing import Iterable
 from src.constants import Paths, ResourceConstants
 from src.context import Context
 from src.resouce_managing.short_mem import ShortMemMgr
-from src.resouce_managing.valid_data import ValidArgsMgr
+from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapResult
 
 
 class DataGatherer:
     def __init__(self, context: Context):
         self.context: Context = context
-        self.valid_args_mgr = ValidArgsMgr(Paths.VALID_ARGS_FILE, context=self.context)
+        self.valid_args_mgr = ValidDataMgr(Paths.VALID_DATA_FILE, context=self.context)
         self.shor_mem_mgr = ShortMemMgr(Paths.SHORT_MEM_FILE, length=ResourceConstants.SHORT_MEMORY_LENGTH)
 
     def gather_valid_args(self, scrap_results: Iterable[ScrapResult]) -> None:

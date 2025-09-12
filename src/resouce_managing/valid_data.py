@@ -18,7 +18,6 @@ from ..scrapping.parsing import TranslationKind
 
 
 class ValidArgs(BaseModel):
-
     lang: list[str]
     word: list[str]
 
@@ -33,9 +32,9 @@ class ValidArgs(BaseModel):
 
 
 
-class ValidArgsMgr:
+class ValidDataMgr:
     def __init__(self, conf_file: Path | str, context: Context, n_parsed: int = 32):
-        self._valid_data_mgr = FileMgr(conf_file)
+        self._valid_data_file_mgr = FileMgr(conf_file)
         self.context: Context = context
         self._n_parsed: int = n_parsed
 
@@ -45,12 +44,12 @@ class ValidArgsMgr:
         success_data = DataFrame(_.concat(
             self._gather_for_from_langs(success_results),
             self._gather_for_langs(success_results),
-            self._gather_for_to_langs(success_results)
+            # self._gather_for_to_langs(success_results)   # TODO: probably remove
         ), columns=['lang', 'word'])
         if not success_data.empty:
-            valid_data = pd.concat([self._valid_data_mgr.load(), success_data], ignore_index=True)
+            valid_data = pd.concat([self._valid_data_file_mgr.load(), success_data], ignore_index=True)
             valid_data.sort_values(by=['lang', 'word'], inplace=True)
-            self._valid_data_mgr.save(valid_data.drop_duplicates())
+            self._valid_data_file_mgr.save(valid_data.drop_duplicates())
 
     def _gather_for_langs(self, scrap_results: Iterable[ScrapResult]) -> list[list[str]]:
         return [_.at(sr.args, 'lang', 'word') for sr in scrap_results if sr.args.lang]

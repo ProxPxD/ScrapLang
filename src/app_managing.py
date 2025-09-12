@@ -7,22 +7,21 @@ import pydash as _
 from more_itertools.more import seekable
 from requests import Session
 
-from .cli import CLI
-from .constants import Paths, ResourceConstants
-from .context import Context
-from .logutils import setup_logging
-from .printer import Printer
-from .resouce_managing import ConfMgr
-from .resouce_managing.data_gathering import DataGatherer
-from .resouce_managing.short_mem import ShortMemMgr
-from .scrapping import ScrapMgr
-from .scrapping.web_pathing import get_default_headers
+from src.cli import CLI
+from src.constants import Paths
+from src.context import Context
+from src.logutils import setup_logging
+from src.printer import Printer
+from src.resouce_managing import ConfMgr
+from src.resouce_managing.data_gathering import DataGatherer
+from src.scrapping import ScrapMgr
+from src.scrapping.web_pathing import get_default_headers
 
 
 class AppMgr:
     def __init__(self):
         setup_logging()
-        self.conf_mgr = ConfMgr(Paths.CONF_FILE)
+        self.conf_mgr = ConfMgr(Paths.CONF_FILE)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.data_gatherer = DataGatherer(context=self.context)
         self.cli = CLI(self.conf_mgr.conf, context=self.context, data_gatherer=self.data_gatherer)
