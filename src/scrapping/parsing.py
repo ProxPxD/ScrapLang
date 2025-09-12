@@ -52,7 +52,7 @@ def with_ensured_tag(func):
         return func(self, ensure_tag(tag))
     return wrapper
 
-# TODO: Rename from "Parser" to HtmlParser?
+
 class Parser(ABC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -161,12 +161,6 @@ class InflectionParser(Parser):
             return ParsingException('No inflection table!')
         tables = [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
         return tables[0]
-
-
-@dataclass(frozen=True)
-class ParsedDefinition:
-    text: str
-    examples: list[str]
 
 
 @dataclass(frozen=True)
