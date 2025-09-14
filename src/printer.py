@@ -1,5 +1,6 @@
 import os
 import traceback
+from dataclasses import asdict
 from textwrap import wrap
 from typing import Any, Callable
 
@@ -10,6 +11,7 @@ from termcolor import colored
 
 from .context import Context
 from .scrapping import Outcome, OutcomeKinds
+from .scrapping.wiktio.parsing import WiktioResult, Meaning
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -37,7 +39,7 @@ class Printer:
             case OutcomeKinds.NEWLINE:
                 self.printer('')
             case OutcomeKinds.WIKTIO:  # TODO: WIKTIO, redo
-                self.printer(list(outcome.results))
+                self._print_wktio(outcome)
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
@@ -83,6 +85,24 @@ class Printer:
                 return traceback.format_exc()
             else:
                 return exception.args[0]
+
+    def _print_wktio(self, outcome: Outcome) -> bool:
+        wiktio: WiktioResult = outcome.results
+        for kind, value in asdict(wiktio).items():
+            match value:
+                case list():
+                    self.printer(f'{kind}: ')
+                    for elem in value:
+                        self.printer(f'  - {elem}')
+                case dict() | Meaning():
+                    self.printer(f'{kind}: ')
+                    for key, val in value.items():
+                        self.printer(f'  - {key}: {val}')
+                case _:
+                    self.printer(f'{kind}: {value}')
+        ...
+
+    # def _print_wiktio_pos(self, ):
 
     def print_definitions(self, outcome: Outcome) -> None:
         if outcome.is_fail():
