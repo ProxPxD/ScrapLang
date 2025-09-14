@@ -1,4 +1,3 @@
-import dataclasses
 from dataclasses import dataclass, field, replace
 from typing import Iterable
 
