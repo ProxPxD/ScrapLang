@@ -106,6 +106,8 @@ class CLI:
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         # Translation Modes
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
+        translation_mode_group.add_argument('--wiktio', '-wiktio', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--pronunciation', '-p', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--indirect', choices=['on', 'off', 'fail', 'conf'], help='Turn on indirect translation')

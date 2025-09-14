@@ -24,7 +24,7 @@ class Printer:
     def print_result(self, outcome: Outcome) -> None:
         match outcome.kind:
             case OutcomeKinds.SEPERATOR:
-                self.print_separator(outcome.content)
+                self.print_separator(outcome.results)
             case OutcomeKinds.INFLECTION:
                 self.print_inflection(outcome)
             case OutcomeKinds.MAIN_TRANSLATION:
@@ -36,6 +36,8 @@ class Printer:
                 self.print_definitions(outcome)
             case OutcomeKinds.NEWLINE:
                 self.printer('')
+            case OutcomeKinds.WIKTIO:  # TODO: WIKTIO, redo
+                self.printer(list(outcome.results))
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
@@ -45,9 +47,9 @@ class Printer:
 
     def print_inflection(self, outcome: Outcome) -> None:
         if outcome.is_fail():
-            self.printer(outcome.content.args[0])
+            self.printer(outcome.results.args[0])
             return
-        table: DataFrame = outcome.content
+        table: DataFrame = outcome.results
         table_str = tabulate(table, tablefmt='rounded_outline')
         if (olen := len(table_str.split('\n', 1)[0])) > 128:
             table = table.map(lambda x: "\n".join(wrap(x, width=16)))
@@ -71,12 +73,12 @@ class Printer:
 
     def create_translation_row(self, outcome: Outcome) -> str:
         match outcome.is_success():
-            case True: return ', '.join(trans_result.formatted for trans_result in outcome.content)
+            case True: return ', '.join(trans_result.formatted for trans_result in outcome.results)
             case False: return self._get_stacktrace_or_exception(outcome)
             case _: raise ValueError('Unexpected branching')
 
     def _get_stacktrace_or_exception(self, outcome: Outcome) -> str:
-            exception = outcome.content
+            exception = outcome.results
             if self.context.debug:
                 return traceback.format_exc()
             else:
@@ -84,12 +86,12 @@ class Printer:
 
     def print_definitions(self, outcome: Outcome) -> None:
         if outcome.is_fail():
-            self.printer(outcome.content.args[0])
+            self.printer(outcome.results.args[0])
             return
         pot_newline = ('', '\n')[bool(self.context.to_langs)]
         ending = f' of "{outcome.args.word}"' if not self.context.to_langs else ''
         self.printer(f'{pot_newline}Definitions{ending}:')
-        for defi in outcome.content:
+        for defi in outcome.results:
             defi_row = f'- {defi.text}{":" if defi.examples else ""}'
             self.printer(defi_row)
             for example in defi.examples:

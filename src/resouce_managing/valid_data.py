@@ -57,4 +57,4 @@ class ValidDataMgr:
         return [_.at(sr.args, 'from_lang', 'word') for sr in scrap_results if sr.args.from_lang]
 
     def _gather_for_to_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
-        return [[lang, trans.word] for sr in scrap_results for lang, trans in zip(repeat(sr.args.to_lang), sr.content) if sr.args.to_lang and trans.kind == TransResultKind.MAIN]
+        return [[lang, trans.word] for sr in scrap_results for lang, trans in zip(repeat(sr.args.to_lang), sr.results) if sr.args.to_lang and trans.kind == TransResultKind.MAIN]
