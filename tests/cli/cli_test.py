@@ -9,7 +9,7 @@ from tests.TCG import TCG
 
 @dataclass
 class TC:
-    descr: st
+    descr: str
     input: str
     e_parsed: dict
     conf: dict
