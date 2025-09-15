@@ -6,8 +6,8 @@ from dataclasses import asdict
 
 from box import Box
 
-from src.glosbe.constants import Paths
-from src.glosbe.context import Context
+from src.constants import Paths
+from src.context import Context
 
 
 def adjust_dict_like_obj(obj: Context | Namespace) -> Box:

@@ -1,6 +1,7 @@
 import os
+import traceback
 from textwrap import wrap
-from typing import Iterable, Any, Callable
+from typing import Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas.core.interchange.dataframe_protocol import DataFrame
@@ -8,7 +9,7 @@ from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
-from .scrap_managing import ScrapResult, ScrapKinds
+from .scrapping import ScrapResult, ResultKinds
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -20,24 +21,23 @@ class Printer:
         self.printer = printer
         self.context = context
 
-    def print_all_results(self, scrap_results: Iterable[ScrapResult]) -> None:
-        success = True
-        for result in scrap_results:
-            match result.kind:
-                case ScrapKinds.SEPERATOR:
-                    self.print_separator(result.content)
-                case ScrapKinds.INFLECTION:
-                    self.print_inflection(result)
-                case ScrapKinds.MAIN_TRANSLATION:
-                    success = self.print_translation(result)
-                case ScrapKinds.INDIRECT_TRANSLATION:
-                    if self.context.indirect == 'on' or self.context.indirect == 'fail' and not success:
-                        self.print_translation(result)
-                case ScrapKinds.DEFINITION:
-                    self.print_definitions(result)
-                case ScrapKinds.NEWLINE:
-                    self.printer('')
-                case _: raise ValueError(f'Unknown scrap kind: {result.kind}')
+    def print_result(self, result: ScrapResult) -> None:
+        match result.kind:
+            case ResultKinds.SEPERATOR:
+                self.print_separator(result.content)
+            case ResultKinds.INFLECTION:
+                self.print_inflection(result)
+            case ResultKinds.MAIN_TRANSLATION:
+                self.print_translation(result)
+            case ResultKinds.INDIRECT_TRANSLATION:
+                if result.is_success():
+                    self.print_translation(result)
+            case ResultKinds.DEFINITION:
+                self.print_definitions(result)
+            case ResultKinds.NEWLINE:
+                self.printer('')
+            case _:
+                raise ValueError(f'Unknown scrap kind: {result.kind}')
 
     def print_separator(self, group: str) -> None:
         sep = '-'  # TODO: add as configurable together with numbers
@@ -65,16 +65,22 @@ class Printer:
 
     def get_translation_prefix(self, result: ScrapResult) -> str:
         match result.kind:
-            case ScrapKinds.MAIN_TRANSLATION: return f'{result.args[self.context.member_prefix_arg]}: '
-            case ScrapKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
+            case ResultKinds.MAIN_TRANSLATION: return f'{result.args[self.context.member_prefix_arg]}: '
+            case ResultKinds.INDIRECT_TRANSLATION: return ' '*4 if result.is_success() else ''
             case _: raise ValueError(f'Unexpected transltation type: {result.kind}')
 
-    @classmethod
-    def create_translation_row(cls, result: ScrapResult) -> str:
+    def create_translation_row(self, result: ScrapResult) -> str:
         match result.is_success():
             case True: return ', '.join(translation.formatted for translation in result.content)
-            case False: return result.content.args[0]
-            case _: return ...
+            case False: return self._get_stacktrace_or_exception(result)
+            case _: raise ValueError('Unexpected branching')
+
+    def _get_stacktrace_or_exception(self, result: ScrapResult) -> str:
+            exception = result.content
+            if self.context.debug:
+                return traceback.format_exc()
+            else:
+                return exception.args[0]
 
     def print_definitions(self, result: ScrapResult) -> None:
         if result.is_fail():

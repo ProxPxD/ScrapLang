@@ -1,10 +1,10 @@
 from parameterized import parameterized
 from smartcli.nodes.smartList import SmartList
 
-from src.glosbe.configurating import Configurations
-from src.glosbe.constants import FLAGS as F
-from src.glosbe.scrapping import TranslationTypes
-from src.glosbe.printer import Printer
+from src.resouce_managing.configuration import Configurations
+from src.constants import FLAGS as F
+from src.scrapping import TranslationTypes
+from src.printer import Printer
 from tests.abstractCliTest import AbstractCliTest
 
 

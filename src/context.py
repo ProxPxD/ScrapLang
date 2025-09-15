@@ -14,18 +14,24 @@ class Context:
     from_lang: str = None
     to_langs: tuple[str] = tuple()
 
+    mapped: list[bool] = tuple()
+
     inflection: bool = False
     definition: bool = False
 
     debug: bool = False
+    test: bool = False
+    assume: str = 'word'  # TODO: remove
     groupby: str = 'lang'
+    infervia: str = 'last'
+    gather_data: str = 'conf'
     indirect: bool = 'fail'
     member_sep: bool = False
     colour: str = ''
 
     loop: bool = False
 
-    _to_filter: ClassVar[tuple[str]] = ('assume', 'args', 'reverse', 'mappings')
+    _to_filter: ClassVar[tuple[str]] = ('args', 'reverse', 'mappings')
     _map: ClassVar[dict[str, tuple[str]]] = dict(color='colour')
 
     def __init__(self, *confs: dict):

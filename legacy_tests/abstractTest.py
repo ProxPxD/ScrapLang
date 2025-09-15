@@ -2,8 +2,8 @@ import abc
 import unittest
 from typing import Iterable
 
-from src.glosbe.configurating import Configurations
-from src.glosbe.constants import FLAGS as F
+from src.resouce_managing.configuration import Configurations
+from src.constants import FLAGS as F
 
 
 class AbstractTest(unittest.TestCase, abc.ABC):

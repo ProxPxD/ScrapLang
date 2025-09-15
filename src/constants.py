@@ -4,12 +4,18 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Paths:
-    WORKING_DIR = Path(__file__).parent.parent.parent
+    WORKING_DIR = Path(__file__).parent.parent
     RESOURCES_DIR = WORKING_DIR / 'resources'
     LOG_DIR = RESOURCES_DIR / 'logs.log'
-    CONF_FILE: str = RESOURCES_DIR / 'conf.yaml'
+    CONF_FILE = RESOURCES_DIR / 'conf.yaml'
+    SHORT_MEM_FILE = RESOURCES_DIR / 'short_mem.yaml'
+    VALID_DATA_FILE = RESOURCES_DIR / 'valid_data.csv'
+    LANG_TO_SCRIPT_FILE = RESOURCES_DIR / 'lang_to_script.yaml'
 
 
+@dataclass(frozen=True)
+class ResourceConstants:
+    SHORT_MEMORY_LENGTH = 20
 
 
 supported_languages = {

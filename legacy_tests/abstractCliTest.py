@@ -1,6 +1,6 @@
 import abc
 
-from src.glosbe.cli import TranslatorCli
+from src.cli import TranslatorCli
 from tests.abstractTest import AbstractTest
 
 

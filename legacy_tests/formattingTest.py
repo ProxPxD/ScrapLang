@@ -2,7 +2,7 @@ from typing import Any, Type
 
 from parameterized import parameterized
 
-from src.glosbe.translatingPrinting.formatting import GenderFormatter, PartOfSpeechFormatter, AbstractFormatter
+from src.glosbe import GenderFormatter, PartOfSpeechFormatter, AbstractFormatter
 from tests.abstractCliTest import AbstractCliTest
 
 
