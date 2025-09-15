@@ -7,6 +7,7 @@ from src.constants import Paths
 from src.lang_detecting.mbidict import mbidict, MBidict
 from src.resouce_managing.file import FileMgr
 import pydash as _
+from GlotScript import sp
 
 
 class ScriptPreprocessor:
@@ -22,8 +23,14 @@ class ScriptPreprocessor:
         ...
 
     def create_lang_script_correspondence(self) -> MBidict:
-        # lang_script = mbidict()
-        lang_script_df = self.data.groupby('lang')['word'].apply(_.flow(''.join, set, sorted, list)).reset_index()
-        # lang_script_df.style.set_properties(**{'text-align': 'left'})
+        lang_script = mbidict('langs', 'scripts')
+        lang_script_df = self.data.groupby('lang')['word'].apply(_.flow(''.join, set, sorted, ''.join)).reset_index()
+        for row in lang_script_df.itertuples():
+            pred = sp(row.word)
+            lang_script.left[row.lang].extend(scripts := list(pred[-1]['details'].keys()))
 
-        print(lang_script_df[~lang_script_df['lang'].isin(['ja', 'zh'])].to_string(justify='left'))
+        print(lang_script)
+        print(lang_script.pretty_string)
+
+        langs_to_filter = []# ['ja', 'zh']
+        print(lang_script_df[~lang_script_df['lang'].isin(langs_to_filter)].to_string(justify='left'))
