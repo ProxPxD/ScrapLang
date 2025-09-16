@@ -15,7 +15,9 @@ from ...constants import supported_languages
 
 @dataclass(frozen=True)
 class SurfacingEquivalents:
-    pos: Sequence[str] = field(default=('Pos', 'Noun', 'Verb', 'Adjective', 'Adverb'))
+    # TODO: test: the(Article), be-(Prefix) -ísimo(Suffix) -o-(Interfix), auf(Preposition), chyba(Particle), "ge- -t"(Circumfix), się(Pronoun), "'s"(Determiner), y(Conjunction)
+    # auf is a lot of types
+    pos: Sequence[str] = field(default=('Pos', 'Noun', 'Verb', 'Adjective', 'Adverb', 'Particle', 'Article', 'Pronoun', 'Suffix', 'Prefix', 'Interfix', 'Infix', 'Preposition', 'Circumfix', 'Interjection', 'Determiner', 'Conjunction'))
     pronunciation: Sequence[str] = field(default=('Pronunciation',))
     etymology: Sequence[str] = field(default=('Etymology',))
     inflection: Sequence[str] = field(default=('Inflection', 'Declension', 'Conjugation'))
@@ -84,6 +86,7 @@ class WiktioParser(Parser):
     @classmethod
     @with_ensured_tag
     def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
+        # TODO: Norwegian "land" -- "imperative of lande" is not parsed
         try:
             section_dict = cls._get_target_section_batches(tag, lang)
         except StopIteration:
@@ -141,7 +144,9 @@ class WiktioParser(Parser):
 
     @classmethod
     def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
-        content = next((tag for tag in section if tag.name == 'p' and tag.text))  # Cognate is later
+        content = next((tag for tag in section if tag.name == 'p' and tag.text), [])  # Cognate is later
+        if not content:
+            return dc
         etymology_chain = _.filter_(content.text.strip().split(', from'))
         if not etymology_chain:
             return dc
