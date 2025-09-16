@@ -3,12 +3,14 @@ from collections import defaultdict
 from dataclasses import dataclass, asdict, field, replace
 from typing import Iterator, Iterable, Callable, Sequence
 
+from bs4 import PageElement
 from bs4.element import Tag
-from more_itertools import split_before, last
+from more_itertools import split_before, last, split_at
 from pandas import DataFrame
 
 from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
 from ...constants import supported_languages
+import pydash as _
 
 
 @dataclass(frozen=True)
@@ -26,7 +28,7 @@ class Pronunciation:
 @dataclass(frozen=True)
 class Meaning:
     pos: str = None
-    relfeats: list[str]  = field(default_factory=list)# Related Features
+    relfeats: dict[str, str]  = field(default_factory=list)# Related Features
     pronunciations: list[Pronunciation] = None
     etymology: list[str] = None
     inflection: DataFrame = None
@@ -42,25 +44,25 @@ class WiktioParser(Parser):
                           for code, descr in supported_languages.items()}
 
     @classmethod
-    def _split_for_class(cls, tags: Iterable[Tag], tag_class: str) -> Iterator[list[Tag]]:
-        return split_before(tags, lambda t: tag_class in t.attrs.get('class', []))  # == ['mw-heading', f'mw-heading{n}'])
+    def _split_for_class(cls, tags: Iterable[PageElement], tag_class: str) -> Iterator[list[PageElement]]:
+        return split_before(tags, lambda t: isinstance(t, Tag) and tag_class in t.attrs.get('class', []))  # == ['mw-heading', f'mw-heading{n}'])
 
     @classmethod
-    def _filter_for_firsts(cls, batches: Iterable[list[Tag]], cond: Callable[[str], bool]) -> Iterator[list[Tag]]:
+    def _filter_for_firsts(cls, batches: Iterable[list[PageElement]], cond: Callable[[str], bool]) -> Iterator[list[PageElement]]:
         return filter(lambda batch: cond(batch[0].text.removesuffix('[edit]')), batches)
 
     @classmethod
-    def _get_target_section_batches(cls, tag: Tag, lang: str) -> dict[str, list[Tag]]:
+    def _get_target_section_batches(cls, tag: Tag, lang: str) -> dict[str, list[PageElement]]:
         main = tag.select_one('main.mw-body div.mw-body-content div.mw-content-ltr.mw-parser-output')
-        clean_main = cls.filter_to_tags(main.children)
-        lang_batches = list(cls._split_for_class(clean_main, 'mw-heading2'))
+        # clean_main = cls.filter_to_tags(main.children)
+        lang_batches = cls._split_for_class(main, 'mw-heading2')
         target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki[lang].__eq__))
-        section_batches = list(cls._split_for_class(target_lang_batch, 'mw-heading'))
+        section_batches = cls._split_for_class(target_lang_batch, 'mw-heading')
         section_dict = cls._dictify_section_batches(section_batches)
         return section_dict
 
     @classmethod
-    def _dictify_section_batches(cls, section_batches: Iterable[list[Tag]]) -> dict[str, list[Tag]]:
+    def _dictify_section_batches(cls, section_batches: Iterable[list[PageElement]]) -> dict[str, list[PageElement]]:
         section_dict, counter = {}, defaultdict(int)
         for batch in section_batches:
             fullname = batch[0].text.removesuffix('[edit]')
@@ -89,31 +91,34 @@ class WiktioParser(Parser):
         return result
 
     @classmethod
-    def _filter_section_dict(cls, section_dict: dict[str, list[Tag]], surf_forms: list[str]):
+    def _filter_section_dict(cls, section_dict: dict[str, list[PageElement]], surf_forms: list[str]) -> dict[str, list[PageElement]]:
         return {key: section for key, section in section_dict.items() if any(key.startswith(form) for form in surf_forms)}
 
     @classmethod
-    def _parse_section(cls, kind: str, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
+    def _parse_section(cls, kind: str, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         parse = getattr(cls, f'_parse_{kind}')
         return parse(dc, section)
 
     @classmethod
-    def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
-        word_tag, *relfeat_tags =  list(cls.filter_to_tags(next((tag for tag in section if tag.name == 'p')).next.children))
-        dc = replace(dc, pos=section[0].text.removesuffix('[edit]'), relfeats=[tag.text for tag in relfeat_tags])
+    def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
+        word_tag, s, outer_tag, lb, *brackets_tags, rb =  list(next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children)
+        outer_feature_dict = {outer_tag.attrs['class'][0]: outer_tag.text}
+        feature_bunch = split_at(brackets_tags, lambda t: t.text.strip() == ',')
+        brackets_feature_dict = {name.text: ''.join((e.text for e in val_bunch)).strip() for name, *val_bunch in feature_bunch}
+        dc = replace(dc, pos=section[0].text.removesuffix('[edit]'), relfeats={**outer_feature_dict, **brackets_feature_dict})
         return dc
 
     @classmethod
-    def _parse_pronunciation(cls, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
+    def _parse_pronunciation(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         pronunciation_tags = [(tag.select_one('span.ib-content.qualifier-content'), tag.select('span.IPA:not(ul ul span.IPA)'))
-                          for tag in section[1] if 'IPA' in tag.text]
+                          for tag in cls.filter_to_tags(section[1]) if 'IPA' in tag.text]
         pronunciations = [Pronunciation(name=name_tag.text if name_tag else None, ipas=[ipa_tag.text for ipa_tag in ipa_tags])
                           for name_tag, ipa_tags in pronunciation_tags]
         dc = replace(dc, pronunciations=pronunciations)
         return dc
 
     @classmethod
-    def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
+    def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         content = next((tag for tag in section if tag.name == 'p'))  # Cognate  is next
         etymology_chain = content.text.strip().split(', from')
         fromables = etymology_chain[1:]
@@ -125,5 +130,5 @@ class WiktioParser(Parser):
         return dc
 
     @classmethod
-    def _parse_inflection(cls, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
+    def _parse_inflection(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         return dc  # TODO: implemet
