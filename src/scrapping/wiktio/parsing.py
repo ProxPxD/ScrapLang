@@ -11,7 +11,7 @@ from pandas import DataFrame
 from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
 from ...constants import supported_languages
 import pydash as _
-
+from pydash import chain as c
 
 @dataclass(frozen=True)
 class SurfacingEquivalents:
@@ -28,7 +28,7 @@ class Pronunciation:
 @dataclass(frozen=True)
 class Meaning:
     pos: str = None
-    relfeats: dict[str, str]  = field(default_factory=list)# Related Features
+    rel_data: dict[str, str]  = field(default_factory=list)
     pronunciations: list[Pronunciation] = None
     etymology: list[str] = None
     inflection: DataFrame = None
@@ -101,11 +101,13 @@ class WiktioParser(Parser):
 
     @classmethod
     def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
-        word_tag, s, outer_tag, lb, *brackets_tags, rb =  list(next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children)
-        outer_feature_dict = {outer_tag.attrs['class'][0]: outer_tag.text}
-        feature_bunch = split_at(brackets_tags, lambda t: t.text.strip() == ',')
+        rel_data_tags = next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children
+        outer, brackets = list(split_at(rel_data_tags, lambda t: t.text.strip() == '('))
+        outer_tags = filter(lambda t: isinstance(t, Tag) and t.name == 'span', outer)
+        outer_feature_dict = {tag.attrs['class'][0]: tag.text for tag in outer_tags}
+        feature_bunch = split_at(brackets[:-1], lambda t: t.text.strip() == ',')
         brackets_feature_dict = {name.text: ''.join((e.text for e in val_bunch)).strip() for name, *val_bunch in feature_bunch}
-        dc = replace(dc, pos=section[0].text.removesuffix('[edit]'), relfeats={**outer_feature_dict, **brackets_feature_dict})
+        dc = replace(dc, pos=section[0].text.removesuffix('[edit]'), rel_data={**outer_feature_dict, **brackets_feature_dict})
         return dc
 
     @classmethod
