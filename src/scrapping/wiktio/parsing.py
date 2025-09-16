@@ -3,6 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass, asdict, field, replace
 from typing import Iterator, Iterable, Callable, Sequence
 
+import pydash as _
 from bs4 import PageElement
 from bs4.element import Tag
 from more_itertools import split_before, last, split_at
@@ -10,8 +11,7 @@ from pandas import DataFrame
 
 from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
 from ...constants import supported_languages
-import pydash as _
-from pydash import chain as c
+
 
 @dataclass(frozen=True)
 class SurfacingEquivalents:
