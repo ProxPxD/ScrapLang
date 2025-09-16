@@ -15,7 +15,7 @@ from pydash import chain as c
 
 @dataclass(frozen=True)
 class SurfacingEquivalents:
-    pos: Sequence[str] = field(default=('Noun', 'Verb', 'Adjective', 'Adverb'))
+    pos: Sequence[str] = field(default=('Pos', 'Noun', 'Verb', 'Adjective', 'Adverb'))
     pronunciation: Sequence[str] = field(default=('Pronunciation',))
     etymology: Sequence[str] = field(default=('Etymology',))
     inflection: Sequence[str] = field(default=('Declension', 'Conjugation'))
@@ -27,17 +27,19 @@ class Pronunciation:
 
 @dataclass(frozen=True)
 class Meaning:
-    pos: str = None
-    rel_data: dict[str, str]  = field(default_factory=list)
-    pronunciations: list[Pronunciation] = None
-    etymology: list[str] = None
+    rel_data: dict[str, str]  = field(default_factory=dict)
+    pronunciations: list[Pronunciation] = field(default_factory=list)
+    etymology: list[str] = field(default_factory=list)
     inflection: DataFrame = None
 
 @dataclass(frozen=True)
 class WiktioResult(Result, Meaning):
     word: str = None
-    meanings: list[Meaning] = field(default_factory=list)
+    structed_meanings: list[list[Meaning]] = field(default_factory=list)
 
+    @property
+    def meanings(self) -> list[Meaning]:
+        return _.flatten(self.structed_meanings)
 
 class WiktioParser(Parser):
     code_to_wiki: dict = {code: ''.join(last(split_before(descr.split(',')[0], str.isupper, maxsplit=1)))
@@ -64,11 +66,21 @@ class WiktioParser(Parser):
     @classmethod
     def _dictify_section_batches(cls, section_batches: Iterable[list[PageElement]]) -> dict[str, list[PageElement]]:
         section_dict, counter = {}, defaultdict(int)
+        n_sections = 0
         for batch in section_batches:
+
             fullname = batch[0].text.removesuffix('[edit]')
             name = re.search(f'(\D+)(\d+)?', fullname).group(1).strip()
+            name, is_crucial = next(((surf, True) for surf, equivs in asdict(SurfacingEquivalents()).items() if name in equivs), (name, False))
+            if not is_crucial:
+                continue
+            name = name.capitalize()
+            if name == 'Etymology':
+                n_sections += 1
+                counter = defaultdict(int)
             counter[name] += 1
-            section_dict[f'{name} {counter[name]}'] = batch
+            num = f"{n_sections}.{counter[name]}"
+            section_dict[f'{name} {num}'] = batch
         return section_dict
 
     @classmethod
@@ -83,11 +95,15 @@ class WiktioParser(Parser):
                 case 1:
                     section = list(surfs.values())[0]
                     result = cls._parse_section(kind, result, section)
-                case _ as n:
-                    while len(result.meanings) < n:
-                        result.meanings.append(Meaning())
-                    for (i, meaning), section in zip(enumerate(result.meanings), surfs.values()):
-                        result.meanings[i] = cls._parse_section(kind, meaning, section)
+                case _:
+                    for surf, section in surfs.items():
+                        digits = surf.rsplit(' ', 1)[-1]
+                        major, minor = [int(n) for n in re.search(r'(\d+).(\d+)', digits).groups()]
+                        if len(meanings := result.structed_meanings) < major:
+                            meanings.append([])
+                        if len(submeanings := meanings[major-1]) < minor:
+                            submeanings.append(replace(submeanings[minor-2]) if submeanings else Meaning())
+                        submeanings[minor-1] = cls._parse_section(kind, submeanings[minor-1], section)
         return result
 
     @classmethod
@@ -107,13 +123,13 @@ class WiktioParser(Parser):
         outer_feature_dict = {tag.attrs['class'][0]: tag.text for tag in outer_tags}
         feature_bunch = split_at(brackets[:-1], lambda t: t.text.strip() == ',')
         brackets_feature_dict = {name.text: ''.join((e.text for e in val_bunch)).strip() for name, *val_bunch in feature_bunch}
-        dc = replace(dc, pos=section[0].text.removesuffix('[edit]'), rel_data={**outer_feature_dict, **brackets_feature_dict})
+        dc = replace(dc, rel_data={**{'PoS': section[0].text.removesuffix('[edit]')}, **outer_feature_dict, **brackets_feature_dict})
         return dc
 
     @classmethod
     def _parse_pronunciation(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         pronunciation_tags = [(tag.select_one('span.ib-content.qualifier-content'), tag.select('span.IPA:not(ul ul span.IPA)'))
-                          for tag in cls.filter_to_tags(section[1]) if 'IPA' in tag.text]
+                          for tag in list(cls.filter_to_tags(section))[1] if 'IPA' in tag.text]
         pronunciations = [Pronunciation(name=name_tag.text if name_tag else None, ipas=[ipa_tag.text for ipa_tag in ipa_tags])
                           for name_tag, ipa_tags in pronunciation_tags]
         dc = replace(dc, pronunciations=pronunciations)
@@ -121,7 +137,7 @@ class WiktioParser(Parser):
 
     @classmethod
     def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
-        content = next((tag for tag in section if tag.name == 'p'))  # Cognate  is next
+        content = next((tag for tag in section if tag.name == 'p' and tag.text))  # Cognate is later
         etymology_chain = content.text.strip().split(', from')
         fromables = etymology_chain[1:]
         if first_from := etymology_chain[0].startswith('From'):
