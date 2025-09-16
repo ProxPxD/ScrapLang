@@ -1,17 +1,17 @@
 import os
 import traceback
-from dataclasses import asdict
-from textwrap import wrap
+from textwrap import wrap, indent
 from typing import Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas.core.interchange.dataframe_protocol import DataFrame
+from pydash import chain as c
 from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
 from .scrapping import Outcome, OutcomeKinds
-from .scrapping.wiktio.parsing import WiktioResult, Meaning
+from .scrapping.wiktio.parsing import WiktioResult, Meaning, Pronunciation
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -88,21 +88,39 @@ class Printer:
 
     def _print_wktio(self, outcome: Outcome) -> bool:
         wiktio: WiktioResult = outcome.results
-        for kind, value in asdict(wiktio).items():
-            match value:
-                case list():
-                    self.printer(f'{kind}: ')
-                    for elem in value:
-                        self.printer(f'  - {elem}')
-                case dict() | Meaning():
-                    self.printer(f'{kind}: ')
-                    for key, val in value.items():
-                        self.printer(f'  - {key}: {val}')
-                case _:
-                    self.printer(f'{kind}: {value}')
-        ...
+        wiktio_str = f'{wiktio.word} {self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
+        self.printer(wiktio_str)
 
-    # def _print_wiktio_pos(self, ):
+    def _create_wiktio_meaning(self, meaning: Meaning) -> str:
+        head, foot = [], []
+        p_head, p_foot = self._create_wiktio_pronunciations(meaning.pronunciations)
+        head.append(p_head)
+        foot.append(p_foot)
+        head.append(self._create_wiktio_rel_data(meaning.rel_data))
+        foot.append(self._create_wiktio_etymology(meaning.etymology))
+        return " ".join(filter(bool, head)) + '\n' + '\n'.join(filter(bool, foot))
+
+    def _create_wiktio_pronunciations(self, pronunciations: list[Pronunciation]) -> tuple[str, str]:
+        names = c(pronunciations).map(c().get('name')).filter().value()
+        match bool(names):
+            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(ipa for ipa in p.ipas)}' for p in pronunciations)
+            case False: return c(pronunciations).map(c().get('ipas')).flatten().join(', ').value(), ''
+            case _: raise Exception('Impossible')
+
+    def _create_wiktio_rel_data(self, rel_data: dict[str, str]) -> str:
+        if rel_data:
+            return '[' + ', '.join(f'{key}: {val}' if val else key for key, val in rel_data.items()) + ']'
+        return ''
+
+    def _create_wiktio_etymology(self, etymology: list[str]) -> str:
+        if etymology:
+            return 'etymology:\n' + ''.join(f'  - {etymology}' for etymology in etymology)
+        return ''
+
+    def _create_wiktio_meanings(self, meanings: list[Meaning]) -> str:
+        if meanings:
+            return 'meanings:\n' + '\n'.join(indent(f'* {self._create_wiktio_meaning(meaning)}', ' '*4) for meaning in meanings)
+        return ''
 
     def print_definitions(self, outcome: Outcome) -> None:
         if outcome.is_fail():
