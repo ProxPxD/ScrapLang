@@ -84,7 +84,10 @@ class WiktioParser(Parser):
     @classmethod
     @with_ensured_tag
     def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
-        section_dict = cls._get_target_section_batches(tag, lang)
+        try:
+            section_dict = cls._get_target_section_batches(tag, lang)
+        except StopIteration:
+            return ParsingException(f'Lang "{lang}" does not have word')
         result = cls._major_parse(section_dict)
         result = cls._postprocess(result)
         return result

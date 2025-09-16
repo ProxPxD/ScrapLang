@@ -43,6 +43,9 @@ class Printer:
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
+    def color(self, to_color, color: str = None) -> str:
+        return colored(to_color, color or self.context.colour) if self.context.colour != 'no' else to_color
+
     def print_separator(self, group: str) -> None:
         sep = '-'  # TODO: add as configurable together with numbers
         self.printer(f'{sep*8} {group} {sep*25}')
@@ -63,7 +66,7 @@ class Printer:
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
         translation_row = self.create_translation_row(outcome)
-        coloured_prefix = colored(prefix, self.context.colour) if self.context.colour != 'no' else prefix
+        coloured_prefix = self.color(prefix)
         self.printer(f'{coloured_prefix}{translation_row}')
         return outcome.is_success()
 
@@ -87,9 +90,13 @@ class Printer:
                 return exception.args[0]
 
     def _print_wktio(self, outcome: Outcome) -> bool:
+        if outcome.is_fail():
+            self.printer(outcome.results.args[0])
+            return False
         wiktio: WiktioResult = outcome.results
-        wiktio_str = f'{wiktio.word} {self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
+        wiktio_str = f'{self.color(wiktio.word)}: {self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
         self.printer(wiktio_str)
+        return True
 
     def _create_wiktio_meaning(self, meaning: Meaning) -> str:
         head, foot = [], []
@@ -103,7 +110,7 @@ class Printer:
     def _create_wiktio_pronunciations(self, pronunciations: list[Pronunciation]) -> tuple[str, str]:
         names = c(pronunciations).map(c().get('name')).filter().value()
         match bool(names):
-            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(ipa for ipa in p.ipas)}' for p in pronunciations)
+            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, "red") for ipa in p.ipas)}' for p in pronunciations)
             case False: return c(pronunciations).map(c().get('ipas')).flatten().join(', ').value(), ''
             case _: raise Exception('Impossible')
 
@@ -114,12 +121,12 @@ class Printer:
 
     def _create_wiktio_etymology(self, etymology: list[str]) -> str:
         if etymology:
-            return 'etymology:\n' + ''.join(f'  - {etymology}' for etymology in etymology)
+            return 'etymology:\n' + '\n'.join(f'  - {etymology}' for etymology in etymology)
         return ''
 
     def _create_wiktio_meanings(self, meanings: list[Meaning]) -> str:
         if meanings:
-            return 'meanings:\n' + '\n'.join(indent(f'* {self._create_wiktio_meaning(meaning)}', ' '*4) for meaning in meanings)
+            return indent('meanings:\n' + '\n'.join(indent(f'* {self._create_wiktio_meaning(meaning)}', ' '*4) for meaning in meanings), ' '*2)
         return ''
 
     def print_definitions(self, outcome: Outcome) -> None:
