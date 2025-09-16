@@ -1,9 +1,12 @@
+import shlex
 from dataclasses import dataclass, field, replace
 from typing import Iterable
 
 from box import Box
 
-from src.glosbe.cli import CLI
+from src.app_managing import AppMgr
+from src.cli import CLI
+from src.context import Context
 from tests.TCG import TCG
 
 
@@ -12,7 +15,7 @@ class TC:
     descr: str
     input: str
     e_parsed: dict
-    conf: dict
+    conf: Box
 
     replacement: dict = field(default_factory=dict)
 
@@ -28,11 +31,11 @@ class CliTCG(TCG):
                 from_lang='en',
                 to_langs=['pl']
             ),
-            conf=(base_conf := {
+            conf=(base_conf := Box({
                 'assume': 'lang',
                 'langs': ['en', 'pl', 'de'],
                 'mappings': {},
-            })
+            }))
         ),
         TC(
             descr='single trans with conf word last',
@@ -149,8 +152,9 @@ class CliTCG(TCG):
 
 @CliTCG.parametrize('tc')
 def test(tc: TC):
-    cli = CLI(Box(tc.conf))
-    a_parsed = cli.parse(tc.input)
+    context = Context(tc.conf)
+    cli = CLI(tc.conf, context)
+    a_parsed = cli.parse(shlex.split(tc.input))
     for key, e_val in tc.e_parsed.items():
         a_val = getattr(a_parsed, key)
         assert a_val == e_val
