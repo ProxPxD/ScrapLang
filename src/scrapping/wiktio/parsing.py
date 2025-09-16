@@ -18,7 +18,7 @@ class SurfacingEquivalents:
     pos: Sequence[str] = field(default=('Pos', 'Noun', 'Verb', 'Adjective', 'Adverb'))
     pronunciation: Sequence[str] = field(default=('Pronunciation',))
     etymology: Sequence[str] = field(default=('Etymology',))
-    inflection: Sequence[str] = field(default=('Declension', 'Conjugation'))
+    inflection: Sequence[str] = field(default=('Inflection', 'Declension', 'Conjugation'))
 
 @dataclass(frozen=True)
 class Pronunciation:
@@ -56,7 +56,6 @@ class WiktioParser(Parser):
     @classmethod
     def _get_target_section_batches(cls, tag: Tag, lang: str) -> dict[str, list[PageElement]]:
         main = tag.select_one('main.mw-body div.mw-body-content div.mw-content-ltr.mw-parser-output')
-        # clean_main = cls.filter_to_tags(main.children)
         lang_batches = cls._split_for_class(main, 'mw-heading2')
         target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki[lang].__eq__))
         section_batches = cls._split_for_class(target_lang_batch, 'mw-heading')
@@ -68,7 +67,6 @@ class WiktioParser(Parser):
         section_dict, counter = {}, defaultdict(int)
         n_sections = 0
         for batch in section_batches:
-
             fullname = batch[0].text.removesuffix('[edit]')
             name = re.search(f'(\D+)(\d+)?', fullname).group(1).strip()
             name, is_crucial = next(((surf, True) for surf, equivs in asdict(SurfacingEquivalents()).items() if name in equivs), (name, False))
@@ -79,7 +77,7 @@ class WiktioParser(Parser):
                 n_sections += 1
                 counter = defaultdict(int)
             counter[name] += 1
-            num = f"{n_sections}.{counter[name]}"
+            num = f"{max(n_sections, 1)}.{counter[name]}"
             section_dict[f'{name} {num}'] = batch
         return section_dict
 
@@ -88,22 +86,16 @@ class WiktioParser(Parser):
     def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
         section_dict = cls._get_target_section_batches(tag, lang)
         result = WiktioResult()
-        for kind, surf_forms in asdict(SurfacingEquivalents()).items():
-            surfs = cls._filter_section_dict(section_dict, surf_forms)
-            match len(surfs):
-                case 0: continue
-                case 1:
-                    section = list(surfs.values())[0]
-                    result = cls._parse_section(kind, result, section)
-                case _:
-                    for surf, section in surfs.items():
-                        digits = surf.rsplit(' ', 1)[-1]
-                        major, minor = [int(n) for n in re.search(r'(\d+).(\d+)', digits).groups()]
-                        if len(meanings := result.structed_meanings) < major:
-                            meanings.append([])
-                        if len(submeanings := meanings[major-1]) < minor:
-                            submeanings.append(replace(submeanings[minor-2]) if submeanings else Meaning())
-                        submeanings[minor-1] = cls._parse_section(kind, submeanings[minor-1], section)
+        under_surf_mapping = asdict(SurfacingEquivalents())
+        for surf, section in section_dict.items():
+            under = next((under for under, surfs in under_surf_mapping.items() if any(surf.startswith(s) for s in surfs)))
+            digits = surf.rsplit(' ', 1)[-1]
+            major, minor = [int(n) for n in re.search(r'(\d+).(\d+)', digits).groups()]
+            if len(meanings := result.structed_meanings) < major:
+                meanings.append([])
+            if len(submeanings := meanings[major-1]) < minor:
+                submeanings.append(replace(submeanings[minor-2]) if submeanings else Meaning())
+            submeanings[minor-1] = cls._parse_section(under, submeanings[minor-1], section)
         return result
 
     @classmethod
@@ -117,8 +109,8 @@ class WiktioParser(Parser):
 
     @classmethod
     def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
-        rel_data_tags = next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children
-        outer, brackets = list(split_at(rel_data_tags, lambda t: t.text.strip() == '('))
+        rel_data_tags = list(next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children)
+        outer, brackets = list(split_at(rel_data_tags, lambda t: t.text.strip() == '(', maxsplit=1))
         outer_tags = filter(lambda t: isinstance(t, Tag) and t.name == 'span', outer)
         outer_feature_dict = {tag.attrs['class'][0]: tag.text for tag in outer_tags}
         feature_bunch = split_at(brackets[:-1], lambda t: t.text.strip() == ',')
@@ -138,13 +130,15 @@ class WiktioParser(Parser):
     @classmethod
     def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         content = next((tag for tag in section if tag.name == 'p' and tag.text))  # Cognate is later
-        etymology_chain = content.text.strip().split(', from')
+        etymology_chain = _.filter_(content.text.strip().split(', from'))
+        if not etymology_chain:
+            return dc
         fromables = etymology_chain[1:]
         if first_from := etymology_chain[0].startswith('From'):
             fromables.insert(0, etymology_chain[0].removeprefix('From'))
         frommeds = [f'from {fromable}'.removesuffix('.') for fromable in fromables]
         etymology_chain = frommeds if first_from else [etymology_chain[0]] + frommeds
-        dc = replace(dc, etymology=etymology_chain)
+        dc = replace(dc, etymology=[sent.replace('  ', ' ') for sent in etymology_chain])
         return dc
 
     @classmethod
