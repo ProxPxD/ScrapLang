@@ -1,15 +1,13 @@
 from dataclasses import dataclass, asdict, field, replace
-from typing import Iterator, Iterable, Callable, Any, Sequence
+from typing import Iterator, Iterable, Callable, Sequence
 
 from bs4.element import Tag
-from more_itertools import split_before
+from more_itertools import split_before, last
 from pandas import DataFrame
 
 from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
 from ...constants import supported_languages
-import pydash as _
-import re
-from pydash import chain as c
+
 
 @dataclass(frozen=True)
 class SurfacingEquivalents:
@@ -38,7 +36,8 @@ class WiktioResult(Result, Meaning):
 
 
 class WiktioParser(Parser):
-    code_to_wiki: dict = {code: descr.split(' ')[:2][-1] for code, descr in supported_languages.items()}
+    code_to_wiki: dict = {code: ''.join(last(split_before(descr.split(',')[0], str.isupper, maxsplit=1)))
+                          for code, descr in supported_languages.items()}
 
     @classmethod
     def _split_for_class(cls, tags: Iterable[Tag], tag_class: str) -> Iterator[list[Tag]]:
@@ -52,7 +51,7 @@ class WiktioParser(Parser):
     def _get_target_section_batches(cls, tag: Tag, lang: str) -> dict[str, list[Tag]]:
         main = tag.select_one('main.mw-body div.mw-body-content div.mw-content-ltr.mw-parser-output')
         clean_main = cls.filter_to_tags(main.children)
-        lang_batches = cls._split_for_class(clean_main, 'mw-heading2')
+        lang_batches = list(cls._split_for_class(clean_main, 'mw-heading2'))
         target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki[lang].__eq__))
         section_batches = cls._split_for_class(target_lang_batch, 'mw-heading')
         section_dict = {batch[0].text.removesuffix('[edit]'): batch for batch in section_batches}
@@ -96,7 +95,7 @@ class WiktioParser(Parser):
     def _parse_pronunciation(cls, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
         pronunciation_tags = [(tag.select_one('span.ib-content.qualifier-content'), tag.select('span.IPA:not(ul ul span.IPA)'))
                           for tag in section[1] if 'IPA' in tag.text]
-        pronunciations = [Pronunciation(name=name_tag.text, ipas=[ipa_tag.text for ipa_tag in ipa_tags])
+        pronunciations = [Pronunciation(name=name_tag.text if name_tag else None, ipas=[ipa_tag.text for ipa_tag in ipa_tags])
                           for name_tag, ipa_tags in pronunciation_tags]
         dc = replace(dc, pronunciations=pronunciations)
         return dc
@@ -112,3 +111,7 @@ class WiktioParser(Parser):
         etymology_chain = frommeds if first_from else [etymology_chain[0]] + frommeds
         dc = replace(dc, etymology=etymology_chain)
         return dc
+
+    @classmethod
+    def _parse_inflection(cls, dc: Meaning | WiktioResult, section: list[Tag]) -> Meaning | WiktioResult:
+        return dc  # TODO: implemet
