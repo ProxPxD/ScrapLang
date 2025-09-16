@@ -85,17 +85,24 @@ class WiktioParser(Parser):
     @with_ensured_tag
     def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
         section_dict = cls._get_target_section_batches(tag, lang)
+        result = cls._major_parse(section_dict)
+        result = cls._postprocess(result)
+        return result
+
+    @classmethod
+    def _major_parse(cls, section_dict: dict[str, list[PageElement]]) -> WiktioResult:
         result = WiktioResult()
         under_surf_mapping = asdict(SurfacingEquivalents())
         for surf, section in section_dict.items():
-            under = next((under for under, surfs in under_surf_mapping.items() if any(surf.startswith(s) for s in surfs)))
+            under = next(
+                (under for under, surfs in under_surf_mapping.items() if any(surf.startswith(s) for s in surfs)))
             digits = surf.rsplit(' ', 1)[-1]
             major, minor = [int(n) for n in re.search(r'(\d+).(\d+)', digits).groups()]
             if len(meanings := result.structed_meanings) < major:
                 meanings.append([])
-            if len(submeanings := meanings[major-1]) < minor:
-                submeanings.append(replace(submeanings[minor-2]) if submeanings else Meaning())
-            submeanings[minor-1] = cls._parse_section(under, submeanings[minor-1], section)
+            if len(submeanings := meanings[major - 1]) < minor:
+                submeanings.append(replace(submeanings[minor - 2]) if submeanings else Meaning())
+            submeanings[minor - 1] = cls._parse_section(under, submeanings[minor - 1], section)
         return result
 
     @classmethod
@@ -144,3 +151,8 @@ class WiktioParser(Parser):
     @classmethod
     def _parse_inflection(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         return dc  # TODO: implemet
+
+    @classmethod
+    def post_process(cls, result: WiktioResult) -> WiktioResult:
+        # TODO: Reformat based on the same fields within the structed_meanings
+        return result
