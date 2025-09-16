@@ -117,10 +117,12 @@ class WiktioParser(Parser):
     @classmethod
     def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         rel_data_tags = list(next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children)
-        outer, brackets = list(split_at(rel_data_tags, lambda t: t.text.strip() == '(', maxsplit=1))
+        outer, *brackets = list(split_at(rel_data_tags, lambda t: t.text.strip() == '(', maxsplit=1))
+        if brackets:
+            brackets = brackets[0]
         outer_tags = filter(lambda t: isinstance(t, Tag) and t.name == 'span', outer)
         outer_feature_dict = {tag.attrs['class'][0]: tag.text for tag in outer_tags}
-        feature_bunch = split_at(brackets[:-1], lambda t: t.text.strip() == ',')
+        feature_bunch = list(split_at(brackets[:-1], lambda t: t.text.strip() == ',') if brackets[:-1] else [])
         brackets_feature_dict = {name.text: ''.join((e.text for e in val_bunch)).strip() for name, *val_bunch in feature_bunch}
         dc = replace(dc, rel_data={**{'PoS': section[0].text.removesuffix('[edit]')}, **outer_feature_dict, **brackets_feature_dict})
         return dc
@@ -153,6 +155,6 @@ class WiktioParser(Parser):
         return dc  # TODO: implemet
 
     @classmethod
-    def post_process(cls, result: WiktioResult) -> WiktioResult:
+    def _postprocess(cls, result: WiktioResult) -> WiktioResult:
         # TODO: Reformat based on the same fields within the structed_meanings
         return result
