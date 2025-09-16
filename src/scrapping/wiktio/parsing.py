@@ -1,3 +1,5 @@
+import re
+from collections import defaultdict
 from dataclasses import dataclass, asdict, field, replace
 from typing import Iterator, Iterable, Callable, Sequence
 
@@ -53,8 +55,18 @@ class WiktioParser(Parser):
         clean_main = cls.filter_to_tags(main.children)
         lang_batches = list(cls._split_for_class(clean_main, 'mw-heading2'))
         target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki[lang].__eq__))
-        section_batches = cls._split_for_class(target_lang_batch, 'mw-heading')
-        section_dict = {batch[0].text.removesuffix('[edit]'): batch for batch in section_batches}
+        section_batches = list(cls._split_for_class(target_lang_batch, 'mw-heading'))
+        section_dict = cls._dictify_section_batches(section_batches)
+        return section_dict
+
+    @classmethod
+    def _dictify_section_batches(cls, section_batches: Iterable[list[Tag]]) -> dict[str, list[Tag]]:
+        section_dict, counter = {}, defaultdict(int)
+        for batch in section_batches:
+            fullname = batch[0].text.removesuffix('[edit]')
+            name = re.search(f'(\D+)(\d+)?', fullname).group(1).strip()
+            counter[name] += 1
+            section_dict[f'{name} {counter[name]}'] = batch
         return section_dict
 
     @classmethod
