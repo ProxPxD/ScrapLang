@@ -117,7 +117,7 @@ class WiktioParser(Parser):
     @classmethod
     def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
         rel_data_tags = list(next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children)
-        outer, *brackets = list(split_at(rel_data_tags, lambda t: t.text.strip() == '(', maxsplit=1))
+        outer, *brackets = list(split_before(rel_data_tags, lambda t: t.name == 'i', maxsplit=1))
         if brackets:
             brackets = brackets[0]
         outer_tags = filter(lambda t: isinstance(t, Tag) and t.name == 'span', outer)
