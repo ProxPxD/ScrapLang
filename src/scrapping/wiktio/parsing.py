@@ -87,6 +87,7 @@ class WiktioParser(Parser):
     @with_ensured_tag
     def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
         # TODO: Norwegian "land" -- "imperative of lande" is not parsed
+        # TODOØ Norwegian pronunciation of "på"
         try:
             section_dict = cls._get_target_section_batches(tag, lang)
         except StopIteration:
