@@ -38,7 +38,7 @@ class ValidDataMgr:
         self._n_parsed: int = n_parsed
 
     def gather(self, scrap_results: Iterable[Outcome]) -> None:
-        is_gatherable = lambda sr: sr.is_success() and sr.kind in MainOutcomeKinds.all() and sr.kind != MainOutcomeKinds.INDIRECT_TRANSLATION
+        is_gatherable = lambda sr: sr.is_success() and sr.kind in MainOutcomeKinds.all() and sr.kind not in [MainOutcomeKinds.INDIRECT_TRANSLATION, MainOutcomeKinds.WIKTIO]
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if is_gatherable(sr)]
         success_data = DataFrame(_.concat(
             self._gather_for_from_langs(success_results),
