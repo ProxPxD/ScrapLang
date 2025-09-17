@@ -36,7 +36,8 @@ class Outstemming:
     @classmethod
     def outstem(cls, complex_word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
-        flat_outstem = c().map(cls.outstem).flatten()
+        # TODO: test: rett[ig[het]] to generate three words
+        flat_outstem = c().map(cls.outstem).flatten().uniq()
         logging.debug(f'outstemming "{complex_word}"')
         if matched := cls.parenthesised(complex_word):
             logging.debug(f'matched "{matched}"')
