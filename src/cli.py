@@ -37,8 +37,8 @@ class Outstemming:
     def outstem(cls, complex_word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
         # TODO: test: rett[ig[het]] to generate three words
-        # TODO: [teil^nehmen]: [teil, nehmen, teilnehmen]  # TODO: test and how to handle both "|" and "^" together? Prohibit?
-        # TODO: [teil^nehmen|haben]  # I think: yeah
+        # TODO: [lønn^{s:wtf}opp^gjør]: [lønn, opp, gjør, lønnsoppgjør]  # TODO: test and how to handle both "|" and "^" together? Prohibit?
+        # TODO: [teil^nehmen|haben]  # I think: yeah, forbid
         # TODO: Why not just [teil][nehmen]?
         # Cause I want to take them literally out and not in the compound. 3 together would break, but maybe other operator would be better
         flat_outstem = c().map(cls.outstem).flatten().filter().uniq()
@@ -46,10 +46,13 @@ class Outstemming:
         if matched := cls.parenthesised(complex_word):
             logging.debug(f'matched "{matched}"')
             pattern = matched.group(0)
-            alts = re.split('[/|]', pattern[1:-1])
+            alts = re.split('[/|^]', pattern[1:-1])
             if len(alts) == 1:
                 alts = ['', alts[0]]
-            outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
+            if '^' in pattern:  # TODO: Redesign
+                outstemmeds = [*alts, complex_word.replace(pattern, pattern[1:-1].replace('^', ''))]
+            else:
+                outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
             return flat_outstem(outstemmeds)
         if matched := cls.slashed(complex_word):
             logging.debug(f'matched "{matched}"')
