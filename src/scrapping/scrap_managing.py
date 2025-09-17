@@ -75,7 +75,7 @@ class ScrapMgr:
                 yield (main := self.scrap_main_translations(from_lang, to_lang, word))
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
-            if context.wiktio:
+            if context.wiktio and last:
                 yield self.scrap_wiktio(from_lang, word, context)
             if context.definition:
                 yield self.scrap_definitions(from_lang, word)
