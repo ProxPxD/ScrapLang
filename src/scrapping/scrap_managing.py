@@ -69,14 +69,14 @@ class ScrapMgr:
             if is_first_in_group := first and not last:
                 group = to_lang if context.groupby == 'lang' else word
                 yield Outcome(OutcomeKinds.SEPERATOR, results=group)
-            if context.wiktio:
-                yield self.scrap_wiktio(from_lang, word, context)
             if (is_first_to_inflect := context.inflection) and first:  # Should take into account grouping method?
                 yield self.scrap_inflections(from_lang, word)
             if is_translating := to_lang:
                 yield (main := self.scrap_main_translations(from_lang, to_lang, word))
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
+            if context.wiktio:
+                yield self.scrap_wiktio(from_lang, word, context)
             if context.definition:
                 yield self.scrap_definitions(from_lang, word)
             if context.member_sep and context.definition:
