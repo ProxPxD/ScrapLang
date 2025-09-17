@@ -105,7 +105,7 @@ class CLI:
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         # Translation Modes
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
-        translation_mode_group.add_argument('--wiktio', '-wiktio', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--wiktio', '-wiktio', '-ped', '-pd', '-o', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--pronunciation', '-p', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
@@ -225,7 +225,7 @@ class CLI:
         if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
-        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio):
+        if not parsed.to_langs and (parsed.definition or parsed.inflection):
             n_needed -= 1
         to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
         if not parsed.from_lang and to_fill:
