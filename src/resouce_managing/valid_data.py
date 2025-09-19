@@ -1,24 +1,27 @@
 from dataclasses import replace
-from itertools import repeat
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import pandas as pd
 import pydash as _
 from box import Box
 from pandas import DataFrame
+from pandas.core.groupby import DataFrameGroupBy
 from pydantic import BaseModel, field_validator
+from pydash import chain as c
 
 from .file import FileMgr
 from ..constants import supported_languages
 from ..context import Context
-from ..scrapping import Outcome, MainOutcomeKinds
-from ..scrapping.glosbe.parsing import TransResultKind
+from ..scrapping import Outcome, MainOutcomeKinds as Kinds
+from ..scrapping.wiktio.parsing import WiktioResult
 
 
 class ValidArgs(BaseModel):
     lang: list[str]
     word: list[str]
+    pronunciations: list[str]
+    features: list[str]
 
     @field_validator('lang', mode='before')
     @classmethod
@@ -30,7 +33,6 @@ class ValidArgs(BaseModel):
         return langs
 
 
-
 class ValidDataMgr:
     def __init__(self, conf_file: Path | str, context: Context, n_parsed: int = 32):
         self._valid_data_file_mgr = FileMgr(conf_file)
@@ -38,23 +40,50 @@ class ValidDataMgr:
         self._n_parsed: int = n_parsed
 
     def gather(self, scrap_results: Iterable[Outcome]) -> None:
-        is_gatherable = lambda sr: sr.is_success() and sr.kind in MainOutcomeKinds.all() and sr.kind not in [MainOutcomeKinds.INDIRECT_TRANSLATION, MainOutcomeKinds.WIKTIO]
-        success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if is_gatherable(sr)]
+        success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
         success_data = DataFrame(_.concat(
-            self._gather_for_from_langs(success_results),
-            self._gather_for_langs(success_results),
-            # self._gather_for_to_langs(success_results)   # TODO: probably remove
-        ), columns=['lang', 'word'])
+            self._gather_for_from_main_translations(success_results),
+            self._gather_for_lang_data(success_results),
+            list(self._gather_for_wiktio(success_results)),
+        ), columns=['lang', 'word', 'pronunciations', 'features'])
         if not success_data.empty:
             valid_data = pd.concat([self._valid_data_file_mgr.load(), success_data], ignore_index=True)
+            valid_data = self._merge_matching(valid_data)
             valid_data.sort_values(by=['lang', 'word'], inplace=True)
             self._valid_data_file_mgr.save(valid_data.drop_duplicates())
 
-    def _gather_for_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
-        return [_.at(sr.args, 'lang', 'word') for sr in scrap_results if sr.args.lang]
+    @classmethod
+    def _gather_for_lang_data(cls, scrap_results: Iterable[Outcome]) -> list[Sequence[str]]:
+        kinds = (Kinds.DEFINITION, Kinds.INFLECTION)
+        args = ('lang', 'word')
+        return c(scrap_results).filter(c().get('kind').apply(kinds.__contains__)).map(c().get('args').at(*args)).value()
 
-    def _gather_for_from_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
-        return [_.at(sr.args, 'from_lang', 'word') for sr in scrap_results if sr.args.from_lang]
+    @classmethod
+    def _gather_for_from_main_translations(cls, scrap_results: Iterable[Outcome]) -> list[Sequence[str]]:
+        kinds = (Kinds.MAIN_TRANSLATION, )
+        args = ('from_lang', 'word')
+        return c(scrap_results).filter(c().get('kind').apply(kinds.__contains__)).map(c().get('args').at(*args)).value()
 
-    def _gather_for_to_langs(self, scrap_results: Iterable[Outcome]) -> list[list[str]]:
-        return [[lang, trans.word] for sr in scrap_results for lang, trans in zip(repeat(sr.args.to_lang), sr.results) if sr.args.to_lang and trans.kind == TransResultKind.MAIN]
+    @classmethod
+    def _gather_for_wiktio(cls, scrap_results: Iterable[Outcome]) -> Iterable[Sequence[str]]:
+        kinds = (Kinds.WIKTIO, )
+        wiki_outcomes: list[Outcome] = c(scrap_results).filter(c().get('kind').apply(kinds.__contains__)).value()
+        for outcome in wiki_outcomes:
+            wiki: WiktioResult = outcome.results
+            lang, word = _.at(outcome.args, 'lang', 'word')
+            for meaning in wiki.meanings:
+                yield lang, word, c(meaning.pronunciations or wiki.pronunciations).map(c().get('ipa')).join(':').value(), str(meaning.rel_data)
+
+
+    @classmethod
+    def _merge_matching(cls, df: DataFrame) -> DataFrame:
+        def process_group(group: DataFrameGroupBy):
+            other_columns = group.columns[2:]
+            notna = group[other_columns].notna()
+
+            if notna.any(axis=1).any():
+                return group[notna.all(axis=1).values]
+            else:
+                return group
+
+        return df.groupby(['lang', 'word']).apply(process_group).reset_index(drop=True)
