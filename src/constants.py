@@ -73,7 +73,7 @@ supported_languages = {
     'nap': "neapolitański Neapolitan-Calabrese, Neapolitan",
     'nl': "niderlandzki Dutch, Hollands, Nederlands",
     'de': "niemiecki German, Tedesco, Deutsch",
-    'nb': "norweski Norwegian, norsk bokmål",
+    'nb': "norweski Norwegian Bokmål, norsk bokmål",
     'hy': "ormiański Armenian, Armjanski Yazyk, Ena, Ermeni Dili, Ermenice, Somkhuri, հայերեն",
     'fa': "perski Persian, Farsi, فارسی",
     'pl': "polski Polish, Polnisch, Polski",

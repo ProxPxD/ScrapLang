@@ -6,8 +6,9 @@ from box import Box
 from pandas import DataFrame
 from requests import Session
 
-from .parsing import ParsedTranslation
-from .scrapping import Scrapper
+from .core.parsing import Result
+from .glosbe.scrap_adapting import GlosbeScrapAdapter
+from .wiktio.scrap_adapting import WiktioScrapAdapter
 from ..context import Context
 
 
@@ -15,7 +16,6 @@ from ..context import Context
 
 @dataclass(frozen=True)
 class BaseDC:
-
     @classmethod
     @cache
     def all(cls) -> Iterable[str]:
@@ -23,36 +23,37 @@ class BaseDC:
 
 
 @dataclass(frozen=True)
-class MainScrapKinds(BaseDC):
-    INFLECTION: str = 'inflection'
+class MainOutcomeKinds(BaseDC):
     MAIN_TRANSLATION: str = 'translation'
     INDIRECT_TRANSLATION: str = 'indirect'
+    INFLECTION: str = 'inflection'
     DEFINITION: str = 'definition'
+    WIKTIO: str = 'wiktio'
 
 
 @dataclass(frozen=True)
-class HelperScrapKinds(BaseDC):
+class HelperOutcomeKinds(BaseDC):
     SEPERATOR: str = 'seperator'
     NEWLINE: str = '\n'
 
 
 @dataclass(frozen=True)
-class ResultKinds(MainScrapKinds, HelperScrapKinds):
+class OutcomeKinds(MainOutcomeKinds, HelperOutcomeKinds):
     ...
 
 
 @dataclass
-class ScrapResult:
-    kind: str | ResultKinds  # Incorect syntax, but there's no right solution
+class Outcome:
+    kind: str | OutcomeKinds  # Incorect syntax, but there's no right solution
     args: Box = field(default_factory=Box)  # TODO: think of restricting
-    content: DataFrame | Iterable[ParsedTranslation] = None
+    results: DataFrame | Iterable[Result] = None
 
     def __post_init__(self):
-        if self.kind not in ResultKinds().all():
-            raise ValueError(f'Result kind is {self.kind}, but expected one of {ResultKinds.all()}')
+        if self.kind not in OutcomeKinds().all():
+            raise ValueError(f'Outcome kind is {self.kind}, but expected one of {OutcomeKinds.all()}')
 
     def is_fail(self) -> bool:
-        return isinstance(self.content, Exception)
+        return isinstance(self.results, Exception)
 
     def is_success(self) -> bool:
         return not self.is_fail()
@@ -60,48 +61,58 @@ class ScrapResult:
 
 class ScrapMgr:
     def __init__(self, session: Session):
-        self.scrapper = Scrapper(session)
+        self.glosbe_scrapper = GlosbeScrapAdapter(session)
+        self.wiktio_scrapper = WiktioScrapAdapter(session)
 
-    def scrap(self, context: Context) -> Iterable[ScrapResult]:
+    def scrap(self, context: Context) -> Iterable[Outcome]:
         for first, last, (from_lang, to_lang, word) in context.grouped_url_triples:
             if is_first_in_group := first and not last:
                 group = to_lang if context.groupby == 'lang' else word
-                yield ScrapResult(ResultKinds.SEPERATOR, content=group)
-            if is_first_to_inflect := context.inflection and first:  # Should take into account grouping method?
+                yield Outcome(OutcomeKinds.SEPERATOR, results=group)
+            if (is_first_to_inflect := context.inflection) and first:  # Should take into account grouping method?
                 yield self.scrap_inflections(from_lang, word)
             if is_translating := to_lang:
                 yield (main := self.scrap_main_translations(from_lang, to_lang, word))
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
+            if context.wiktio and last:
+                yield self.scrap_wiktio(from_lang, word, context)
             if context.definition:
                 yield self.scrap_definitions(from_lang, word)
             if context.member_sep and context.definition:
-                yield ScrapResult(ResultKinds.NEWLINE)
+                yield Outcome(OutcomeKinds.NEWLINE)
 
-    def scrap_inflections(self, lang: str, word: str) -> ScrapResult:
-        return ScrapResult(  # TODO: handle double tables?
-            kind=ResultKinds.INFLECTION,
+    def scrap_inflections(self, lang: str, word: str) -> Outcome:
+        return Outcome(  # TODO: handle double tables?
+            kind=OutcomeKinds.INFLECTION,
             args=(args := Box(lang=lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_inflection(**args)
+            results=self.glosbe_scrapper.scrap_inflection(**args)
         )
 
-    def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
-        return ScrapResult(
-            kind=ResultKinds.MAIN_TRANSLATION,
+    def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.MAIN_TRANSLATION,
             args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_main_translations(**args)
+            results=self.glosbe_scrapper.scrap_main_translations(**args)
         )
 
-    def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> ScrapResult:
-        return ScrapResult(
-            kind=ResultKinds.INDIRECT_TRANSLATION,
+    def scrap_indirect_translations(self, from_lang: str, to_lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.INDIRECT_TRANSLATION,
             args=(args := Box(from_lang=from_lang, to_lang=to_lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_indirect_translations(**args)
+            results=self.glosbe_scrapper.scrap_indirect_translations(**args)
         )
 
-    def scrap_definitions(self, lang: str, word: str) -> ScrapResult:
-        return ScrapResult(
-            kind=ResultKinds.DEFINITION,
+    def scrap_definitions(self, lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.DEFINITION,
             args=(args := Box(lang=lang, word=word, frozen_box=True)),
-            content=self.scrapper.scrap_definition(**args)
+            results=self.glosbe_scrapper.scrap_definition(**args)
+        )
+
+    def scrap_wiktio(self, lang: str, word: str, context: Context = None) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.WIKTIO,
+            args=(args := Box(lang=lang, word=word, context=context, frozen_box=True)),
+            results=self.wiktio_scrapper.scrap_wiktio_info(**args)
         )

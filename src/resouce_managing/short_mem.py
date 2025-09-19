@@ -42,7 +42,7 @@ class ShortMemMgr:
         if parsed.inflection:
             self.mem.inflection.append(MemRecord(langs=[parsed.from_lang]))
         if parsed.definition:
-            self.mem.defnition.append(MemRecord(langs=[parsed.from_lang]))
+            self.mem.definition.append(MemRecord(langs=[parsed.from_lang]))
         self._trim_records()
         self._file_mgr.save(self.mem.model_dump())
 

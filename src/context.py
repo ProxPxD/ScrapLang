@@ -16,8 +16,10 @@ class Context:
 
     mapped: list[bool] = tuple()
 
+    wiktio: bool = False
     inflection: bool = False
     definition: bool = False
+    pronunciation: bool = False
 
     debug: bool = False
     test: bool = False

@@ -15,7 +15,7 @@ from src.printer import Printer
 from src.resouce_managing import ConfMgr
 from src.resouce_managing.data_gathering import DataGatherer
 from src.scrapping import ScrapMgr
-from src.scrapping.web_pathing import get_default_headers
+from src.scrapping.core.web_building import get_default_headers
 
 
 class AppMgr:
