@@ -41,15 +41,18 @@ class ValidDataMgr:
 
     def gather(self, scrap_results: Iterable[Outcome]) -> None:
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
-        success_data = DataFrame(_.concat(
-            self._gather_for_from_main_translations(success_results),
-            self._gather_for_lang_data(success_results),
+        cols = ['lang', 'word', 'pronunciations', 'features']
+        success_data = DataFrame(c().concat(
+                self._gather_for_from_main_translations(success_results),
+                self._gather_for_lang_data(success_results),
             list(self._gather_for_wiktio(success_results)),
-        ), columns=['lang', 'word', 'pronunciations', 'features'])
+            ).map(c().concat([None]*len(cols)).take(len(cols)))([]),
+            columns=cols,
+        )
         if not success_data.empty:
             valid_data = pd.concat([self._valid_data_file_mgr.load(), success_data], ignore_index=True)
             valid_data = self._merge_matching(valid_data)
-            valid_data.sort_values(by=['lang', 'word'], inplace=True)
+            valid_data.sort_values(by=cols[:2], inplace=True)
             self._valid_data_file_mgr.save(valid_data.drop_duplicates())
 
     @classmethod
