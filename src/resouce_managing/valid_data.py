@@ -20,6 +20,7 @@ from ..scrapping.wiktio.parsing import WiktioResult
 class ValidArgs(BaseModel):
     lang: list[str]
     word: list[str]
+    dialect: str
     pronunciations: list[str]
     features: list[str]
 
@@ -41,7 +42,7 @@ class ValidDataMgr:
 
     def gather(self, scrap_results: Iterable[Outcome]) -> None:
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
-        cols = ['lang', 'word', 'pronunciations', 'features']
+        cols = ['lang', 'word', 'dialect', 'pronunciations', 'features']
         success_data = DataFrame(c().concat(
                 self._gather_for_from_main_translations(success_results),
                 self._gather_for_lang_data(success_results),
@@ -50,7 +51,8 @@ class ValidDataMgr:
             columns=cols,
         )
         if not success_data.empty:
-            valid_data = pd.concat([self._valid_data_file_mgr.load(), success_data], ignore_index=True)
+            old = self._valid_data_file_mgr.load()
+            valid_data = pd.concat([old, success_data], ignore_index=True)
             valid_data = self._merge_matching(valid_data)
             valid_data.sort_values(by=cols[:2], inplace=True)
             self._valid_data_file_mgr.save(valid_data.drop_duplicates())
@@ -75,7 +77,10 @@ class ValidDataMgr:
             wiki: WiktioResult = outcome.results
             lang, word = _.at(outcome.args, 'lang', 'word')
             for meaning in wiki.meanings:
-                yield lang, word, c(meaning.pronunciations or wiki.pronunciations).map(c().get('ipa')).join(':').value(), str(meaning.rel_data)
+                for pronunciation in meaning.pronunciations or wiki.pronunciations:
+                    dialect = pronunciation.name
+                    ipas = ':'.join(pronunciation.ipas)
+                    yield lang, word, dialect, ipas, str(meaning.rel_data)
 
 
     @classmethod
@@ -83,7 +88,6 @@ class ValidDataMgr:
         def process_group(group: DataFrameGroupBy):
             other_columns = group.columns[2:]
             notna = group[other_columns].notna()
-
             if notna.any(axis=1).any():
                 return group[notna.all(axis=1).values]
             else:
