@@ -77,4 +77,4 @@ class AppMgr:
 
         self.conf_mgr.update_lang_order(self.context.all_langs)
         scrap_results.seek(0)
-        self.data_gatherer.gather_valid_args(scrap_results)
+        self.data_gatherer.gather_valid_data(scrap_results)
