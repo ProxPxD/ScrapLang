@@ -110,7 +110,7 @@ class Printer:
     def _create_wiktio_pronunciations(self, pronunciations: list[Pronunciation]) -> tuple[str, str]:
         names = c(pronunciations).map(c().get('name')).filter().value()
         match bool(names):
-            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, "red") for ipa in p.ipas)}' for p in pronunciations)
+            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, "light_red") for ipa in p.ipas)}' for p in pronunciations)
             case False: return c(pronunciations).map(c().get('ipas')).flatten().join(', ').value(), ''
             case _: raise Exception('Impossible')
 
