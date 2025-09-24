@@ -1,5 +1,6 @@
 import os
 import traceback
+from dataclasses import dataclass
 from textwrap import wrap, indent
 from typing import Any, Callable
 
@@ -14,6 +15,12 @@ from .scrapping import Outcome, OutcomeKinds
 from .scrapping.wiktio.parsing import WiktioResult, Meaning, Pronunciation
 
 os.environ['TZ'] = 'Europe/Warsaw'
+
+@dataclass(frozen=True)
+class Colors:  # TODO: enable conf setting and a flag for no color
+    BLUE = (0, 170, 249)
+    ORANGE = (247, 126, 0)
+
 
 
 class Printer:
@@ -43,7 +50,7 @@ class Printer:
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
-    def color(self, to_color, color: str = None) -> str:
+    def color(self, to_color, color: str | tuple[int, int, int] = None) -> str:
         return colored(to_color, color or self.context.colour) if self.context.colour != 'no' else to_color
 
     def print_separator(self, group: str) -> None:
@@ -110,7 +117,7 @@ class Printer:
     def _create_wiktio_pronunciations(self, pronunciations: list[Pronunciation]) -> tuple[str, str]:
         names = c(pronunciations).map(c().get('name')).filter().value()
         match bool(names):
-            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, "light_red") for ipa in p.ipas)}' for p in pronunciations)
+            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, Colors.ORANGE) for ipa in p.ipas)}' for p in pronunciations)
             case False: return c(pronunciations).map(c().get('ipas')).flatten().join(', ').value(), ''
             case _: raise Exception('Impossible')
 
