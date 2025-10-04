@@ -19,7 +19,7 @@ os.environ['TZ'] = 'Europe/Warsaw'
 @dataclass(frozen=True)
 class Colors:  # TODO: enable conf setting and a flag for no color
     BLUE = (0, 170, 249)
-    ORANGE = (247, 126, 0)
+    ORANGE = (247, 126, 0) and 'red'
 
 
 
