@@ -40,8 +40,9 @@ class Outstemming:
         # TODO: [lønn^{s:wtf}opp^gjør]: [lønn, opp, gjør, lønnsoppgjør]  # TODO: test and how to handle both "|" and "^" together? Prohibit?
         # TODO: [teil^nehmen|haben]  # I think: yeah, forbid
         # TODO: Why not just [teil][nehmen]?
+        # TODO: test for trimming '[password] [manager]'
         # Cause I want to take them literally out and not in the compound. 3 together would break, but maybe other operator would be better
-        flat_outstem = c().map(cls.outstem).flatten().filter().uniq()
+        flat_outstem = c().map(cls.outstem).flatten().map(c().trim()).filter().uniq()
         logging.debug(f'outstemming "{complex_word}"')
         if matched := cls.parenthesised(complex_word):
             logging.debug(f'matched "{matched}"')
