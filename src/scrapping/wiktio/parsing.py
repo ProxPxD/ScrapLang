@@ -88,6 +88,7 @@ class WiktioParser(Parser):
     def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
         # TODO: Norwegian "land" -- "imperative of lande" is not parsed
         # TODO: Norwegian "like" -- etymology problem
+        # TODO: es "diapositiva" -- etymology is css features as text
         try:
             section_dict = cls._get_target_section_batches(tag, lang)
         except StopIteration:
