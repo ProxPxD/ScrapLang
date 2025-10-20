@@ -171,6 +171,7 @@ class CLI:
         parsed = self._word_outstemming(parsed)
         parsed = self._fill_default_args(parsed)
         parsed = self._reverse_if_needed(parsed)
+        parsed = self._uniq_langs(parsed)
         origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
         parsed.mapped = [o != m for o, m in zip(origs, parsed.words)]
@@ -251,6 +252,10 @@ class CLI:
             logging.debug(f'Reversing: {old_from, old_first_to} => {old_first_to, old_from}')
             parsed.from_lang = old_first_to
             parsed.to_langs[0] = old_from
+        return parsed
+
+    def _uniq_langs(self, parsed: Namespace) -> Namespace:
+        parsed.to_langs = _.uniq(parsed.to_langs)
         return parsed
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
