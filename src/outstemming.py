@@ -1,6 +1,8 @@
+from __future__ import  annotations
+
 import logging
 import re
-from functools import cached_property
+from functools import cached_property, cache
 from itertools import takewhile, product, combinations
 from typing import Sequence, Iterable, Callable, Optional
 
@@ -14,6 +16,22 @@ import pydash as _
 from pydash import chain as c
 from toolz import valfilter
 
+class ReSymbolSet(frozenset):
+    def __new__(cls, elems: str | Sequence[str]) -> ReSymbolSet:
+        return super().__new__(cls, elems)
+
+    @cache
+    def alt(self) -> str:
+        return f'(?:{("|".join(map(re.escape, self)))})'
+
+    @cache
+    def zero_or_more(self) -> str:
+        return f'{self.alt()}*'
+
+    @cache
+    def one_or_more(self) -> str:
+        return f'{self.alt()}+'
+
 
 class Outstemmer:
     def __init__(self,
@@ -23,55 +41,31 @@ class Outstemmer:
             postcutters: str | Sequence[str] = '/',
             precutters: str | Sequence[str] = '\\',
         ):
-        self._left_brackets = set(left_brackets)
-        self._right_brackets = set(right_brackets)
-        self._alt_seps = set(alt_seps)
-        self._postcutters = set(postcutters)
-        self._precutters = set(precutters)
+        self._left_brackets = ReSymbolSet(left_brackets)
+        self._right_brackets = ReSymbolSet(right_brackets)
+        self._alt_seps = ReSymbolSet(alt_seps)
+        self._postcutters = ReSymbolSet(postcutters)
+        self._precutters = ReSymbolSet(precutters)
         for (n1, s1), (n2, s2) in combinations(self._symbol_groups.items(), 2):
-            if s1 ^ s2:
-                raise ValueError(f'Parameters {n1[1:]} and {n2[1:]} should have no common symbol')
+            if common := s1 & s2:
+                raise ValueError(f'Parameters {n1[1:]} and {n2[1:]} should have no common symbol: {common}')
 
     @property
     def _symbol_groups(self) -> dict[str, set[str]]:
         return valfilter(c().is_set(), vars(self))
 
-    @classmethod
-    def _to_regex_group(cls, symbols: Iterable[str]) -> str:
-        return f'(?:{re.escape("|".join(symbols))})'
-
-    @cached_property
-    def _left_brackets_regex(self) -> str:
-        return self._to_regex_group(self._left_brackets)
-
-    @cached_property
-    def _right_brackets_regex(self) -> str:
-        return self._to_regex_group(self._right_brackets)
-
-    @cached_property
-    def _alt_seps_regex(self) -> str:
-        return f'[{self._to_regex_group(self._alt_seps)}]'
-
-    @cached_property
-    def _postcutters_regex(self) -> str:
-        return f'{self._to_regex_group(self._postcutters)}+'
-
-    @cached_property
-    def _precutters_regex(self) -> str:
-        return f'{self._to_regex_group(self._precutters)}+'
-
     @cached_property
     def bracketed(self):
-        lbs, rbs = self._left_brackets_regex, self._right_brackets_regex
+        lbs, rbs = self._left_brackets.alt(), self._right_brackets.alt()
         return re.compile(fr'[{lbs}][^{lbs}{rbs}]+[{rbs}]').search
 
     @cached_property
     def postcutted(self):
-        return re.compile(self._postcutters_regex).search
+        return re.compile(self._postcutters.one_or_more()).search
 
     @cached_property
     def precutted(self):
-        return re.compile(self._precutters_regex).search
+        return re.compile(self._precutters.one_or_more()).search
 
     def outstem(self, word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
@@ -99,7 +93,7 @@ class Outstemmer:
         logging.debug(f'matched bracketed "{matched}"')
 
         pattern = matched.group(0)
-        alts = re.split(self._alt_seps_regex, pattern[1:-1])
+        alts = re.split(self._alt_seps.alt(), pattern[1:-1])
         if len(alts) == 1:
             alts.insert(0, '')
         outstemmeds = [word.replace(pattern, alt) for alt in alts]
