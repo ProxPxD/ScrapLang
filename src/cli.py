@@ -12,83 +12,15 @@ from pydash import chain as c
 
 from .context import Context
 from .logutils import setup_logging
+from .outstemming import Outstemmer
 from .resouce_managing.data_gathering import DataGatherer
-
-
-class Outstemming:
-    """
-    P - Parenthesis
-    L/R - Left/Right
-    E - Escaped
-    """
-
-    LP = '[('
-    RP = '])'
-    P = LP + RP
-    ELP = f'\\{LP}'
-    ERP = f'\\{RP}'
-    EP = ELP + ERP
-
-    parenthesised = re.compile(fr'[{ELP}][^{ELP}{ERP}]+[{ERP}]').search
-    slashed = re.compile('/+').search
-    baskslashed = re.compile('\+').search
-
-    @classmethod
-    def outstem(cls, complex_word: str) -> list:
-        # TODO: anhi test (and improve for "normal[ize[d]]")
-        # TODO: test: rett[ig[het]] to generate three words
-        # TODO: [lønn^{s:wtf}opp^gjør]: [lønn, opp, gjør, lønnsoppgjør]  # TODO: test and how to handle both "|" and "^" together? Prohibit?
-        # TODO: [teil^nehmen|haben]  # I think: yeah, forbid
-        # TODO: Why not just [teil][nehmen]?
-        # TODO: test for trimming '[password] [manager]'
-        # Cause I want to take them literally out and not in the compound. 3 together would break, but maybe other operator would be better
-        flat_outstem = c().map(cls.outstem).flatten().map(c().trim()).filter().uniq()
-        logging.debug(f'outstemming "{complex_word}"')
-        if matched := cls.parenthesised(complex_word):
-            logging.debug(f'matched "{matched}"')
-            pattern = matched.group(0)
-            alts = re.split('[/|^]', pattern[1:-1])
-            if len(alts) == 1:
-                alts = ['', alts[0]]
-            if '^' in pattern:  # TODO: Redesign
-                outstemmeds = [*alts, complex_word.replace(pattern, pattern[1:-1].replace('^', ''))]
-            else:
-                outstemmeds = [complex_word.replace(pattern, alt) for alt in alts]
-            return flat_outstem(outstemmeds)
-        if matched := cls.slashed(complex_word):
-            logging.debug(f'matched "{matched}"')
-            start = matched.start(0) - len(matched.group(0))
-            end = matched.end(0)
-            bare = complex_word[:start]
-            orig = bare + complex_word[start]
-            novel = bare + complex_word[end:]
-            return flat_outstem([orig, novel])
-        # TODO: anhi: make baskslashes
-        return [complex_word]
-
-    @classmethod
-    def count(cls, string: str, chars: str) -> int:
-        return sum(string.count(ch) for ch in chars)
-
-    @classmethod
-    def join_outstem_syntax(cls, words: list[str]) -> list[str]:
-        parenthesis_diff = [cls.count(word, cls.LP) - cls.count(word, cls.RP) for word in words]
-        if _.every(parenthesis_diff, c().eq(0)):
-            return words
-        joined_words, buffer, gauge = [], [], 0
-        for part, diff in zip(words, parenthesis_diff):
-            buffer.append(part)
-            gauge += diff
-            if not gauge:
-                joined_words.append(' '.join(buffer))
-                buffer = []
-        return joined_words
 
 
 class CLI:
     def __init__(self, conf: Box, context: Context, data_gatherer: DataGatherer = None):
         self.conf: Box = conf
         self.context = context  # TODO: convert to using context and data_gatherer instead of conf
+        self.outstemmer = Outstemmer()
         self.data_gatherer = data_gatherer or DataGatherer(context)
 
     @property
@@ -216,8 +148,8 @@ class CLI:
         return word
 
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
-        parsed.words = Outstemming.join_outstem_syntax(parsed.words)
-        parsed.words = [outstemmed for word in parsed.words for outstemmed in Outstemming.outstem(word)]
+        parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
+        parsed.words = [outstemmed for word in parsed.words for outstemmed in self.outstemmer.outstem(word)]
         return parsed
 
     def _fill_default_args(self, parsed: Namespace) -> Namespace:
@@ -255,6 +187,7 @@ class CLI:
         return parsed
 
     def _uniq_langs(self, parsed: Namespace) -> Namespace:
+        # TODO: test
         parsed.to_langs = _.uniq(parsed.to_langs)
         return parsed
 
