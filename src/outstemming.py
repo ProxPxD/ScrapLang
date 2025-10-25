@@ -34,7 +34,7 @@ class Outstemmer:
 
     @property
     def _symbol_groups(self) -> dict[str, set[str]]:
-        return valfilter(c().is_string(), vars(self))
+        return valfilter(c().is_set(), vars(self))
 
     @classmethod
     def _to_regex_group(cls, symbols: Iterable[str]) -> str:
