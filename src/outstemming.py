@@ -1,7 +1,7 @@
 import logging
 import re
 from functools import cached_property
-from itertools import takewhile
+from itertools import takewhile, product, combinations
 from typing import Sequence, Iterable, Callable, Optional
 
 import pydash as _
@@ -12,35 +12,41 @@ import re
 
 import pydash as _
 from pydash import chain as c
+from toolz import valfilter
 
 
 class Outstemmer:
     def __init__(self,
-                 lefts: str | Sequence[str] = '[({',
-                 rights: str | Sequence[str] = '])}',
-                 alt_seps: str | Sequence[str] = ',|',
-                 postcutters: str | Sequence[str] = '/',
-                 precutters: str | Sequence[str] = '\\',
-                 ):
-        self._lefts = set(lefts)
-        self._rights = set(rights)
+            left_brackets: str | Sequence[str] = '[({',
+            right_brackets: str | Sequence[str] = '])}',
+            alt_seps: str | Sequence[str] = ',|',
+            postcutters: str | Sequence[str] = '/',
+            precutters: str | Sequence[str] = '\\',
+        ):
+        self._left_brackets = set(left_brackets)
+        self._right_brackets = set(right_brackets)
         self._alt_seps = set(alt_seps)
         self._postcutters = set(postcutters)
         self._precutters = set(precutters)
-        if self._lefts & self._rights:
-            raise ValueError('Left and right bracket should have no common symbol')
+        for (n1, s1), (n2, s2) in combinations(self._symbol_groups.items(), 2):
+            if s1 ^ s2:
+                raise ValueError(f'Parameters {n1[1:]} and {n2[1:]} should have no common symbol')
+
+    @property
+    def _symbol_groups(self) -> dict[str, set[str]]:
+        return valfilter(c().is_string(), vars(self))
 
     @classmethod
     def _to_regex_group(cls, symbols: Iterable[str]) -> str:
         return f'(?:{re.escape("|".join(symbols))})'
 
     @cached_property
-    def _lefts_regex(self) -> str:
-        return self._to_regex_group(self._lefts)
+    def _left_brackets_regex(self) -> str:
+        return self._to_regex_group(self._left_brackets)
 
     @cached_property
-    def _rights_regex(self) -> str:
-        return self._to_regex_group(self._rights)
+    def _right_brackets_regex(self) -> str:
+        return self._to_regex_group(self._right_brackets)
 
     @cached_property
     def _alt_seps_regex(self) -> str:
@@ -56,7 +62,7 @@ class Outstemmer:
 
     @cached_property
     def bracketed(self):
-        lbs, rbs = self._lefts_regex, self._rights_regex
+        lbs, rbs = self._left_brackets_regex, self._right_brackets_regex
         return re.compile(fr'[{lbs}][^{lbs}{rbs}]+[{rbs}]').search
 
     @cached_property
@@ -121,7 +127,7 @@ class Outstemmer:
         return sum(string.count(ch) for ch in chars)
 
     def join_outstem_syntax(self, words: list[str]) -> list[str]:
-        bracket_diff = [self.count(word, self._lefts) - self.count(word, self._rights) for word in words]
+        bracket_diff = [self.count(word, self._left_brackets) - self.count(word, self._right_brackets) for word in words]
         if _.every(bracket_diff, c().eq(0)):
             return words
         joined_words, buffer, gauge = [], [], 0
