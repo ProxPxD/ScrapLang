@@ -132,4 +132,3 @@ class Outstemmer:
                 joined_words.append(' '.join(buffer))
                 buffer = []
         return joined_words
-
