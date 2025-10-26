@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field, asdict
 from functools import cache
-from typing import Iterable
+from typing import Iterable, Optional
 
 from box import Box
 from pandas import DataFrame
 from requests import Session
 
 from .core.parsing import Result
+from .core.scrap_adapting import ScrapAdapter
 from .glosbe.scrap_adapting import GlosbeScrapAdapter
 from .wiktio.scrap_adapting import WiktioScrapAdapter
 from ..context import Context
@@ -60,18 +61,36 @@ class Outcome:
 
 
 class ScrapMgr:
-    def __init__(self, session: Session):
-        self.glosbe_scrapper = GlosbeScrapAdapter(session)
-        self.wiktio_scrapper = WiktioScrapAdapter(session)
+    def __init__(self, session: Session = None, *,
+            glosbe_scrapper: GlosbeScrapAdapter = None,
+            wiktio_scrapper: WiktioScrapAdapter = None,
+        ):
+        self.glosbe_scrapper = glosbe_scrapper or GlosbeScrapAdapter()
+        self.wiktio_scrapper = wiktio_scrapper or WiktioScrapAdapter()
+        self.session = session
+
+    @property
+    def session(self) -> Session:
+        return self._session
+
+    @session.setter
+    def session(self, session: Optional[Session]) -> None:
+        self._session = session
+        for scrapper in self.scrappers:
+            scrapper.session = session
+
+    @property
+    def scrappers(self) -> Iterable[ScrapAdapter]:
+        return self.glosbe_scrapper, self.wiktio_scrapper
 
     def scrap(self, context: Context) -> Iterable[Outcome]:
         for first, last, (from_lang, to_lang, word) in context.grouped_url_triples:
             if is_first_in_group := first and not last:
                 group = to_lang if context.groupby == 'lang' else word
                 yield Outcome(OutcomeKinds.SEPERATOR, results=group)
-            if (is_first_to_inflect := context.inflection) and first:  # Should take into account grouping method?
+            if is_first_to_inflect := context.inflection and first:  # Should take into account grouping method?
                 yield self.scrap_inflections(from_lang, word)
-            if is_translating := to_lang:
+            if is_translating := bool(to_lang):
                 yield (main := self.scrap_main_translations(from_lang, to_lang, word))
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)

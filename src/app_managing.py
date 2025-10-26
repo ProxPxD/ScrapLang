@@ -25,6 +25,7 @@ class AppMgr:
         self.context: Context = Context(self.conf_mgr.conf)
         self.data_gatherer = DataGatherer(context=self.context)
         self.cli = CLI(self.conf_mgr.conf, context=self.context, data_gatherer=self.data_gatherer)
+        self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context)
 
     @contextmanager
@@ -33,9 +34,12 @@ class AppMgr:
         try:
             session = Session()
             session.headers.update(get_default_headers())
+            self.scrap_mgr.session = session
             yield session
         finally:
-            session.close()
+            self.scrap_mgr.session = None
+            if session:
+                session.close()
 
     def run(self):
         self.run_single()
@@ -71,8 +75,8 @@ class AppMgr:
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
-        with self.connect() as session:
-            scrap_results = seekable(ScrapMgr(session).scrap(self.context))
+        with self.connect():
+            scrap_results = seekable(self.scrap_mgr.scrap(self.context))
             _.for_each(scrap_results, Printer(self.context).print_result)
 
         self.conf_mgr.update_lang_order(self.context.all_langs)
