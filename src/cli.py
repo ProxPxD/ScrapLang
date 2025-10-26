@@ -31,7 +31,7 @@ class Outstemming:
 
     parenthesised = re.compile(fr'[{ELP}][^{ELP}{ERP}]+[{ERP}]').search
     slashed = re.compile('/+').search
-    baskslashed = re.compile('\+').search
+    baskslashed = re.compile('\\+').search
 
     @classmethod
     def outstem(cls, complex_word: str) -> list:
@@ -147,7 +147,7 @@ class CLI:
         loop_control_exclusive.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         return parser
 
-    def parse(self, args: list[str] = None) -> Namespace:
+    def parse(self, args: list[str] | str = None) -> Namespace:
         parsed = self.parse_base(args or sys.argv[1:])
         self.data_gatherer.gather_short_mem(parsed)
         parsed = self.process_parsed(parsed)

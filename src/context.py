@@ -45,7 +45,7 @@ class Context:
             object.__setattr__(self, key, val)
 
     def absorb_context(self, context: Context) -> None:
-        to_absorbs = 'from_lang', 'to_langs'# add when None evalution is implemented, 'inflection', 'definition', 'debug', 'groupby', 'indirect', 'member_sep'
+        to_absorbs = 'from_lang', 'to_langs'  # add when None evalution is implemented, 'inflection', 'definition', 'debug', 'groupby', 'indirect', 'member_sep'
         for to_absorb in to_absorbs:
             if getaval := getattr(context, to_absorb):
                 setattr(self, to_absorb, getaval)
