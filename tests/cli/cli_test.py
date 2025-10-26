@@ -7,7 +7,8 @@ from box import Box
 from src.app_managing import AppMgr
 from src.cli import CLI
 from src.context import Context
-from tests.TCG import TCG
+from src.scrapping import ScrapMgr
+from tests.core.TCG import TCG
 
 
 @dataclass
@@ -151,8 +152,14 @@ class CliTCG(TCG):
 
 
 @CliTCG.parametrize('tc')
-def test(tc: TC):
+def test(mocker, tc: TC):
+    # glosbe_scrapper = mocker.patch(
+    #     'src.core.scrap_adapting.ScrapAdapter.scrap',
+    #     side_effect=lambda: None,
+    # )
     context = Context(tc.conf)
+    # scrap_mgr = ScrapMgr(glosbe_scrapper=glosbe_scrapper)
+    # app_mgr = AppMgr(conf_path=None, scrap_mgr=scrap_mgr)
     cli = CLI(tc.conf, context)
     a_parsed = cli.parse(shlex.split(tc.input))
     for key, e_val in tc.e_parsed.items():
