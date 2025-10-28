@@ -24,10 +24,10 @@ class Colors:  # TODO: enable conf setting and a flag for no color
 
 
 class Printer:
-    def __init__(self, context: Context, printer: Callable[[Any], None] = print, interval: int = 0):
+    def __init__(self, context: Context, printer: Callable[[Any], None] = None, interval: int = 0):
         self.interval = interval
         self.scheduler = BlockingScheduler()
-        self.printer = printer
+        self.printer = printer or print
         self.context = context
 
     def print_result(self, outcome: Outcome) -> None:

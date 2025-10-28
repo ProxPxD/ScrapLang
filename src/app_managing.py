@@ -2,7 +2,7 @@ import shlex
 from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Callable, Any
 
 import pydash as _
 from more_itertools.more import seekable
@@ -19,14 +19,14 @@ from src.scrapping.core.web_building import get_default_headers
 
 
 class AppMgr:
-    def __init__(self, *, conf_path: Path | str):
+    def __init__(self, *, conf_path: Path | str, printer: Callable[[str], Any] = None):
         setup_logging()
         self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.data_gatherer = DataGatherer(context=self.context)
         self.cli = CLI(context=self.context, data_gatherer=self.data_gatherer)
         self.scrap_mgr = ScrapMgr()
-        self.printer = Printer(context=self.context)
+        self.printer = Printer(context=self.context, printer=printer)
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -64,9 +64,8 @@ class AppMgr:
         # TODO: think when to raise if no word
         with self.connect():
             scrap_results = seekable(self.scrap_mgr.scrap(self.context))
-            _.for_each(scrap_results, Printer(self.context).print_result)
+            _.for_each(scrap_results, self.printer.print_result)
 
         self.conf_mgr.update_lang_order(self.context.all_langs)
         scrap_results.seek(0)
         self.data_gatherer.gather_valid_data(scrap_results)
-        self.conf_mgr.update_lang_order(self.context.all_langs)
