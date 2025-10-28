@@ -24,7 +24,7 @@ class AppMgr:
         self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.data_gatherer = DataGatherer(context=self.context)
-        self.cli = CLI(self.conf_mgr.conf, context=self.context, data_gatherer=self.data_gatherer)
+        self.cli = CLI(context=self.context, data_gatherer=self.data_gatherer)
         self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context)
 
@@ -47,31 +47,18 @@ class AppMgr:
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:
-        # TODO:
-        # To make a proper loop:
-        # 0. Context and parsing should be by default uncertain (None)
-        # 1. Default infra app context
-        # 2. User Conf
-        # 3. User Call
-        # 4. Loop is a prev context's absorption of the new call based on what's new
         parsed = self.cli.parse(args)
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
             self.conf_mgr.update_conf(parsed)
-        # new_context = Context(vars(parsed))
-        # if new_context.is_setting_context():
-        #     self.context.absorb_context(new_context)
-        # else:
-        #     new_context.absorb_context(self.context)
-        #     parsed = self.system.process_parsed(parsed)
-        #     new_context = Context(vars(parsed))
+            return
+
         self.context.update(**vars(parsed))
         setup_logging(self.context)
         if self.context.exit and args:
             return
         if self.context.words:
             self.run_scrap()
-        self.conf_mgr.update_lang_order(self.context.all_langs)
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
@@ -82,3 +69,4 @@ class AppMgr:
         self.conf_mgr.update_lang_order(self.context.all_langs)
         scrap_results.seek(0)
         self.data_gatherer.gather_valid_data(scrap_results)
+        self.conf_mgr.update_lang_order(self.context.all_langs)

@@ -20,8 +20,7 @@ from .conf_domain import indirect, gather_data, infervia, groupby
 
 
 class CLI:
-    def __init__(self, conf: Box, context: Context, data_gatherer: DataGatherer = None):
-        self.conf: Box = conf
+    def __init__(self, context: Context, data_gatherer: DataGatherer = None):
         self.context = context  # TODO: convert to using context and data_gatherer instead of conf
         self.outstemmer = Outstemmer()
         self.data_gatherer = data_gatherer or DataGatherer(context)
@@ -113,7 +112,7 @@ class CLI:
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
-        assume = parsed.assume or self.conf.assume
+        assume = parsed.assume or self.context.assume
         if assume == 'word':
             logging.debug(f'Assuming {parsed.args} are words!')
             parsed.words = parsed.args + parsed.words
@@ -122,7 +121,7 @@ class CLI:
             raise ValueError(f'Could not resolve arguments: {parsed.args}')
 
         # assume == lang
-        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in self.conf.langs]), default_box=True, default_box_attr=[])
+        pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in self.context.langs]), default_box=True, default_box_attr=[])
         parsed.args = []
 
         if not parsed.words and (assumed_word := self._assume_first_word(pot)):
@@ -165,8 +164,8 @@ class CLI:
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
         used = _.filter_([parsed.from_lang] + parsed.to_langs)
-        pot_defaults = [lang for lang in self.conf.langs if lang not in used]; logging.debug(f'Potential defaults: {pot_defaults}')
-        if len(self.conf.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
+        pot_defaults = [lang for lang in self.context.langs if lang not in used]; logging.debug(f'Potential defaults: {pot_defaults}')
+        if len(self.context.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
         if not parsed.to_langs and (parsed.definition or parsed.inflection):
@@ -196,7 +195,7 @@ class CLI:
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         # todo: test żurawel (regex)
         whole_lang_mapping: Box
-        if not (whole_lang_mapping := self.conf.mappings.get(parsed.from_lang)):
+        if not (whole_lang_mapping := self.context.mappings.get(parsed.from_lang)):
             return parsed
         logging.debug(f'Applying mapping for "{parsed.from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
         for single_mapping in whole_lang_mapping:

@@ -101,7 +101,8 @@ class Printer:
             self.printer(outcome.results.args[0])
             return False
         wiktio: WiktioResult = outcome.results
-        wiktio_str = f'{self.color(wiktio.word, self.context.color.main)}: {self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
+        front = f'{self.color(wiktio.word, self.context.color.main)}: ' if not self.context.to_langs else ''
+        wiktio_str = f'{front}{self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
         self.printer(wiktio_str)
         return True
 
@@ -128,12 +129,12 @@ class Printer:
 
     def _create_wiktio_etymology(self, etymology: list[str]) -> str:
         if etymology:
-            return 'etymology:\n' + '\n'.join(f'  - {etymology}' for etymology in etymology)
+            return indent('etymology:\n' + '\n'.join(f'  - {etymology}' for etymology in etymology), ' '*2)
         return ''
 
     def _create_wiktio_meanings(self, meanings: list[Meaning]) -> str:
         if meanings:
-            return indent('meanings:\n' + '\n'.join(indent(f'* {self._create_wiktio_meaning(meaning)}', ' '*4) for meaning in meanings), ' '*2)
+            return 'meanings:\n' + '\n'.join(indent(f'• {self._create_wiktio_meaning(meaning)}', ' '*2) for meaning in meanings)
         return ''
 
     def print_definitions(self, outcome: Outcome) -> None:
