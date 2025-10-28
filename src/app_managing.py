@@ -1,6 +1,7 @@
 import shlex
 from contextlib import contextmanager
 from dataclasses import asdict
+from pathlib import Path
 from typing import Iterator
 
 import pydash as _
@@ -8,7 +9,6 @@ from more_itertools.more import seekable
 from requests import Session
 
 from src.cli import CLI
-from src.constants import Paths
 from src.context import Context
 from src.logutils import setup_logging
 from src.printer import Printer
@@ -19,9 +19,9 @@ from src.scrapping.core.web_building import get_default_headers
 
 
 class AppMgr:
-    def __init__(self):
+    def __init__(self, *, conf_path: Path | str):
         setup_logging()
-        self.conf_mgr = ConfMgr(Paths.CONF_FILE)  # TODO: Move paths to context and work from there
+        self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.data_gatherer = DataGatherer(context=self.context)
         self.cli = CLI(self.conf_mgr.conf, context=self.context, data_gatherer=self.data_gatherer)
@@ -63,9 +63,9 @@ class AppMgr:
         #     self.context.absorb_context(new_context)
         # else:
         #     new_context.absorb_context(self.context)
-        #     parsed = self.cli.process_parsed(parsed)
+        #     parsed = self.system.process_parsed(parsed)
         #     new_context = Context(vars(parsed))
-        self.context = Context(vars(parsed), asdict(self.context))  # TODO: update context instead of reassigning
+        self.context.update(**vars(parsed))
         setup_logging(self.context)
         if self.context.exit and args:
             return

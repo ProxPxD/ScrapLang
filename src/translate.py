@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-
+from src.constants import Paths
 from src.app_managing import AppMgr
 
 
@@ -20,8 +20,8 @@ class ErrorMessages:
 def main():
     try:
         # Configurations.init()
-        AppMgr().run()
-        #Configurations.change_last_used_languages(*cli.langs)
+        AppMgr(conf_path=Paths.CONF_FILE).run()
+        #Configurations.change_last_used_languages(*system.langs)
         #Configurations.save_and_close()
     except:
         raise
@@ -29,7 +29,7 @@ def main():
     #     logging.error(traceback.format_exc())
     #     TranslationPrinter.out(ErrorMessages.ATTRIBUTE_ERROR)
     # except Exception as ex:
-    #     # TODO: in next((flag for flag in self._flags if flag.has_name(name))) of cli parser add an exception to know that the flag has not been added. Similarly in sibling cli_elements
+    #     # TODO: in next((flag for flag in self._flags if flag.has_name(name))) of system parser add an exception to know that the flag has not been added. Similarly in sibling cli_elements
     #     logging.exception(traceback.format_exc())
     #     TranslationPrinter.out(ErrorMessages.UNKNOWN_EXCEPTION, end='\n')
 

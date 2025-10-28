@@ -1,17 +1,23 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Callable
 
 from box import Box
 import pandas as pd
 from pandas import DataFrame
 from pandas.errors import EmptyDataError
+import pydash as _
+from pydantic import BaseModel, RootModel
+from toolz.functoolz import return_none
+
+UNSET = object()
 
 
 class FileMgr:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, func: Callable[[Any], Any] | type = UNSET):
         self.path = Path(path)
+        self._func = func if func is not UNSET else _.identity
         self._content = None
 
     @property
@@ -21,9 +27,12 @@ class FileMgr:
     def refresh(self) -> None:
         self._content = None
 
-    def load(self, as_box=True):
-        self._content = self.load_file(self.path, as_box=as_box)
+    def load(self, func: Callable[[Any], Any] | type = UNSET):
+        self._content = self.load_file(self.path, func=func if func is not UNSET else self._func)
         return self._content
+
+    def is_loaded(self) -> bool:
+        return bool(self._content)
 
     def save(self, content = None) -> None:
         self.save_file(self.path, content if content is not None else self.content)
@@ -40,18 +49,19 @@ class FileMgr:
     @classmethod
     def _to_dict(cls, content) -> dict:
         match content:
+            case BaseModel() | RootModel(): return content.model_dump()
             case Box(): return content.to_dict()
             case _: return dict(content)
 
     @classmethod
-    def load_file(cls, path: str | Path = None, as_box=True) -> Box:
+    def load_file(cls, path: str | Path, func: Callable[[Any], Any] | type = None) -> Box | dict | Any:
         ext = cls._get_file_extension(path)
         load = getattr(cls, f'load_{ext}')
         content = load(path)
         content_view = json.dumps(content, indent=4, ensure_ascii=False) if isinstance(content, (dict, list)) else str(content)
         logging.debug(f'Loaded file "{path}": {content_view}')
-        if as_box and isinstance(content, (dict, list)):
-            content = Box(content or {}, default_box=True)
+        if func:
+            content = func(content)
         return content
 
     @classmethod
@@ -88,13 +98,13 @@ class FileMgr:
         logging.debug(f'Loaded file "{path}": {content_view}')
 
     @classmethod
-    def save_yaml(cls, path: str | Path, conf: dict | Box) -> None:
+    def save_yaml(cls, path: str | Path, conf: dict) -> None:
         import yaml
         with open(path, 'w+') as f:
-            yaml.safe_dump(cls._to_dict(conf), f, default_flow_style=None, allow_unicode=True, encoding='utf-8')
+            yaml.safe_dump(cls._to_dict(conf), f, default_flow_style=None, allow_unicode=True, encoding='utf-8', width=120)
 
     @classmethod
-    def save_toml(cls, path: str | Path, conf: dict | Box) -> None:
+    def save_toml(cls, path: str | Path, conf: dict) -> None:
         with open(path, 'w+') as f:
             raise NotImplementedError
 

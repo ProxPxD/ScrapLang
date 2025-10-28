@@ -9,11 +9,14 @@ from typing import Optional
 import pydash as _
 from box import Box
 from pydash import chain as c
+from requests.utils import default_user_agent
 
 from .context import Context
+from .context_domain import UNSET, assume
 from .logutils import setup_logging
 from .outstemming import Outstemmer
 from .resouce_managing.data_gathering import DataGatherer
+from .conf_domain import indirect, gather_data, infervia, groupby
 
 
 class CLI:
@@ -48,18 +51,18 @@ class CLI:
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
         translation_mode_group.add_argument('--wiktio', '-wiktio', '-ped', '-pd', '-o', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--pronunciation', '-p', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '--conjugation', '--conj', '-conj', '-c', '--declension', '--decl', '-decl', '--table', '-tab', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--indirect', choices=['on', 'off', 'fail', 'conf'], help='Turn on indirect translation')
+        translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
         cli_reasoning_group = parser.add_argument_group(title='CLI Reasoning Modes')
         cli_reasoning_group.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang with the first to_lang')
-        cli_reasoning_group.add_argument('--assume', choices=['lang', 'word', 'no'], help='What to assume for a positional args in doubt of')
-        cli_reasoning_group.add_argument('--gather-data', '--gd', '-gd', choices=['all', 'ai', 'time', 'off', 'conf'], help='What to gather user input for')
-        cli_reasoning_group.add_argument('--infervia', '--iv', '-iv', choices=['all', 'ai', 'time', 'last', 'off', 'conf'], help='How to infer the lang(s)')
+        cli_reasoning_group.add_argument('--assume', choices=assume, default=UNSET, help='What to assume for a positional args in doubt of')
+        cli_reasoning_group.add_argument('--gather-data', '--gd', '-gd', choices=gather_data, default=UNSET, help='What to gather user input for')
+        cli_reasoning_group.add_argument('--infervia', '--iv', '-iv', choices=infervia, default=UNSET, help='How to infer the lang(s)')
         # Display Modes
         display_group = parser.add_argument_group(title='Display Modes')
-        display_group.add_argument('--groupby', '-by', choices=['lang', 'word'], help='What to group the result translations by')
+        display_group.add_argument('--groupby', '-by', choices=groupby, default=UNSET, help='What to group the result translations by')
         # Developer Modes (groupless)
         parser.add_argument('--debug', action='store_true', help=SUPPRESS)
         parser.add_argument('--test', action='store_true', help=SUPPRESS)
@@ -192,17 +195,16 @@ class CLI:
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         # todo: test żurawel (regex)
-        lang_mapping: Box
-        if not (lang_mapping := self.conf.mappings.get(parsed.from_lang)):
+        whole_lang_mapping: Box
+        if not (whole_lang_mapping := self.conf.mappings.get(parsed.from_lang)):
             return parsed
-        ordered_lang_mapping = [lang_mapping] if isinstance(lang_mapping, dict) else lang_mapping
-        logging.debug(f'Applying mapping for "{parsed.from_lang}" with map:\n{json.dumps(lang_mapping, indent=4, ensure_ascii=False)}')
-        for lang_mapping in ordered_lang_mapping:
-            patts, repls = zip(*sorted(lang_mapping.to_dict().items(), key=c().get(0).size(), reverse=True))
-            lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
-            logging.debug(f'from_lang_map: {lang_mapping}')
+        logging.debug(f'Applying mapping for "{parsed.from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
+        for single_mapping in whole_lang_mapping:
+            patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
+            whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
+            logging.debug(f'from_lang_map: {whole_lang_mapping}')
             parsed.words = [
-                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), lang_mapping, word)
+                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
                 for word in parsed.words
             ]
         return parsed

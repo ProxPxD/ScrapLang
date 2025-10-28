@@ -17,7 +17,7 @@ class ScrapAdapter:
     def __init__(self, session: Session = None):
         self.session: Optional[Session] = session
 
-    def scrap(self, url: str, parse: Callable[[Response | Tag], list[Result] | ParsingException]) -> list[Result] | HTTPError | ParsingException:
+    def scrap(self, url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException]) -> list[Result] | HTTPError | ParsingException:
         try:
             response = self.session.get(url, allow_redirects=True)
             response.raise_for_status()
