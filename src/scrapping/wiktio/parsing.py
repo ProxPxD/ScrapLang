@@ -16,6 +16,7 @@ from ...constants import supported_languages
 @dataclass(frozen=True)
 class SurfacingEquivalents:
     # TODO: test: the(Article), be-(Prefix) -ísimo(Suffix) -o-(Interfix), auf(Preposition), chyba(Particle), "ge- -t"(Circumfix), się(Pronoun), "'s"(Determiner), y(Conjunction)
+    # TODO: think of testing "gauge:
     # auf is a lot of types
     pos: Sequence[str] = field(default=('Pos', 'Noun', 'Verb', 'Adjective', 'Adverb', 'Particle', 'Article', 'Pronoun', 'Suffix', 'Prefix', 'Interfix', 'Infix', 'Preposition', 'Circumfix', 'Interjection', 'Determiner', 'Conjunction'))
     pronunciation: Sequence[str] = field(default=('Pronunciation',))
