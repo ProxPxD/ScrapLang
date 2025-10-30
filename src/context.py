@@ -1,21 +1,24 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, asdict
 from itertools import product, repeat
-from typing import ClassVar, Iterable, Optional
+from typing import ClassVar, Iterable, Optional, Any
 
 import pydash as _
+from box import Box
+from toolz import valfilter
+from toolz.curried import keyfilter
+
+from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
+    ColorNames, \
+    ColorFormat, Color, color_names
+from src.resouce_managing.configuration import Conf
 from pydash import chain as c
 
 
-@dataclass(frozen=False, init=False)
-class Context:
-    words: tuple[str] = tuple()
-    from_lang: str = None
-    to_langs: tuple[str] = tuple()
-
-    mapped: list[bool] = tuple()
-
+@lambda k: k()
+@dataclass(frozen=True)
+class Defaults:
     wiktio: bool = False
     inflection: bool = False
     definition: bool = False
@@ -23,32 +26,89 @@ class Context:
 
     debug: bool = False
     test: bool = False
+
     assume: str = 'word'  # TODO: remove
     groupby: str = 'lang'
     infervia: str = 'last'
     gather_data: str = 'conf'
     indirect: bool = 'fail'
-    member_sep: bool = False
-    colour: str = ''
+
+    color: Color = field(default_factory=lambda: Box(ColorSchema(
+        main=(0, 170, 249),
+        pronunciation=(247, 126, 0),
+    ).model_dump()))
+
+    mappings: Mappings = field(default_factory=dict)
+
+
+@dataclass(frozen=False, init=False)
+class Context:
+    _conf: Conf = None
+
+    words: tuple[str] = tuple()
+    from_lang: str = None
+    to_langs: tuple[str] = tuple()
+
+    mapped: tuple[bool] = tuple()
+
+    wiktio: bool = UNSET
+    inflection: bool = UNSET
+    definition: bool = UNSET
+    pronunciation: bool = UNSET
+
+    debug: bool = UNSET
+    test: bool = UNSET
+
+    assume: Assume = UNSET  # TODO: remove
+    groupby: GroupBy = UNSET
+    infervia: InferVia = UNSET
+    gather_data: GatherData = UNSET
+    indirect: Indirect = UNSET
+    color: Box | Color = UNSET
 
     loop: bool = False
 
-    _to_filter: ClassVar[tuple[str]] = ('args', 'reverse', 'mappings')
-    _map: ClassVar[dict[str, tuple[str]]] = dict(color='colour')
+    mappings: Box | Mappings = UNSET
 
-    def __init__(self, *confs: dict):
-        own = c({}).merge_with(*confs, iteratee=_.curry(lambda a, b: a if a is not None else b)).omit(self._to_filter).value()
-        for key, val in own.items():
-            key = self._map.get(key, key).replace('-', '_')
-            if isinstance(val, list):
-                val = tuple(val)
-            object.__setattr__(self, key, val)
+    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set'}
 
-    def absorb_context(self, context: Context) -> None:
-        to_absorbs = 'from_lang', 'to_langs'  # add when None evalution is implemented, 'inflection', 'definition', 'debug', 'groupby', 'indirect', 'member_sep'
-        for to_absorb in to_absorbs:
-            if getaval := getattr(context, to_absorb):
-                setattr(self, to_absorb, getaval)
+    def __init__(self, conf: Conf):
+        self._conf = conf
+        self.update(**conf.model_dump())
+
+    def __getattribute__(self, name: str) -> Any:
+        if (val := _.apply_catch(name, super().__getattribute__, [AttributeError], UNSET)) is not UNSET:
+            return val
+        if (val := getattr(self._conf, name, UNSET)) is not UNSET:
+            return val
+        if (val := getattr(Defaults, name, UNSET)) is not UNSET:
+            return val
+        raise AttributeError(f'Attribute "{name}" not found')
+
+    def update(self, **kwargs) -> None:
+        kwargs = Box({key: val for key, val in kwargs.items() if key not in self._to_filter})
+        if wrong_keys := {key for key in kwargs if not hasattr(self, key)}:
+            raise ValueError(f'Context has no such keys: {wrong_keys}')
+        for key, val in kwargs.items():
+            setattr(self, key, val)
+
+        dict_attrs = _.pick_by(asdict(self), lambda val, key: _.is_dict(val) and not key.startswith('_'))
+        for key, val in dict_attrs.items():
+            unsets = set(_.get(Defaults, key).keys()) - set(val.keys())
+            for subkey in unsets:
+                _.set_(self, [key, subkey], _.get(Defaults, [key, subkey]))
+            _.set_(self, key, Box(_.get(self, key)))
+
+        self._update_mappings()
+        self._update_color()
+
+    def _update_mappings(self) -> None:
+        self.mappings = _.map_values(self.mappings, c().apply_if(lambda d: [d], c().is_dict()))
+
+    def _update_color(self) -> None:
+        if isinstance(self.color, str):
+            self.color = {pos_color: self.color for pos_color in color_names}
+        self.color = Box(self.color)
 
     @property
     def all_langs(self) -> list:

@@ -24,10 +24,10 @@ class Colors:  # TODO: enable conf setting and a flag for no color
 
 
 class Printer:
-    def __init__(self, context: Context, printer: Callable[[Any], None] = print, interval: int = 0):
+    def __init__(self, context: Context, printer: Callable[[Any], None] = None, interval: int = 0):
         self.interval = interval
         self.scheduler = BlockingScheduler()
-        self.printer = printer
+        self.printer = printer or print
         self.context = context
 
     def print_result(self, outcome: Outcome) -> None:
@@ -50,8 +50,8 @@ class Printer:
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
-    def color(self, to_color, color: str | tuple[int, int, int] = None) -> str:
-        return colored(to_color, color or self.context.colour) if self.context.colour != 'no' else to_color
+    def color(self, to_color, color: str | tuple[int, int, int]) -> str:
+        return colored(to_color, color)
 
     def print_separator(self, group: str) -> None:
         sep = '-'  # TODO: add as configurable together with numbers
@@ -73,8 +73,8 @@ class Printer:
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
         translation_row = self.create_translation_row(outcome)
-        coloured_prefix = self.color(prefix)
-        self.printer(f'{coloured_prefix}{translation_row}')
+        colored_prefix = self.color(prefix, self.context.color.main)
+        self.printer(f'{colored_prefix}{translation_row}')
         return outcome.is_success()
 
     def get_translation_prefix(self, outcome: Outcome) -> str:
@@ -101,7 +101,8 @@ class Printer:
             self.printer(outcome.results.args[0])
             return False
         wiktio: WiktioResult = outcome.results
-        wiktio_str = f'{self.color(wiktio.word)}: {self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
+        front = f'{self.color(wiktio.word, self.context.color.main)}: ' if not self.context.to_langs else ''
+        wiktio_str = f'{front}{self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
         self.printer(wiktio_str)
         return True
 
@@ -117,7 +118,7 @@ class Printer:
     def _create_wiktio_pronunciations(self, pronunciations: list[Pronunciation]) -> tuple[str, str]:
         names = c(pronunciations).map(c().get('name')).filter().value()
         match bool(names):
-            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, Colors.ORANGE) for ipa in p.ipas)}' for p in pronunciations)
+            case True: return '', 'pronunciation:\n' + '\n'.join(f'  - {p.name}: {", ".join(self.color(ipa, self.context.color.pronunciation) for ipa in p.ipas)}' for p in pronunciations)
             case False: return c(pronunciations).map(c().get('ipas')).flatten().join(', ').value(), ''
             case _: raise Exception('Impossible')
 
@@ -128,12 +129,12 @@ class Printer:
 
     def _create_wiktio_etymology(self, etymology: list[str]) -> str:
         if etymology:
-            return 'etymology:\n' + '\n'.join(f'  - {etymology}' for etymology in etymology)
+            return indent('etymology:\n' + '\n'.join(f'  - {etymology}' for etymology in etymology), ' '*2)
         return ''
 
     def _create_wiktio_meanings(self, meanings: list[Meaning]) -> str:
         if meanings:
-            return indent('meanings:\n' + '\n'.join(indent(f'* {self._create_wiktio_meaning(meaning)}', ' '*4) for meaning in meanings), ' '*2)
+            return 'meanings:\n' + '\n'.join(indent(f'• {self._create_wiktio_meaning(meaning)}', ' '*2) for meaning in meanings)
         return ''
 
     def print_definitions(self, outcome: Outcome) -> None:

@@ -61,12 +61,9 @@ class Outcome:
 
 
 class ScrapMgr:
-    def __init__(self, session: Session = None, *,
-            glosbe_scrapper: GlosbeScrapAdapter = None,
-            wiktio_scrapper: WiktioScrapAdapter = None,
-        ):
-        self.glosbe_scrapper = glosbe_scrapper or GlosbeScrapAdapter()
-        self.wiktio_scrapper = wiktio_scrapper or WiktioScrapAdapter()
+    def __init__(self, session: Session = None):
+        self.glosbe_scrapper = GlosbeScrapAdapter()
+        self.wiktio_scrapper = WiktioScrapAdapter()
         self.session = session
 
     @property
@@ -98,7 +95,7 @@ class ScrapMgr:
                 yield self.scrap_wiktio(from_lang, word, context)
             if context.definition:
                 yield self.scrap_definitions(from_lang, word)
-            if context.member_sep and context.definition:
+            if context.definition:
                 yield Outcome(OutcomeKinds.NEWLINE)
 
     def scrap_inflections(self, lang: str, word: str) -> Outcome:

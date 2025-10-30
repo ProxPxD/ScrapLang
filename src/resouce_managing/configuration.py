@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -6,31 +5,17 @@ from argparse import Namespace
 from pathlib import Path
 
 import pydash as _
-from box import Box
-from pydantic import BaseModel, Field
 
 from .file import FileMgr
+from ..conf_domain import Conf
 
-
-class ConfSchema(BaseModel):
-    assume: str
-    colour: str
-    groupby: str
-    indirect: str
-    langs: list[str]
-    mappings: dict[str, dict[str, str] | list[dict[str, str]]]
-    member_sep: str = Field(..., alias='member-sep')
-
-    # @field_validator('flag', mode='before')
-    # @classmethod
-    # def validate_bool_strings(cls, v): ...
 
 class ConfMgr:
     def __init__(self, conf_file: Path | str):
-        self._file_mgr = FileMgr(conf_file)
+        self._file_mgr = FileMgr(conf_file, func=lambda conf: Conf(**(conf or {})))
 
     @property
-    def conf(self) -> Box:
+    def conf(self) -> Conf:
         return self._file_mgr.content
 
     def update_conf(self, parsed: Namespace) -> None:
@@ -68,4 +53,4 @@ class ConfMgr:
         newly_ordered_saved = saved_used + saved_unused
         logging.debug(f'Saved used: {saved_used}\nOld Order: {self.conf.langs}\nNew Order: {newly_ordered_saved}')
         self.conf.langs = newly_ordered_saved
-        self._file_mgr.save()
+        self._file_mgr.save(self.conf.model_dump())

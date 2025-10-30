@@ -1,0 +1,28 @@
+from typing import Literal
+
+import pydash as _
+from box import Box
+from pydantic import BaseModel, field_validator
+from pydash import chain as c
+
+from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color, \
+    color_names
+
+ConfIndirect = Literal[*(indirect - {'conf'})]
+ConfAssume = Literal[*(assume - {'conf'})]
+ConfGatherData = Literal[*(gather_data - {'conf'})]
+ConfInferVia = Literal[*(infervia - {'conf'})]
+ConfGroupBy = Literal[*(groupby - {'conf'})]
+
+
+class Conf(BaseModel):
+    assume: ConfAssume = UNSET
+    color: ColorSchema = UNSET  # TODO: test both dict and straight string colors
+    groupby: ConfGroupBy = UNSET
+    indirect: ConfIndirect = UNSET
+    langs: list[str] = UNSET
+    mappings: Mappings = UNSET
+
+    @field_validator('color', mode='after')
+    def val_color(cls, color: Color) -> dict:
+        return color.root if isinstance(color, ColorSchema) else color
