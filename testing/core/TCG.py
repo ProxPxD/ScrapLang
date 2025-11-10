@@ -31,19 +31,19 @@ class TCG:
         return tc
 
     @classmethod
-    def map_to_many(cls, tc) -> Iterable | list:
+    def map_to_many(cls, tc) -> Iterable:
         return [tc]
 
     @classmethod
-    def gather_tag_before_mapping_to_many(cls, tc) -> Iterable[str] | Sequence[str]:
+    def gather_tag_before_mapping_to_many(cls, tc) -> Iterable[str]:
         return []
 
     @classmethod
-    def gather_tags(cls, tc) -> Iterable[str] | Sequence[str]:
-        return []
+    def gather_tags(cls, tc) -> Iterable[str]:
+        return getattr(tc, 'tags', [])
 
     @classmethod
-    def param_names(cls) -> list[str] | str:
+    def param_names(cls) -> Sequence[str] | str:
         raise ValueError()  # TODO: replace exception
 
     ###############
@@ -51,7 +51,7 @@ class TCG:
     ###############
 
     @classmethod
-    def _generate_marks(cls, tags: Iterable[str] | Sequence[str]) -> list[MarkDecorator]:
+    def _generate_marks(cls, tags: Iterable[str]) -> list[MarkDecorator]:
         return [getattr(pytest.mark, tag) for tag in tags]
 
     @classmethod
@@ -63,7 +63,7 @@ class TCG:
 
     @classmethod
     @apply(list)
-    def generate_params(cls) -> list[ParameterSet]:
+    def generate_params(cls) -> Iterable[ParameterSet]:
         for big_tc in cls.generate_tcs():
             big_tags = list(cls.gather_tag_before_mapping_to_many(big_tc))
             for lil_tc in cls.map_to_many(big_tc):
