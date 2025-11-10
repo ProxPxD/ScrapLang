@@ -4,3 +4,4 @@ src/resources/
 resources/
 /src/testing_utils.py
 **/__pycache__/
+testnig/**/tmp/
