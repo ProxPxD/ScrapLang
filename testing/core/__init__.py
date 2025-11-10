@@ -1,1 +1,1 @@
-from TCG import TCG
+from .TCG import TCG
