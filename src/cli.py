@@ -39,9 +39,9 @@ class CLI:
     def _add_base_args(self, parser: ArgumentParser) -> ArgumentParser:
         base_group = parser.add_argument_group(title='Base Arguments')
         base_group.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
-        base_group.add_argument('--words', '-words', '-w', nargs='+', default=[], help='Words to translate')
+        base_group.add_argument('--words', '-words', '-words', '-word', '-w', nargs='+', default=[], help='Words to translate')
         base_group.add_argument('--from-lang', '--from', '-from', '-f', dest='from_lang', help=(lang_help := 'Languages supported by glosbe.com'))
-        base_group.add_argument('--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
+        base_group.add_argument('--to-langs', '--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
         return parser
 
@@ -51,7 +51,7 @@ class CLI:
         translation_mode_group.add_argument('--wiktio', '-wiktio', '-ped', '-pd', '-o', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--pronunciation', '-p', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--definition', '--definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
         cli_reasoning_group = parser.add_argument_group(title='CLI Reasoning Modes')
@@ -116,6 +116,7 @@ class CLI:
         if assume == 'word':
             logging.debug(f'Assuming {parsed.args} are words!')
             parsed.words = parsed.args + parsed.words
+            parsed.args = []
             return parsed
         if assume == 'no' and parsed.args:
             raise ValueError(f'Could not resolve arguments: {parsed.args}')
@@ -124,8 +125,8 @@ class CLI:
         pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in self.context.langs]), default_box=True, default_box_attr=[])
         parsed.args = []
 
-        if not parsed.words and (assumed_word := self._assume_first_word(pot)):
-            parsed.words.append(assumed_word)
+        # if not parsed.words and (assumed_word := self._assume_first_word(pot)):
+        #     parsed.words.append(assumed_word)
         logging.debug(f'Potential langs: {pot.lang}')
         if pot.lang and not parsed.from_lang:
             from_lang = pot.lang.pop(0); logging.debug(f'Assuming "{from_lang}" should be in from_lang')

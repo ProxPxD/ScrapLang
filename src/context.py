@@ -6,14 +6,11 @@ from typing import ClassVar, Iterable, Optional, Any
 
 import pydash as _
 from box import Box
-from toolz import valfilter
-from toolz.curried import keyfilter
+from pydash import chain as c
 
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
-    ColorNames, \
-    ColorFormat, Color, color_names
+    Color, color_names
 from src.resouce_managing.configuration import Conf
-from pydash import chain as c
 
 
 @lambda k: k()
@@ -28,7 +25,7 @@ class Defaults:
     test: bool = False
 
     assume: str = 'word'  # TODO: remove
-    groupby: str = 'lang'
+    groupby: str = 'word'
     infervia: str = 'last'
     gather_data: str = 'conf'
     indirect: bool = 'fail'
@@ -39,15 +36,16 @@ class Defaults:
     ).model_dump()))
 
     mappings: Mappings = field(default_factory=dict)
+    langs: list = field(default_factory=list)
 
 
 @dataclass(frozen=False, init=False)
 class Context:
     _conf: Conf = None
 
-    words: tuple[str] = tuple()
+    words: frozenset[str] = frozenset()
     from_lang: str = None
-    to_langs: tuple[str] = tuple()
+    to_langs: frozenset[str] = frozenset()
 
     mapped: tuple[bool] = tuple()
 
@@ -73,7 +71,7 @@ class Context:
     _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set'}
 
     def __init__(self, conf: Conf):
-        self._conf = conf
+        self._conf: Conf = conf
         self.update(**conf.model_dump())
 
     def __getattribute__(self, name: str) -> Any:

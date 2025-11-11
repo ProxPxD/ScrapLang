@@ -1,11 +1,15 @@
-from typing import Any, Callable
+from pathlib import Path
+from typing import Callable
 
+import pydash as _
 from bs4 import Tag
+from pydash import chain as c
 from requests import HTTPError, Response
 
 from src.scrapping.core.parsing import Result, ParsingException
-import pydash as _
-from pydash import chain as c
+
+PAGES = Path(__file__).parent.parent / 'pages'
+
 
 def get_filename_from_url(url: str) -> str:
     site = _.filter_({'glosbe', 'wiktio'}, url.__contains__)[0]
@@ -17,6 +21,9 @@ def get_filename_from_url(url: str) -> str:
         case 'glosbe':
             params = url.split('.com/')[1].split('/')[:3]
             more_info = c({'details', 'indirect'}).filter_(url.__contains__).get(0, '').value()
+            # if more_info:
+            #     params = _.at(params, 1, -1)
+
         case _: raise ValueError('Unexpected site!')
 
     name = f'{site}-{"-".join(params)}'
@@ -28,6 +35,21 @@ def get_filename_from_url(url: str) -> str:
 
 def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException | HTTPError]) -> list[Result] | HTTPError | ParsingException:
     filename = get_filename_from_url(url)
-    with open(filename, 'r') as f:
+    with open(PAGES / filename, 'r') as f:
         content = f.read()
     return parse(content)
+
+
+class CallCollector:
+    def __init__(self):
+        self._buffor = []
+
+    def __call__(self, msg):
+        self._buffor.append(str(msg))
+
+    @property
+    def output(self):
+        return '\n'.join(self._buffor)
+
+    def clear(self):
+        self._buffor.clear()

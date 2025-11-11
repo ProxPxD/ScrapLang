@@ -1,15 +1,17 @@
 import shlex
+from contextlib import nullcontext
 from dataclasses import dataclass, field, replace
-from itertools import product, permutations
+from itertools import product, permutations, chain
 from pathlib import Path
-from typing import Iterable, Any, Sequence
+from typing import Iterable, Any, Sequence, Collection, Optional
 
 import pydash as _
-from pydash import chain as c
 import pytest
 import yaml
 from box import Box
-from more_itertools import windowed, unique
+from more_itertools import windowed
+from more_itertools.more import side_effect
+from pydash import chain as c
 
 from src.app_managing import AppMgr
 from src.context_domain import assume, indirect, gather_data, infervia, groupby
@@ -28,8 +30,10 @@ TMP_DIR.mkdir(exist_ok=True)
 class InputCase:
     input: Iterable[str] | str
     tags: Iterable[str] = field(default_factory=list)
-    context: dict[str, Any] = field(default_factory=dict)
     conf: Box = field(default_factory=Box)
+    context: dict[str, Any] = field(default_factory=dict)
+    output: str = ''
+
     replacement: dict = field(default_factory=dict)
 
 IC = InputCase
@@ -38,9 +42,10 @@ IC = InputCase
 class TC:  # TODO: think of disabling queries
     descr: str
     input: Iterable[InputCase | str] | InputCase | str
-    context: dict[str, Any] = field(default_factory=dict)
     tags: Iterable[str] = field(default_factory=list)
     conf: dict[str, Any] = field(default_factory=Box)
+    context: dict[str, Any] = field(default_factory=dict)
+    output: str = ''
 
     replacement: dict = field(default_factory=dict)
 
@@ -52,8 +57,9 @@ class Tc:
     tags: Sequence[str]
 
     input: str
-    conf: dict[str, Any]
-    context: dict[str, Any]
+    conf: dict
+    context: dict
+    output: str
 
 
 class SystemTCG(TCG):
@@ -64,7 +70,7 @@ class SystemTCG(TCG):
         ordered=dict(ru=[{'lu': 'лю'}, {'u': 'у'}]),
         regex=dict(ru=[{'l([aeuo])': 'łi\1', 'li': 'łi'}, {'[ji]a': 'я', '[ji]e': 'е', '[ji]o': 'ё', '[ji]u': 'ю', 'j[''q]': 'й'}]),
     )
-    single_confs = [
+    single_confs = [conf for conf in [
         *[dict(indirect=indirect_val) for indirect_val in indirect],
         *[dict(assume=assume_val) for assume_val in assume],
         *[dict(gather_data=gather_data_val) for gather_data_val in gather_data],
@@ -72,7 +78,7 @@ class SystemTCG(TCG):
         *[dict(groupby=groupby_val) for groupby_val in groupby],
         *[dict(color=color_conf) for color_conf in color_confs],
         *[dict(mappings=mapping) for mapping in mappings.values()]
-    ]
+    ] if next(iter(conf.values())) != 'conf']
 
     perm_base = Box({
         'from_lang': 'en',
@@ -94,16 +100,16 @@ class SystemTCG(TCG):
             input=_.map_(permutations({'-w Herr', '-f de', '-t pl'}, 3), ' '.join),
             context={
                 'from_lang': 'de',
-                'words': frozenset('Herr'),
-                'to_langs': frozenset('pl'),
-            }
+                'words': frozenset({'Herr'}),
+                'to_langs': frozenset({'pl'}),
+            },
+            output='Herr: pan (noun) [masculine], mężczyzna (noun) [masculine], Pan (proper) [masculine], człowiek, dżentelmen, jegomość, mąż, panowie, mistrz, don, partner, Bóg, władca, szef, gospodarz, zwierzchnik, nauczyciel, majster, p., panie'
         ),
         TC(
             descr=f'Conf Loading',
             tags=['conf', 'load'],
             input=[
                 IC(
-                    tags=[f'{next(iter(conf.keys()))}/{next(iter(conf.values()))}'],  # TODO: implement in TCG marker/tagger
                     input=f'-h',  # TODO think
                     context={f'_conf.{next(iter(conf.keys()))}': next(iter(conf.values()))},
                     conf=conf,
@@ -116,7 +122,7 @@ class SystemTCG(TCG):
             input=[
                 IC(
                     tags=[f'{next(conf.keys())}/{next(conf.values())}'],
-                    input=f'set {next(conf.keys())} {next(conf.values())}',
+                    input=f'--set {next(conf.keys())} {next(conf.values())}',
                     context={f'_conf.{next(conf.keys())}': next(conf.values())},
                 ) for conf in cls.single_confs if not isinstance(conf, (dict, list))
             ],
@@ -125,13 +131,12 @@ class SystemTCG(TCG):
             descr='Assume sunny resolution',
             input={
                 'es de -w en de orden --assume lang',  # lang
-                'en de --assume word',  # word
-                'en de -w en de',  # Default
-                '',
+                'en de orden --assume word',  # word
+                'es de -w en de orden',  # Default
             },
             context={
                 'from_lang': ('es'),
-                'words': frozenset({'en', 'de'}),
+                'words': frozenset({'en', 'de', 'orden'}),
                 'to_langs': frozenset({'de'}),
             },
             conf=(just_langs_es_de_pl_en_conf := Box({
@@ -182,7 +187,7 @@ class SystemTCG(TCG):
         ),
         TC(
             descr='Main Replacements',
-            tags={'replacement'},
+            tags=set(),
             input={
                 'es pl orden conocer <WORD_FLAG> en de',
                 'pl orden conocer -w en de <FROM_LANG> es',
@@ -209,18 +214,21 @@ class SystemTCG(TCG):
                     input=_.map_(permutations({'Herr', 'de', '-i'}, 3), ' '.join),
                     context=(herr_context := {
                         'from_lang': ('de'),
+                        'to_langs': frozenset(),
                         'inflection': True,
                         'words': ['Herr']
                     }),
                 ),
                 IC(
-                    input='Herr de {INFL_FLAG}',
+                    input='Herr de <INFL_FLAG>',
                     replacement={'INFL_FLAG': ['--inflection', '--infl', '-infl']},
                     context=herr_context,
                 ),
                 # TODO: extend with concrete inflection types and tables to test
             ],
-            conf=base_langs_es_de_pl_en_conf,
+            conf=(assume_langs_pl_de_en_es := Box({
+                'langs': ['pl', 'de', 'en', 'es'],
+            })),
         ),
         TC(
             descr='Definition',
@@ -243,7 +251,7 @@ class SystemTCG(TCG):
                 ),
                 # TODO: extend with definition formatting
             ],
-            conf=base_langs_es_de_pl_en_conf,
+            conf=assume_langs_pl_de_en_es,
         ),
         TC(
             descr='Reverse',
@@ -284,7 +292,7 @@ class SystemTCG(TCG):
                 ),
 
                 IC(
-                    tags={'replacement',},
+                    tags=set(),
                     input='es pl de -w conocer orden -by word'
                     # TODO expected
                 ),
@@ -303,10 +311,15 @@ class SystemTCG(TCG):
     @classmethod
     def map_inputs(cls, tc: TC) -> list:
         match tc.input:
-            case InputCase(): return [tc]
             case str(): return [replace(tc, input=InputCase(input=tc.input))]
-            case _ if isinstance(tc.input, Iterable):
+            case _ as i if isinstance(i, Iterable):
                 return _.flat_map((replace(tc, input=input) for input in tc.input), cls.map_inputs)
+            case InputCase():
+                match tc.input.input:
+                    case str(): return [tc]
+                    case _ as ii if isinstance(ii, Iterable):
+                        return [replace(tc, input=replace(tc.input, input=input)) for input in tc.input.input]
+                    case _ as ii: raise ValueError(f'Unexpected input type: {type(ii)}')
             case _: raise ValueError(f'Unexpected input type: {type(tc.input)}')
 
     @classmethod
@@ -316,7 +329,10 @@ class SystemTCG(TCG):
                 curr_tc = replace(tc)
                 curr_input: str = tc.input.input
                 for placeholder, placetaker in zip(replacements.keys(), placetaker_batch):
+                    old_input = str(curr_input)
                     curr_input = curr_input.replace(f'<{placeholder}>', placetaker)
+                    if curr_input != old_input:
+                        curr_tc = replace(curr_tc, tags=list(curr_tc.tags or []) + [f'replacement/{placetaker}'])
                 curr_tc = replace(curr_tc, input=replace(tc.input, input=curr_input))
                 yield curr_tc
         tcs = replace_at(tc.input.replacement, tc)
@@ -331,31 +347,66 @@ class SystemTCG(TCG):
             descr=tc.descr,
             tags=list(tc.tags) + list(tc.input.tags),
             input=tc.input.input,
-            context={**tc.context, **tc.input.context},
-            conf={**tc.conf, **tc.input.conf},
+            context=Box(
+                {key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()}
+            ).to_dict(),
+            output=tc.input.output or tc.output,
+            conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
         )
 
     @classmethod
-    def gather_tags(cls, tc) -> Iterable[str]:
+    def map_context_val(cls, val: Any) -> Any:
+        match val:
+            case str(): return val
+            case _ if isinstance(val, (Collection, Iterable)) and not isinstance(val, str):
+                return frozenset(val)
+            case _: return val
+
+    # @classmethod
+    # def gather_tag_before_mapping_to_many(cls, tc: TC) -> Iterable[str]:
+    #     return list(chain(tc.tags, tc.input.tags))
+
+    @classmethod
+    def gather_tags(cls, tc: Tc) -> Iterable[str]:
+        tc.tags += [f'conf/{key}/{val}' for key, val in tc.conf.items()]
+        tc.tags += [f'flag/{flag}' for flag in shlex.split(tc.input) if flag.startswith('-')]
+        tc.tags += [f'context/should/{key}/{list(val) if isinstance(val, frozenset) else val}' for key, val in tc.context.items()]
+        if '--set' in tc.input:
+            tc.tags += [f'conf/set/{key.replace("_conf.")}/{val}' for key, val in tc.context.items() if '_conf.' in key]
         return tc.tags
 
-
+    @classmethod
+    def create_name(cls, tc) -> Optional[str]:
+        return f'{tc.descr}: "t {tc.input}", ({tc.tags})'
 
 @pytest.fixture(autouse=True)
 def patch(mocker):
     mocker.patch(
-        'src.core.scrap_adapting.ScrapAdapter.scrap',
+        'src.scrapping.core.scrap_adapting.ScrapAdapter.scrap',
         side_effect=mocked_scrap,
+    )
+    mocker.patch(
+        'src.app_managing.AppMgr.connect',
+        return_value=nullcontext(None),
     )
 
 
 @SystemTCG.parametrize('tc')
-def test(tc: TC):
+def test(tc: Tc):
     with open(TEST_CONF, 'w') as f:
         yaml.dump(tc.conf, f, default_flow_style=False, allow_unicode=True)
     collector = CallCollector()
     app_mgr = AppMgr(conf_path=TEST_CONF, printer=collector)
 
-    app_mgr.run_single(shlex.split(tc.input))
+    ctx = pytest.raises(SystemExit) if '-h' in tc.input else nullcontext()
+    with ctx:
+        app_mgr.run_single(shlex.split(tc.input))
 
-    output = collector.output
+    for path, e_val in tc.context.items():
+        a_val = _.get(app_mgr.context, path)
+        if isinstance(e_val, (Collection, Iterable)) and not isinstance(e_val, str):
+            a_val = frozenset(a_val)
+        assert path == path and e_val == a_val
+
+    if tc.output:
+        assert tc.output == collector.output

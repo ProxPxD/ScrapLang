@@ -1,9 +1,9 @@
+import sys
+import os
+from pathlib import Path
+
 import pytest
 
 if __name__ == '__main__':
-    pytest.main([
-        '-s',
-        '-v',
-        #'--log-cli-level=DEBUG',
-        'cli/',
-    ])
+    # os.chdir(Path(__file__).parent.parent)
+    pytest.main(sys.argv)  # --capture=sys -v --full-trace testing/tests/system/

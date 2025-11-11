@@ -1,6 +1,5 @@
 import shlex
 from contextlib import contextmanager
-from dataclasses import asdict
 from pathlib import Path
 from typing import Iterator, Callable, Any
 
@@ -19,11 +18,11 @@ from src.scrapping.core.web_building import get_default_headers
 
 
 class AppMgr:
-    def __init__(self, *, conf_path: Path | str, printer: Callable[[str], Any] = None):
+    def __init__(self, *, conf_path: Path | str, valid_data_file: Path | str = None, short_mem_file: Path | str = None, printer: Callable[[str], Any] = None):
         setup_logging()
         self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
-        self.data_gatherer = DataGatherer(context=self.context)
+        self.data_gatherer = DataGatherer(context=self.context, valid_data_file=valid_data_file, short_mem_file=short_mem_file)
         self.cli = CLI(context=self.context, data_gatherer=self.data_gatherer)
         self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context, printer=printer)
@@ -55,8 +54,9 @@ class AppMgr:
 
         self.context.update(**vars(parsed))
         setup_logging(self.context)
-        if self.context.exit and args:
-            return
+        # if self.context.exit and args:
+        #     return
+
         if self.context.words:
             self.run_scrap()
 

@@ -4,12 +4,14 @@ from pathlib import Path
 from typing import Optional
 
 from box import Box
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from .file import FileMgr
 
 
 class MemRecord(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     langs: list
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 

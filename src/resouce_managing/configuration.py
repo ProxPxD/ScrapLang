@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pydash as _
 
-from .file import FileMgr
+from .file import FileMgr, UNSET
+from .. import context_domain
 from ..conf_domain import Conf
 
 
@@ -47,10 +48,13 @@ class ConfMgr:
                 raise NotImplementedError('Only lang-removing is currently supported')
 
     def update_lang_order(self, used_langs: list[str]) -> None:
+        if self.conf.langs is context_domain.UNSET:
+            logging.debug('No langs set, not updating langs')
+            return
         logging.debug('Updating lang order')
         saved_used = _.filter_(used_langs, self.conf.langs.__contains__)
         saved_unused = _.reject(self.conf.langs, saved_used.__contains__)
         newly_ordered_saved = saved_used + saved_unused
         logging.debug(f'Saved used: {saved_used}\nOld Order: {self.conf.langs}\nNew Order: {newly_ordered_saved}')
         self.conf.langs = newly_ordered_saved
-        self._file_mgr.save(self.conf.model_dump())
+        self._file_mgr.save(self.conf.model_dump(exclude_unset=True))

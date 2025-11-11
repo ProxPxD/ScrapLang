@@ -7,7 +7,7 @@ import pydash as _
 from box import Box
 from pandas import DataFrame
 from pandas.core.groupby import DataFrameGroupBy
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from pydash import chain as c
 
 from .file import FileMgr
@@ -18,6 +18,8 @@ from ..scrapping.wiktio.parsing import WiktioResult
 
 
 class ValidArgs(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     lang: list[str]
     word: list[str]
     dialect: str

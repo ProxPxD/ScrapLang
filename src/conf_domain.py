@@ -2,7 +2,7 @@ from typing import Literal
 
 import pydash as _
 from box import Box
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from pydash import chain as c
 
 from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color, \
@@ -16,6 +16,8 @@ ConfGroupBy = Literal[*(groupby - {'conf'})]
 
 
 class Conf(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     assume: ConfAssume = UNSET
     color: ColorSchema = UNSET  # TODO: test both dict and straight string colors
     groupby: ConfGroupBy = UNSET
