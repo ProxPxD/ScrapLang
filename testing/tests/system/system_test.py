@@ -330,7 +330,7 @@ class SystemTCG(TCG):
                     context=(conocer_context := {
                         'from_lang': ('es'),
                         'to_langs': frozenset({'pl'}),
-                        'words': ['conocer']
+                        'words': ['conocer'],
                     }),
                 ),
                 IC(
@@ -393,9 +393,9 @@ class SystemTCG(TCG):
                     tags={'flag/groupby/lang', 'ungroup'},
                     input='es pl de -w conocer --groupby lang',
                     output='''
-                                pl: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
-                                de: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
-                            ''',
+                        pl: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
+                        de: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
+                    ''',
                 ),
                 IC(
                     tags={'flag/groupby/word', 'ungroup'},
