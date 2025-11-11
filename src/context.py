@@ -137,6 +137,13 @@ class Context:
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
+    def n_groups(self) -> int:
+        match self.groupby:
+            case 'lang': return len(self.to_langs)
+            case 'word': return len(self.words)
+            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+
+    @property
     def grouped_url_triples(self) -> Iterable:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
             is_first = self._is_first(i)

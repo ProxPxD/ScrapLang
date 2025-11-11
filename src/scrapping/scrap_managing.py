@@ -82,7 +82,7 @@ class ScrapMgr:
 
     def scrap(self, context: Context) -> Iterable[Outcome]:
         for first, last, (from_lang, to_lang, word) in context.grouped_url_triples:
-            if is_first_in_group := first and not last:
+            if is_first_in_group := first and not last and context.n_groups > 1:
                 group = to_lang if context.groupby == 'lang' else word
                 yield Outcome(OutcomeKinds.SEPERATOR, results=group)
             if is_first_to_inflect := context.inflection and first:  # Should take into account grouping method?
