@@ -14,6 +14,7 @@ from pydash import chain as c
 
 from src.app_managing import AppMgr
 from src.context_domain import assume, indirect, gather_data, infervia, groupby
+from src.exceptions import InvalidExecution
 from testing.core import TCG
 from testing.core.mocking import mocked_scrap, CallCollector
 
@@ -32,19 +33,21 @@ class InputCase:
     conf: Box = field(default_factory=Box)
     context: dict[str, Any] = field(default_factory=dict)
     output: str = ''
+    exception: type[BaseException] | Sequence[type[BaseException]] = None
 
     replacement: dict = field(default_factory=dict)
 
 IC = InputCase
 
 @dataclass
-class TC:  # TODO: think of disabling queries
+class TC:
     descr: str
     input: Iterable[InputCase | str] | InputCase | str
     tags: Iterable[str] = field(default_factory=list)
     conf: dict[str, Any] = field(default_factory=Box)
     context: dict[str, Any] = field(default_factory=dict)
     output: str = ''
+    exception: type[BaseException] | Sequence[type[BaseException]] = None
 
     replacement: dict = field(default_factory=dict)
 
@@ -59,6 +62,7 @@ class Tc:
     conf: dict
     context: dict
     output: str
+    exception: type[BaseException] | Sequence[type[BaseException]] = None
 
 
 class SystemTCG(TCG):
@@ -109,7 +113,7 @@ class SystemTCG(TCG):
             tags=['conf', 'load'],
             input=[
                 IC(
-                    input=f'-h',  # TODO think
+                    input=f'-h',
                     context={f'_conf.{next(iter(conf.keys()))}': next(iter(conf.values()))},
                     conf=conf,
                 ) for conf in cls.single_confs
@@ -154,8 +158,9 @@ class SystemTCG(TCG):
             },
             context={
                 'from_lang': ('es'),
-                'to_langs': frozenset({'pl', 'de'})  # TODO: Error no word
+                'to_langs': frozenset({'pl', 'de'})
             },
+            exception=InvalidExecution,
             conf=just_langs_es_de_pl_en_conf,
         ),
         TC(
@@ -236,7 +241,6 @@ class SystemTCG(TCG):
                     replacement={'INFL_FLAG': ['--inflection', '--infl', '-infl']},
                     context=herr_context,
                 ),
-                # TODO: extend with concrete inflection types and tables to test
             ],
             conf=(assume_langs_pl_de_en_es := Box({
                 'langs': ['pl', 'de', 'en', 'es'],
@@ -309,7 +313,6 @@ class SystemTCG(TCG):
                         'DEF_FLAG': ['--definitions', '--definition', '-definitions', '-definition', '--def', '-def']},
                     context=bass_context,
                 ),
-                # TODO: extend with definition formatting
             ],
             conf=assume_langs_pl_de_en_es,
         ),
@@ -449,7 +452,7 @@ class SystemTCG(TCG):
 
     @classmethod
     def singularize(cls, tc: TC) -> Tc:
-        return Tc(
+        single = Tc(
             descr=tc.descr,
             tags=list(tc.tags) + list(tc.input.tags),
             input=tc.input.input,
@@ -457,8 +460,12 @@ class SystemTCG(TCG):
                 {key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()}
             ).to_dict(),
             output=cls.regularize_output(tc.input.output or tc.output),
+            exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
             conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
         )
+        if '-h' in single.input:
+            single.exception.append(SystemExit)
+        return single
 
     @classmethod
     def map_context_val(cls, val: Any) -> Any:
@@ -508,7 +515,7 @@ def test(tc: Tc):
         yaml.dump(tc.conf, f, default_flow_style=False, allow_unicode=True)
     app_mgr = AppMgr(conf_path=TEST_CONF, printer=(collector := CallCollector()))
 
-    ctx = pytest.raises(SystemExit) if '-h' in tc.input else nullcontext()
+    ctx = pytest.raises(tuple(tc.exception)) if tc.exception else nullcontext()
     with ctx:
         app_mgr.run_single(shlex.split(tc.input))
 
