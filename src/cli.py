@@ -9,14 +9,13 @@ from typing import Optional
 import pydash as _
 from box import Box
 from pydash import chain as c
-from requests.utils import default_user_agent
 
+from .conf_domain import indirect, gather_data, infervia, groupby
 from .context import Context
 from .context_domain import UNSET, assume
 from .logutils import setup_logging
 from .outstemming import Outstemmer
 from .resouce_managing.data_gathering import DataGatherer
-from .conf_domain import indirect, gather_data, infervia, groupby
 
 
 class CLI:

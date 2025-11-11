@@ -1,12 +1,8 @@
 from typing import Literal
 
-import pydash as _
-from box import Box
 from pydantic import BaseModel, field_validator, ConfigDict
-from pydash import chain as c
 
-from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color, \
-    color_names
+from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color
 
 ConfIndirect = Literal[*(indirect - {'conf'})]
 ConfAssume = Literal[*(assume - {'conf'})]

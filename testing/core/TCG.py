@@ -2,10 +2,10 @@ import warnings
 from typing import Iterable, Sequence, Optional
 
 import pytest
-from _pytest.mark import MarkDecorator, ParameterSet, Mark
+from _pytest.mark import ParameterSet, Mark
 from pydash import chain as c
-from toolz import unique
 from pydash import flow
+from toolz import unique
 
 
 def apply(*map_funcs):

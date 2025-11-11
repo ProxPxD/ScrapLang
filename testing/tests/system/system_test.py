@@ -1,7 +1,7 @@
 import shlex
 from contextlib import nullcontext
 from dataclasses import dataclass, field, replace
-from itertools import product, permutations, chain
+from itertools import product, permutations
 from pathlib import Path
 from typing import Iterable, Any, Sequence, Collection, Optional
 
@@ -10,7 +10,6 @@ import pytest
 import yaml
 from box import Box
 from more_itertools import windowed
-from more_itertools.more import side_effect
 from pydash import chain as c
 
 from src.app_managing import AppMgr
