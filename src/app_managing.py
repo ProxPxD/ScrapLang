@@ -9,6 +9,7 @@ from requests import Session
 
 from src.cli import CLI
 from src.context import Context
+from src.exceptions import InvalidExecution
 from src.logutils import setup_logging
 from src.printer import Printer
 from src.resouce_managing import ConfMgr
@@ -59,6 +60,8 @@ class AppMgr:
 
         if self.context.words:
             self.run_scrap()
+        else:
+            raise InvalidExecution()
 
     def run_scrap(self) -> None:
         # TODO: think when to raise if no word
