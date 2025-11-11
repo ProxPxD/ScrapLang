@@ -21,9 +21,6 @@ def get_filename_from_url(url: str) -> str:
         case 'glosbe':
             params = url.split('.com/')[1].split('/')[:3]
             more_info = c({'details', 'indirect'}).filter_(url.__contains__).get(0, '').value()
-            # if more_info:
-            #     params = _.at(params, 1, -1)
-
         case _: raise ValueError('Unexpected site!')
 
     name = f'{site}-{"-".join(params)}'
