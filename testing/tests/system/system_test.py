@@ -141,6 +141,11 @@ class SystemTCG(TCG):
             conf=(just_langs_es_de_pl_en_conf := Box({
                 'langs': ['es', 'de', 'pl', 'en'],
             })),
+            output='''
+                en: in (adposition), an (adposition), auf (adposition), bei, über, anderswo, zu, nach, im, binnen, neben, verstehen, für, mit, unter, innerhalb, b., um, während, zwischen, inmitten, drin, von, gestellt, gegen, je, pro, at, à, nahe bei, um zu, en, hinein, mit Hilfe von, nahe
+                de: von (adposition), aus (adposition), vor (adposition), der, über, nach, ab, einig, des, auf, mit, an, als, seit, alt, lösen, abgehen, weggehen, oberirdisch, sekkieren, ein düsteres Bild zeichnen, verantwortlich zeichnen, von ... her, um, v., für, in, zu, sein, bei, müssen, Brenner, losmachen, wegtun, abnabeln, abmachen, wegmachen, Blessur, ab-, aus ... heraus, deren, dessen, ent-, sich lösen, von ... an, weg-, wegen, de, Angelegenheit, innen, entbehren, bewundern, -s, unzählbares Substantiv
+                orden: Ordnung (noun) [masculine], Befehl (noun) [feminine], Reihenfolge (noun) [masculine], Orden, Kommando, Auftrag, Anordnung, Anweisung, Gebot, Bestellung, ordnung, Order, Geheiß, Verfügung, Regierung, Behörde, Leitung, Regieren, befehlen, Reihe, Vorstand, verordnung, Vorschrift, bestellen, serie, Bereich, Erlass, Geschäftsordnung, Instruktion, Komplex, Königswürde, Ordentlichkeit, Rang, Rangordnung, Recht, Systematik, Säulenordnung, Veranlassung, Weihe, Weihen, Ordnungsrelation, Aneinanderreihung, Abbuchungsauftrag, Verkettung, Organisation, Richtlinie, Sinn, zeitliche Ordnung, Verordnung, Weisung, Dienst, Gesetz, System, Sortierung, Diktat, Klasse, Ordo, Serie, Kategorie, Gesetzesentwurf, Gesetzgebung, Gerichtsurteil, Methode, Orden und Ehrenzeichen, Urteil, orden und ehrenzeichen#verdienstauszeichnungen
+            '''
         ),
         TC(
             descr='Assume rainy resolution',
@@ -217,6 +222,14 @@ class SystemTCG(TCG):
                         'inflection': True,
                         'words': ['Herr']
                     }),
+                    output='''
+                        ╭───┬────────────┬───────┬─────┬───────┬─────┬────────╮
+                        │ 0 │ nominative │ ein   │ der │ Herr  │ die │ Herren │
+                        │ 1 │ genitive   │ eines │ des │ Herrn │ der │ Herren │
+                        │ 2 │ dative     │ einem │ dem │ Herrn │ den │ Herren │
+                        │ 3 │ accusative │ einen │ den │ Herrn │ die │ Herren │
+                        ╰───┴────────────┴───────┴─────┴───────┴─────┴────────╯
+                    '''
                 ),
                 IC(
                     input='Herr de <INFL_FLAG>',
@@ -241,6 +254,54 @@ class SystemTCG(TCG):
                         'definition': True,
                         'words': ['bass']
                     }),
+                    output='''
+                        Definitions of "bass":                                                                                                                                                                                                            
+                        - Of sound, a voice or an instrument, low in pitch or frequency.                                                                                                                                                                  
+                        - A low spectrum of sound tones.                                                                                                                                                                                                  
+                        - A section of musical group that produces low-pitched sound, lower than tenor.                                                                                                                                                   
+                        - A male singer who sings in the bass range.
+                        - An instrument that plays in the bass range, in particular a double bass, bass guitar, electric bass or bass synthesiser.
+                        - The clef sign that indicates that the pitch of the notes is below middle C; a bass clef.
+                        - The perch; any of various marine and freshwater fish resembling the perch, all within the order of Perciformes.
+                        - (adjective) Of sound, a voice or an instrument, low in pitch or frequency.
+                        - (noun) The perch; any of various marine and freshwater fish resembling the perch, all within the order of Perciformes.
+                        - (noun) The fibrous inner bark of the linden or lime tree, used for making mats.
+                        - (noun) Fibers from other plants, especially palm trees
+                        - (noun) Anything made from such fibers, such as a hassock or thick mat.
+                        - (noun) A low spectrum of sound tones.
+                        - (noun) A section of musical group that produces low-pitched sound, lower than the baritone and tenor.
+                        - (noun) A male singer who sings in the bass range.
+                        - (noun (music)) An instrument that plays in the bass range, in particular a double bass, bass guitar, electric bass or bass synthesiser.
+                        - (noun) The clef sign that indicates that the pitch of the notes is below middle C; a bass clef.
+                        - (verb) To sound in a deep tone.
+                        - A marine fish (Percicthyidae or Centrarchidae) that is popular as game.
+                        - A musical part or section lower than tenor and all other sections, with a typical range from the D below the bottom of the bass clef to the E above "middle C".
+                        - low in pitch
+                        - low spectrum of sound
+                        - section of musical group
+                        - singer
+                        - musical instrument
+                        - clef sign
+                        - perch
+                        - A male singer who sings in the deepest vocal range.
+                        - of low frequency or range.
+                        - A sound range of low frequency or range.
+                        - A musical clef indicating that the F3 note is placed on the fourth line.
+                        - An instrument that plays sounds of low frequency.
+                        - (adjective) having or denoting a low vocal or instrumental range; "a deep voice"; "a bass voice is lower than a baritone voice"; "a bass clarinet"
+                        - (noun) any of various North American freshwater fish with lean flesh (especially of the genus Micropterus)
+                        - (noun) an adult male singer with the lowest voice
+                        - (noun) nontechnical name for any of numerous edible marine and freshwater spiny-finned fishes
+                        - (noun) the lean flesh of a saltwater fish of the family Serranidae
+                        - (noun) the lowest adult male singing voice
+                        - (noun) the lowest part in polyphonic music
+                        - (noun) the lowest part of the musical range
+                        - (noun) the member with the lowest range of a family of musical instruments
+                        - (proper) A surname.
+                        - One of the music genres that appears under Genre classification in Windows Media Player library. Based on ID3 standard tagging format for MP3 audio files. ID3v1 genre ID # 41.
+                        - One of the music genres that appears under Genre classification in Windows Media Player library. Based on ID3 standard tagging format for MP3 audio files. Winamp genre ID # 127.
+                    
+                    ''',
                 ),
                 IC(
                     input='bass <DEF_FLAG> en',
@@ -286,14 +347,60 @@ class SystemTCG(TCG):
             tags=set(),
             input=[
                 IC(
-                    input='es pl de -w conocer orden --groupby lang'
-                    # TODO expected
+                    tags={'flag/groupby/lang'},
+                    input='es pl de -w conocer orden --groupby lang',
+                    output='''
+                        -------- pl -------------------------
+                        conocer: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
+                        orden: porządek (noun) [masculine], rząd (noun) [masculine], rozkaz (noun) [masculine], zakon, zamówienie, polecenie, nakaz, kolejność, order, zarząd, zarządzenie, instrukcja, dyspozycja, kategoria, komenda, odznaczenie, rozporządzenie, szyk, układ, zalecenie, zamówić, wyrok, ustawa, zamawiać, przykazanie, zlecenie, relacja porządkowa, relacja porządku, ład, wskazówka, ustawodawstwo, prawodawstwo, konta, odpisu, uporządkowanie
+                        -------- de -------------------------
+                        conocer: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
+                        orden: Ordnung (noun) [masculine], Befehl (noun) [feminine], Reihenfolge (noun) [masculine], Orden, Kommando, Auftrag, Anordnung, Anweisung, Gebot, Bestellung, ordnung, Order, Geheiß, Verfügung, Regierung, Behörde, Leitung, Regieren, befehlen, Reihe, Vorstand, verordnung, Vorschrift, bestellen, serie, Bereich, Erlass, Geschäftsordnung, Instruktion, Komplex, Königswürde, Ordentlichkeit, Rang, Rangordnung, Recht, Systematik, Säulenordnung, Veranlassung, Weihe, Weihen, Ordnungsrelation, Aneinanderreihung, Abbuchungsauftrag, Verkettung, Organisation, Richtlinie, Sinn, zeitliche Ordnung, Verordnung, Weisung, Dienst, Gesetz, System, Sortierung, Diktat, Klasse, Ordo, Serie, Kategorie, Gesetzesentwurf, Gesetzgebung, Gerichtsurteil, Methode, Orden und Ehrenzeichen, Urteil, orden und ehrenzeichen#verdienstauszeichnungen
+                    '''
                 ),
-
                 IC(
-                    tags=set(),
-                    input='es pl de -w conocer orden -by word'
-                    # TODO expected
+                    tags={'flag/groupby/word'},
+                    input='es pl de -w conocer orden -by word',
+                    output='''
+                        -------- conocer -------------------------
+                        pl: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
+                        de: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
+                        -------- orden -------------------------
+                        pl: porządek (noun) [masculine], rząd (noun) [masculine], rozkaz (noun) [masculine], zakon, zamówienie, polecenie, nakaz, kolejność, order, zarząd, zarządzenie, instrukcja, dyspozycja, kategoria, komenda, odznaczenie, rozporządzenie, szyk, układ, zalecenie, zamówić, wyrok, ustawa, zamawiać, przykazanie, zlecenie, relacja porządkowa, relacja porządku, ład, wskazówka, ustawodawstwo, prawodawstwo, konta, odpisu, uporządkowanie
+                        de: Ordnung (noun) [masculine], Befehl (noun) [feminine], Reihenfolge (noun) [masculine], Orden, Kommando, Auftrag, Anordnung, Anweisung, Gebot, Bestellung, ordnung, Order, Geheiß, Verfügung, Regierung, Behörde, Leitung, Regieren, befehlen, Reihe, Vorstand, verordnung, Vorschrift, bestellen, serie, Bereich, Erlass, Geschäftsordnung, Instruktion, Komplex, Königswürde, Ordentlichkeit, Rang, Rangordnung, Recht, Systematik, Säulenordnung, Veranlassung, Weihe, Weihen, Ordnungsrelation, Aneinanderreihung, Abbuchungsauftrag, Verkettung, Organisation, Richtlinie, Sinn, zeitliche Ordnung, Verordnung, Weisung, Dienst, Gesetz, System, Sortierung, Diktat, Klasse, Ordo, Serie, Kategorie, Gesetzesentwurf, Gesetzgebung, Gerichtsurteil, Methode, Orden und Ehrenzeichen, Urteil, orden und ehrenzeichen#verdienstauszeichnungen
+                    '''
+                ),
+                IC(
+                    tags={'flag/groupby/word', 'ungroup'},
+                    input='es pl -w conocer orden --groupby word',
+                    output='''
+                        conocer: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
+                        orden: porządek (noun) [masculine], rząd (noun) [masculine], rozkaz (noun) [masculine], zakon, zamówienie, polecenie, nakaz, kolejność, order, zarząd, zarządzenie, instrukcja, dyspozycja, kategoria, komenda, odznaczenie, rozporządzenie, szyk, układ, zalecenie, zamówić, wyrok, ustawa, zamawiać, przykazanie, zlecenie, relacja porządkowa, relacja porządku, ład, wskazówka, ustawodawstwo, prawodawstwo, konta, odpisu, uporządkowanie
+                    '''
+                ),
+                IC(
+                    tags={'flag/groupby/lang', 'ungroup'},
+                    input='es pl -w conocer orden --groupby lang',
+                    output='''
+                        conocer: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
+                        orden: porządek (noun) [masculine], rząd (noun) [masculine], rozkaz (noun) [masculine], zakon, zamówienie, polecenie, nakaz, kolejność, order, zarząd, zarządzenie, instrukcja, dyspozycja, kategoria, komenda, odznaczenie, rozporządzenie, szyk, układ, zalecenie, zamówić, wyrok, ustawa, zamawiać, przykazanie, zlecenie, relacja porządkowa, relacja porządku, ład, wskazówka, ustawodawstwo, prawodawstwo, konta, odpisu, uporządkowanie
+                    '''
+                ),
+                IC(
+                    tags={'flag/groupby/lang', 'ungroup'},
+                    input='es pl de -w conocer --groupby lang',
+                    output='''
+                                pl: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
+                                de: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
+                            ''',
+                ),
+                IC(
+                    tags={'flag/groupby/word', 'ungroup'},
+                    input='es pl de -w conocer --groupby word',
+                    output='''
+                        pl: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry                                                                                                       
+                        de: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen  
+                    '''
                 ),
             ],
             conf=base_langs_es_de_pl_en_conf,
@@ -349,7 +456,7 @@ class SystemTCG(TCG):
             context=Box(
                 {key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()}
             ).to_dict(),
-            output=tc.input.output or tc.output,
+            output=cls.regularize_output(tc.input.output or tc.output),
             conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
         )
 
@@ -361,9 +468,14 @@ class SystemTCG(TCG):
                 return frozenset(val)
             case _: return val
 
-    # @classmethod
-    # def gather_tag_before_mapping_to_many(cls, tc: TC) -> Iterable[str]:
-    #     return list(chain(tc.tags, tc.input.tags))
+    @classmethod
+    def regularize_output(cls, output: str) -> str:
+        if not output or len(lines := output.split('\n')) < 3:
+            return output
+        lines = lines[1:-1]
+        n_spaces = len(lines[0]) - len(lines[0].lstrip(' '))
+        refined = c(lines).map(lambda line: line[n_spaces:].rstrip()).join('\n').value()
+        return refined
 
     @classmethod
     def gather_tags(cls, tc: Tc) -> Iterable[str]:
@@ -394,8 +506,7 @@ def patch(mocker):
 def test(tc: Tc):
     with open(TEST_CONF, 'w') as f:
         yaml.dump(tc.conf, f, default_flow_style=False, allow_unicode=True)
-    collector = CallCollector()
-    app_mgr = AppMgr(conf_path=TEST_CONF, printer=collector)
+    app_mgr = AppMgr(conf_path=TEST_CONF, printer=(collector := CallCollector()))
 
     ctx = pytest.raises(SystemExit) if '-h' in tc.input else nullcontext()
     with ctx:
