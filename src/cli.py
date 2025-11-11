@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import sys
-from argparse import ArgumentParser, Namespace, SUPPRESS
+from argparse import ArgumentParser, Namespace, SUPPRESS, Action
 from functools import reduce
 from typing import Optional
 
@@ -12,10 +12,17 @@ from pydash import chain as c
 
 from .conf_domain import indirect, gather_data, infervia, groupby
 from .context import Context
-from .context_domain import UNSET, assume
+from .context_domain import UNSET, assume, at
 from .logutils import setup_logging
 from .outstemming import Outstemmer
 from .resouce_managing.data_gathering import DataGatherer
+
+
+class AtSpecifierAction(Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        side = used_name[-1] if len(used_name := option_string.replace('-', '')) == 2 else UNSET
+        setattr(namespace, self.dest, True)
+        setattr(namespace, 'at', side)
 
 
 class CLI:
@@ -47,9 +54,9 @@ class CLI:
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         # Translation Modes
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
-        translation_mode_group.add_argument('--wiktio', '-wiktio', '-ped', '-pd', '-o', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--pronunciation', '-p', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang to apply the mode to', choices=at, default=UNSET)
+        translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', '-of', '-ot', action=AtSpecifierAction, nargs=0, default=False, help='#todo')
+        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '-if', '-it', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes

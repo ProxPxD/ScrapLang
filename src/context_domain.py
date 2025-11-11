@@ -9,6 +9,7 @@ assume = {'lang', 'word', 'no'}
 gather_data = {'all', 'ai', 'time', 'off', 'conf'}
 infervia = {'all', 'ai', 'time', 'last', 'off', 'conf'}
 groupby = {'lang', 'word', 'conf'}
+at = {'from', 'to', 'f', 't'}
 
 
 Indirect = Literal[*indirect]
@@ -17,6 +18,7 @@ GatherData = Literal[*gather_data]
 InferVia = Literal[*infervia]
 GroupBy = Literal[*groupby]
 Mappings = dict[str, list[dict[str, str]] | dict[str, str]]
+At = Literal[*at]
 
 color_names = {'main', 'pronunciation'}
 ColorNames = Literal[*color_names]

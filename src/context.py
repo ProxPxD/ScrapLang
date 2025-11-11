@@ -16,6 +16,7 @@ from src.resouce_managing.configuration import Conf
 @lambda k: k()
 @dataclass(frozen=True)
 class Defaults:
+    at: str = 'from'
     wiktio: bool = False
     inflection: bool = False
     definition: bool = False
@@ -49,6 +50,7 @@ class Context:
 
     mapped: tuple[bool] = tuple()
 
+    at: str = UNSET
     wiktio: bool = UNSET
     inflection: bool = UNSET
     definition: bool = UNSET
@@ -179,3 +181,12 @@ class Context:
 
     def is_setting_context(self) -> bool:
         return not self.words and self.loop
+
+    def is_at(self) -> bool:
+        return super().__getattribute__('at') is not UNSET
+
+    def is_at_from(self) -> bool:
+        return self.at.startswith('f')
+
+    def is_at_to(self) -> bool:
+        return self.at.startswith('t')
