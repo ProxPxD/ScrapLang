@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+from functools import cache
 from itertools import product, repeat
 from typing import ClassVar, Iterable, Optional, Any
 
 import pydash as _
 from box import Box
 from pydash import chain as c
+from pygments.lexer import words
 
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
     Color, color_names
@@ -38,6 +40,47 @@ class Defaults:
 
     mappings: Mappings = field(default_factory=dict)
     langs: list = field(default_factory=list)
+
+
+class ScrapIterator:
+    def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str):
+        self._context = context
+        self.i: int = i
+        self.from_lang: str = from_lang
+        self.to_lang: str = to_lang
+        self.word: str = word
+
+    @property
+    def args(self) -> tuple[str, str, str]:
+        return self.from_lang, self.to_lang, self.word
+
+    @cache
+    def is_first(self) -> bool:
+        return self._context.n_members == 0 or self.i % self._context.n_members == 0
+
+    @cache
+    def is_last(self) -> bool:
+        return self._context.n_members == 0 or self.i % self._context.n_members == self._context.n_members - 1
+
+    @cache
+    def is_first_in_group(self) -> bool:
+        return self.is_first() and not self.is_last() and self._context.n_groups > 1
+
+    @cache
+    def is_at_inflection(self) -> bool:
+        return self._context.inflection and self.is_first
+
+    @cache
+    def is_translating(self) -> bool:
+        return bool(self.to_lang)
+
+    @cache
+    def is_at_wiktio(self) -> bool:
+        return self._context.wiktio and self.is_last()
+
+    @cache
+    def is_at_definition(self) -> bool:
+        return self._context.definition and self.is_last
 
 
 @dataclass(frozen=False, init=False)
@@ -145,18 +188,9 @@ class Context:
             case 'word': return len(self.words)
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
-    @property
-    def grouped_url_triples(self) -> Iterable:
+    def iterate_args(self) -> Iterable[ScrapIterator]:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
-            is_first = self._is_first(i)
-            is_last = self._is_last(i)
-            yield is_first, is_last, (from_lang, to_lang, word)
-
-    def _is_first(self, i) -> bool:
-        return self.n_members == 0 or i % self.n_members == 0
-
-    def _is_last(self, i) -> bool:
-        return self.n_members == 0 or i % self.n_members == self.n_members - 1
+            yield ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word)
 
     @property
     def grouparg(self) -> str:

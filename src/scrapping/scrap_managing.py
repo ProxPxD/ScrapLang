@@ -47,7 +47,7 @@ class OutcomeKinds(MainOutcomeKinds, HelperOutcomeKinds):
 class Outcome:
     kind: str | OutcomeKinds  # Incorect syntax, but there's no right solution
     args: Box = field(default_factory=Box)  # TODO: think of restricting
-    results: DataFrame | Iterable[Result] = None
+    results: Optional[DataFrame | Iterable[Result]] = None
 
     def __post_init__(self):
         if self.kind not in OutcomeKinds().all():
@@ -81,21 +81,21 @@ class ScrapMgr:
         return self.glosbe_scrapper, self.wiktio_scrapper
 
     def scrap(self, context: Context) -> Iterable[Outcome]:
-        for first, last, (from_lang, to_lang, word) in context.grouped_url_triples:
-            if is_first_in_group := first and not last and context.n_groups > 1:
+        for scrap_it in context.iterate_args():
+            from_lang, to_lang, word = scrap_it.args
+            if scrap_it.is_first_in_group():
                 group = to_lang if context.groupby == 'lang' else word
                 yield Outcome(OutcomeKinds.SEPERATOR, results=group)
-            if is_first_to_inflect := context.inflection and first:  # Should take into account grouping method?
+            if scrap_it.is_at_inflection():
                 yield self.scrap_inflections(from_lang, word)
-            if is_translating := bool(to_lang):
+            if scrap_it.is_translating():
                 yield (main := self.scrap_main_translations(from_lang, to_lang, word))
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
-            if context.wiktio and last:
+            if scrap_it.is_at_wiktio():
                 yield self.scrap_wiktio(from_lang, word, context)
-            if context.definition:
+            if scrap_it.is_at_definition():
                 yield self.scrap_definitions(from_lang, word)
-            if context.definition:
                 yield Outcome(OutcomeKinds.NEWLINE)
 
     def scrap_inflections(self, lang: str, word: str) -> Outcome:
