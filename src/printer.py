@@ -102,8 +102,11 @@ class Printer:
             return False
         wiktio: WiktioResult = outcome.results
         front = f'{self.color(wiktio.word, self.context.color.main)}: ' if not self.context.to_langs else ''
-        wiktio_str = f'{front}{self._create_wiktio_meaning(wiktio)}{self._create_wiktio_meanings(wiktio.meanings)}'
-        self.printer(wiktio_str)
+        wide_front = f'{front}{self._create_wiktio_meaning(wiktio)}'
+        if len(wide_front) > 1:  # Not only a newline
+            self.printer(wide_front)
+        more = self._create_wiktio_meanings(wiktio.meanings)
+        self.printer(more)
         return True
 
     def _create_wiktio_meaning(self, meaning: Meaning) -> str:
@@ -113,7 +116,9 @@ class Printer:
         foot.append(p_foot)
         head.append(self._create_wiktio_rel_data(meaning.rel_data))
         foot.append(self._create_wiktio_etymology(meaning.etymology))
-        return " ".join(filter(bool, head)) + '\n' + '\n'.join(filter(bool, foot))
+        spaced_head = ' '.join(filter(bool, head))
+        spaced_foot = '\n'.join(filter(bool, foot))
+        return '\n'.join(filter(bool, (spaced_head, spaced_foot)))
 
     def _create_wiktio_pronunciations(self, pronunciations: list[Pronunciation]) -> tuple[str, str]:
         names = c(pronunciations).map(c().get('name')).filter().value()
