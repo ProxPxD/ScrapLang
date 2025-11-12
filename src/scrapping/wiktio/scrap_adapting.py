@@ -8,11 +8,10 @@ from .parsing import WiktioParser, WiktioResult
 from .web_building import WiktioUrlBuilder
 from ..core.parsing import ParsingException, Result
 from ..core.scrap_adapting import ScrapAdapter
-from ...context import Context
 
 
 class WiktioScrapAdapter(ScrapAdapter):
-    def scrap_wiktio_info(self, word: str, lang: str, *, context: Context = None) -> list[Result] | HTTPError | Exception:
+    def scrap_wiktio_info(self, word: str, lang: str) -> list[Result] | HTTPError | Exception:
         url = WiktioUrlBuilder.get_wiktio_url(word)
         results = self.scrap(url, self._wrap_parser(word, lang))
         return results

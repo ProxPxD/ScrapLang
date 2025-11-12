@@ -1,1 +1,2 @@
-from .scrap_managing import ScrapMgr, Outcome, OutcomeKinds, MainOutcomeKinds, HelperOutcomeKinds
+from .outcome import Outcome, OutcomeKinds, MainOutcomeKinds, HelperOutcomeKinds
+from .scrap_managing import ScrapMgr

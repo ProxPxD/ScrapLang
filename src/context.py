@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
-from functools import cache
+from functools import cached_property, cache
 from itertools import product, repeat
-from typing import ClassVar, Iterable, Optional, Any
+from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING
 
 import pydash as _
 from box import Box
 from pydash import chain as c
-from pygments.lexer import words
 
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
     Color, color_names
-from src.resouce_managing.configuration import Conf
 
+if TYPE_CHECKING:
+    from src.scrapping import Outcome
+    from src.resouce_managing.configuration import Conf
 
 @lambda k: k()
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ class Defaults:
 
     mappings: Mappings = field(default_factory=dict)
     langs: list = field(default_factory=list)
+
 
 
 class ScrapIterator:
@@ -81,6 +83,10 @@ class ScrapIterator:
     @cache
     def is_at_definition(self) -> bool:
         return self._context.definition and self.is_last
+
+    @cached_property
+    def at_lang(self) -> str:
+        return getattr(self, self._context.at_lang_side)
 
 
 @dataclass(frozen=False, init=False)
@@ -224,3 +230,15 @@ class Context:
 
     def is_at_to(self) -> bool:
         return self.at.startswith('t')
+
+    @property
+    def at_full(self) -> str:
+        if self.at.startswith('f'):
+            return 'from'
+        if self.at.startswith('t'):
+            return 'to'
+        raise ValueError(f'Unexpected value for at: {self.at}')
+
+    @property
+    def at_lang_side(self) -> str:
+        return f'{self.at_full}_lang'

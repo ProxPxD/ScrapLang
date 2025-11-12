@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Optional, Callable
 
 from bs4 import Tag
@@ -6,11 +5,6 @@ from requests import Session, Response
 from requests.exceptions import HTTPError
 
 from .parsing import Result, ParsingException, CaptchaException, Parser
-
-
-@dataclass(frozen=True)
-class Outcome:
-    pass
 
 
 class ScrapAdapter:
