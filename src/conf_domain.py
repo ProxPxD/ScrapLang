@@ -23,7 +23,7 @@ class Conf(BaseModel):
 
     @field_validator('color', mode='after')
     def val_color(cls, color: Color) -> dict:
-        try:  # TODO: get to work on both devices properly
-            return color.root if isinstance(color, ColorSchema) else color
-        except Exception:
+        # try:  # TODO: get to work on both devices properly
+        #     return color.root if isinstance(color, ColorSchema) else color
+        # except Exception:
             return color
