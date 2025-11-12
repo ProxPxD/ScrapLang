@@ -204,7 +204,7 @@ class CLI:
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         # todo: test żurawel (regex)
         whole_lang_mapping: Box
-        if not (whole_lang_mapping := self.context.mappings.get(parsed.from_lang)):
+        if not (whole_lang_mapping := self.context.mappings.get(parsed.from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
             return parsed
         logging.debug(f'Applying mapping for "{parsed.from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
         for single_mapping in whole_lang_mapping:
