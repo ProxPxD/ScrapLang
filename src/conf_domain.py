@@ -20,7 +20,3 @@ class Conf(BaseModel):
     indirect: ConfIndirect = UNSET
     langs: list[str] = UNSET
     mappings: Mappings = UNSET
-
-    @field_validator('color', mode='after')
-    def val_color(cls, color: Color) -> dict:
-        return color.root if isinstance(color, ColorSchema) else color
