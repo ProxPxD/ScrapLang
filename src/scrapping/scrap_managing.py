@@ -88,7 +88,7 @@ class ScrapMgr:
                 yield Outcome(OutcomeKinds.SEPERATOR, results=group)
             if scrap_it.is_at_inflection():
                 yield self.scrap_inflections(from_lang, word)
-            if scrap_it.is_translating():
+            if scrap_it.is_at_translation():
                 yield (main := self.scrap_main_translations(from_lang, to_lang, word))
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)

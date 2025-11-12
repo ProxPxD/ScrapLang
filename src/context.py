@@ -71,7 +71,7 @@ class ScrapIterator:
         return self._context.inflection and self.is_first
 
     @cache
-    def is_translating(self) -> bool:
+    def is_at_translation(self) -> bool:
         return bool(self.to_lang)
 
     @cache
