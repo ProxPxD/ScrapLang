@@ -38,15 +38,22 @@ def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] 
 
 
 class CallCollector:
-    def __init__(self):
+    def __init__(self, *,
+                 line_mapper: Callable[[str], str] = None,
+                 msg_mapper: Callable[[str], str] = None,
+                 sep: str = '\n',
+        ):
         self._buffor = []
+        self._sep = sep
+        self._msg_mapper = msg_mapper or _.identity
+        self._line_mapper = line_mapper or _.identity
 
     def __call__(self, msg):
-        self._buffor.append(str(msg))
+        self._buffor.append(self._msg_mapper(str(msg)))
 
     @property
     def output(self):
-        return '\n'.join(self._buffor)
+        return c(self._buffor).map(c().split(self._sep)).flatten().map(self._line_mapper).join(self._sep).value()
 
     def clear(self):
         self._buffor.clear()
