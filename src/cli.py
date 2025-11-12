@@ -28,7 +28,11 @@ class AtSpecifierAction(Action):
 
     @classmethod
     def side_mode_fusions(cls) -> set[str]:
-        return set((f'-{"".join(prod)}' for prod in product(list(cls.sides + cls.modes) + [''], repeat=3) if len(prod) == len(set(prod)) and set(cls.sides) - set(prod))) - {f'-{s}{m}' for m in cls.modes for s in cls.sides}
+        ext_modes = list(cls.modes) + ['']
+        return set((f'-{"".join(prod)}'
+                    for prod in product(list(cls.sides) + ext_modes, repeat=len(ext_modes))
+                    if len(''.join(prod)) == len(set(''.join(prod))) and set(cls.sides) - set(prod) and len(set(''.join(prod))) > 1)
+        ) - {f'-{s}{m}' for m in cls.modes for s in cls.sides}
 
     def __call__(self, parser, namespace, values, option_string=None):
         options = list(option_string.replace('-', ''))
