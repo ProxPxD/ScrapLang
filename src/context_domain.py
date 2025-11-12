@@ -9,7 +9,7 @@ assume = {'lang', 'word', 'no'}
 gather_data = {'all', 'ai', 'time', 'off', 'conf'}
 infervia = {'all', 'ai', 'time', 'last', 'off', 'conf'}
 groupby = {'lang', 'word', 'conf'}
-at = {'from', 'to', 'f', 't'}
+at = {'from', 'to', 'f', 't', 'none'}
 
 
 Indirect = Literal[*indirect]

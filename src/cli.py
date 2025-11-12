@@ -6,11 +6,13 @@ import re
 import sys
 from argparse import ArgumentParser, Namespace, SUPPRESS, Action
 from functools import reduce
+from itertools import permutations, product
 from typing import Optional
 
 import pydash as _
 from box import Box
 from pydash import chain as c
+from toolz import unique
 
 from .conf_domain import indirect, gather_data, infervia, groupby
 from .context import Context
@@ -21,10 +23,29 @@ from .resouce_managing.data_gathering import DataGatherer
 
 
 class AtSpecifierAction(Action):
+    sides = 'ft'
+    modes = 'oid'
+
+    @classmethod
+    def side_mode_fusions(cls) -> set[str]:
+        return set((f'-{"".join(prod)}' for prod in product(list(cls.sides + cls.modes) + [''], repeat=3) if len(prod) == len(set(prod)) and set(cls.sides) - set(prod))) - {f'-{s}{m}' for m in cls.modes for s in cls.sides}
+
     def __call__(self, parser, namespace, values, option_string=None):
-        side = used_name[-1] if len(used_name := option_string.replace('-', '')) == 2 else UNSET
-        setattr(namespace, self.dest, True)
+        options = list(option_string.replace('-', ''))
+        side = next((side for side in self.sides if side in options), 'none')
+        try:
+            options.remove(side)
+        except ValueError:
+            pass  # none
+
         setattr(namespace, 'at', side)
+        for o in options:
+            match o:
+                case 'o': dest = 'wiktio'
+                case 'i': dest = 'inflection'
+                case 'd': dest = 'definition'
+                case _: raise ValueError(f'Unexpected option: {o}')
+            setattr(namespace, dest, True)
 
 
 class CLI:
@@ -56,9 +77,12 @@ class CLI:
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         # Translation Modes
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
-        translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang to apply the mode to', choices=at, default=UNSET)
-        translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', '-of', '-ot', action=AtSpecifierAction, nargs=0, default=False, help='#todo')
-        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '-if', '-it', action=AtSpecifierAction, nargs=0, default=False, help='#todo')
+        permutations('oi ', 3)
+
+        translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang side to apply the mode to', choices=at, default='none')
+        translation_mode_group.add_argument(*AtSpecifierAction.side_mode_fusions(), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
+        translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
@@ -177,8 +201,9 @@ class CLI:
         if len(self.context.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
-        if not parsed.to_langs and (parsed.definition or parsed.inflection):
-            n_needed -= 1
+        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio):
+            if parsed.at.startswith('n'):
+                n_needed -= 1
         to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
         if not parsed.from_lang and to_fill:
             from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with "{from_lang}"')

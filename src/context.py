@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
-from functools import cached_property, cache
+from functools import cached_property, cache, lru_cache
 from itertools import product, repeat
 from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING
 
@@ -56,31 +56,31 @@ class ScrapIterator:
     def args(self) -> tuple[str, str, str]:
         return self.from_lang, self.to_lang, self.word
 
-    @cache
+    @lru_cache()
     def is_first(self) -> bool:
         return self._context.n_members == 0 or self.i % self._context.n_members == 0
 
-    @cache
+    @lru_cache()
     def is_last(self) -> bool:
         return self._context.n_members == 0 or self.i % self._context.n_members == self._context.n_members - 1
 
-    @cache
+    @lru_cache()
     def is_first_in_group(self) -> bool:
         return self.is_first() and not self.is_last() and self._context.n_groups > 1
 
-    @cache
+    @lru_cache()
     def is_at_inflection(self) -> bool:
-        return self._context.inflection and self.is_first
+        return self._context.inflection and self.is_first()
 
-    @cache
+    @lru_cache()
     def is_at_translation(self) -> bool:
         return bool(self.to_lang)
 
-    @cache
+    @lru_cache()
     def is_at_wiktio(self) -> bool:
         return self._context.wiktio and self.is_last()
 
-    @cache
+    @lru_cache()
     def is_at_definition(self) -> bool:
         return self._context.definition and self.is_last
 
@@ -119,7 +119,7 @@ class Context:
 
     mappings: Box | Mappings = UNSET
 
-    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set'}
+    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_'}
 
     def __init__(self, conf: Conf):
         self._conf: Conf = conf
@@ -226,7 +226,7 @@ class Context:
         return super().__getattribute__('at') is not UNSET
 
     def is_at_from(self) -> bool:
-        return self.at.startswith('f')
+        return self.at.startswith('f') or self.at.startswith('n')
 
     def is_at_to(self) -> bool:
         return self.at.startswith('t')
