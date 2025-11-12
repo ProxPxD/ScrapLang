@@ -48,8 +48,10 @@ class ScrapMgr:
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
                 if context.is_at_to() and scrap_it.is_at_inflection():
-                    yield self.scrap_inflections(from_lang, word)
+                    yield self.scrap_inflections(to_lang, main.results[0].word)
                 if context.is_at_to() and scrap_it.is_at_wiktio():
+                    yield self.scrap_wiktio(to_lang, main.results[0].word)
+                if context.is_at_to() and scrap_it.is_at_definition():
                     yield self.scrap_wiktio(to_lang, main.results[0].word)
             if context.is_at_from() and scrap_it.is_at_wiktio():
                 yield self.scrap_wiktio(from_lang, word)
