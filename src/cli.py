@@ -7,12 +7,11 @@ import sys
 from argparse import ArgumentParser, Namespace, SUPPRESS, Action
 from functools import reduce
 from itertools import permutations, product
-from typing import Optional
+from typing import Optional, Iterable
 
 import pydash as _
 from box import Box
 from pydash import chain as c
-from toolz import unique
 
 from .conf_domain import indirect, gather_data, infervia, groupby
 from .context import Context
@@ -27,12 +26,22 @@ class AtSpecifierAction(Action):
     modes = 'oid'
 
     @classmethod
-    def side_mode_fusions(cls) -> set[str]:
-        ext_modes = list(cls.modes) + ['']
-        return set((f'-{"".join(prod)}'
-                    for prod in product(list(cls.sides) + ext_modes, repeat=len(ext_modes))
-                    if len(''.join(prod)) == len(set(''.join(prod))) and set(cls.sides) - set(prod) and len(set(''.join(prod))) > 1)
-        ) - {f'-{s}{m}' for m in cls.modes for s in cls.sides}
+    def mode_permutations(cls) -> Iterable[str]:
+        for i in range(1, len(cls.modes) + 1):
+            for perm in permutations(cls.modes, i):
+                yield ''.join(perm)
+
+    @classmethod
+    def side_mode_fusions(cls) -> Iterable[str]:
+        for side, perm1 in product([''] + list(cls.sides), cls.mode_permutations()):
+            if not side and len(perm1) > 1:
+                yield f'-{perm1}'
+            if not side:
+                continue
+            for perm2 in permutations(side + perm1, len(side + perm1)):
+                perm2 = ''.join(perm2)
+                if perm2 not in {f'{s}{m}' for m in cls.modes for s in cls.sides}:
+                    yield f'-{perm2}'
 
     def __call__(self, parser, namespace, values, option_string=None):
         options = list(option_string.replace('-', ''))
@@ -84,7 +93,7 @@ class CLI:
         permutations('oi ', 3)
 
         translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang side to apply the mode to', choices=at, default='none')
-        translation_mode_group.add_argument(*AtSpecifierAction.side_mode_fusions(), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
+        translation_mode_group.add_argument(*tuple(AtSpecifierAction.side_mode_fusions()), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
         translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
