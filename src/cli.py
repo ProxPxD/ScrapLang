@@ -11,6 +11,7 @@ from typing import Optional, Iterable
 
 import pydash as _
 from box import Box
+from more_itertools import circular_shifts
 from pydash import chain as c
 
 from .conf_domain import indirect, gather_data, infervia, groupby
@@ -33,15 +34,16 @@ class AtSpecifierAction(Action):
 
     @classmethod
     def side_mode_fusions(cls) -> Iterable[str]:
+        conflicting_like = {f'{s}{m}' for m in cls.modes for s in cls.sides}
         for side, perm1 in product([''] + list(cls.sides), cls.mode_permutations()):
             if not side and len(perm1) > 1:
                 yield f'-{perm1}'
             if not side:
                 continue
-            for perm2 in permutations(side + perm1, len(side + perm1)):
-                perm2 = ''.join(perm2)
-                if perm2 not in {f'{s}{m}' for m in cls.modes for s in cls.sides}:
-                    yield f'-{perm2}'
+            for shift in circular_shifts(side + perm1):
+                shift = ''.join(shift)
+                if shift not in conflicting_like:
+                    yield f'-{shift}'
 
     def __call__(self, parser, namespace, values, option_string=None):
         options = list(option_string.replace('-', ''))
