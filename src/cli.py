@@ -6,12 +6,15 @@ import re
 import sys
 from argparse import ArgumentParser, Namespace, SUPPRESS, Action
 from functools import reduce
-from itertools import permutations, product
+from itertools import permutations, product, combinations, chain
 from typing import Optional, Iterable
+
+from more_itertools import flatten
 
 import pydash as _
 from box import Box
 from more_itertools import circular_shifts
+from ordered_set import OrderedSet
 from pydash import chain as c
 
 from .conf_domain import indirect, gather_data, infervia, groupby
@@ -29,21 +32,24 @@ class AtSpecifierAction(Action):
     @classmethod
     def mode_permutations(cls) -> Iterable[str]:
         for i in range(1, len(cls.modes) + 1):
-            for perm in permutations(cls.modes, i):
-                yield ''.join(perm)
+            for comb in combinations(cls.modes, i):
+                for perm in permutations(comb, len(comb)):
+                    yield ''.join(perm)
 
     @classmethod
     def side_mode_fusions(cls) -> Iterable[str]:
         conflicting_like = {f'{s}{m}' for m in cls.modes for s in cls.sides}
-        for side, perm1 in product([''] + list(cls.sides), cls.mode_permutations()):
-            if not side and len(perm1) > 1:
-                yield f'-{perm1}'
-            if not side:
-                continue
-            for shift in circular_shifts(side + perm1):
-                shift = ''.join(shift)
-                if shift not in conflicting_like:
-                    yield f'-{shift}'
+        perms = chain(
+            cls.mode_permutations(),
+            flatten((map(''.join, circular_shifts(side+perm)) for side, perm in product(cls.sides, cls.mode_permutations())))
+        )
+        filtereds = c(perms).reject(conflicting_like.__contains__).reject(lambda p: len(p) == 1).value()
+        sorteds = sorted(filtereds, key=lambda p: (
+            len(modes := (ps := OrderedSet(p)) & OrderedSet(cls.modes)),
+            (' ' + p).index(next(iter(ps & OrderedSet(cls.sides)), ' ')),
+            c(list(modes)).map(cls.modes.index).map(c().power(2)).sum().value(),
+        ))
+        return [f'-{group}' for group in sorteds]
 
     def __call__(self, parser, namespace, values, option_string=None):
         options = list(option_string.replace('-', ''))
