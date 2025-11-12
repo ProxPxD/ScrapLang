@@ -56,7 +56,7 @@ class CLI:
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
         translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang to apply the mode to', choices=at, default=UNSET)
         translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', '-of', '-ot', action=AtSpecifierAction, nargs=0, default=False, help='#todo')
-        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '-if', '-it', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', '-if', '-it', action=AtSpecifierAction, nargs=0, default=False, help='#todo')
         translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
