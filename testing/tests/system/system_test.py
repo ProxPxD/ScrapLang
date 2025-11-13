@@ -612,5 +612,5 @@ def test(tc: Tc):
         assert path == path and e_val == a_val
 
     if tc.output:
-        a_output = collector.output if tc.color else remove_color(tc.output)
+        a_output = (_.identity if tc.color else remove_color)(collector.output)
         assert tc.output == a_output
