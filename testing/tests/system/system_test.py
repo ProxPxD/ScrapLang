@@ -17,6 +17,7 @@ from src.context_domain import assume, indirect, gather_data, infervia, groupby
 from src.exceptions import InvalidExecution
 from testing.core import TCG
 from testing.core.mocking import mocked_scrap, CallCollector
+from testing.core.utils import remove_color
 
 SYSTEM_PATH = Path(__file__).parent
 TMP_DIR = SYSTEM_PATH / 'tmp'
@@ -48,9 +49,9 @@ class TC:
     context: dict[str, Any] = field(default_factory=dict)
     output: str = ''
     exception: type[BaseException] | Sequence[type[BaseException]] = None
+    color: bool = False
 
     replacement: dict = field(default_factory=dict)
-
 
 
 @dataclass
@@ -63,6 +64,7 @@ class Tc:
     context: dict
     output: str
     exception: type[BaseException] | Sequence[type[BaseException]] = None
+    color: bool = False
 
 
 class SystemTCG(TCG):
@@ -544,6 +546,7 @@ class SystemTCG(TCG):
             output=cls.regularize_output(tc.input.output or tc.output),
             exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
             conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
+            color=tc.color,
         )
         if '-h' in single.input:
             single.exception.append(SystemExit)
@@ -609,4 +612,5 @@ def test(tc: Tc):
         assert path == path and e_val == a_val
 
     if tc.output:
-        assert tc.output == collector.output
+        a_output = collector.output if tc.color else remove_color(tc.output)
+        assert tc.output == a_output
