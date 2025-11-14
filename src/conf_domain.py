@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, field_validator, ConfigDict, Field
 
 from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color
 
@@ -20,7 +20,7 @@ class Conf(BaseModel):
     indirect: ConfIndirect = UNSET
     langs: list[str] = UNSET
     mappings: Mappings = UNSET
-    gather_data: ConfGatherData = UNSET
+    gather_data: ConfGatherData = Field(default=UNSET, alias="gather-data")
 
     @field_validator('color', mode='after')
     def val_color(cls, color: Color) -> dict:
