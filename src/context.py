@@ -31,7 +31,7 @@ class Defaults:
     assume: str = 'word'  # TODO: remove
     groupby: str = 'word'
     infervia: str = 'last'
-    gather_data: str = 'conf'
+    gather_data: str = 'all'
     indirect: bool = 'fail'
 
     color: Color = field(default_factory=lambda: Box(ColorSchema(

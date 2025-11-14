@@ -20,6 +20,7 @@ class Conf(BaseModel):
     indirect: ConfIndirect = UNSET
     langs: list[str] = UNSET
     mappings: Mappings = UNSET
+    gather_data: ConfGatherData = UNSET
 
     @field_validator('color', mode='after')
     def val_color(cls, color: Color) -> dict:
