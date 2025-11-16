@@ -41,7 +41,7 @@ class AppMgr:
             if session:
                 session.close()
 
-    def run(self):
+    def run(self) -> None:
         self.run_single()
         while self.context.loop:
             self.run_single(shlex.split(input()))
