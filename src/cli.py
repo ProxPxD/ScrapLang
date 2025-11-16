@@ -78,8 +78,8 @@ class CLI:
     @property
     def parser(self) -> ArgumentParser:
         parser = ArgumentParser(
-            prog='GlosbeTranslator',
-            description='Translation Program',
+            prog='ScrapLang',
+            description='Language Scrapping Program',
             epilog=''
         )
         parser = _.flow(self._add_base_args, self._add_execution_mode_args, self._add_setting_mode_args, self._add_loop_control_args)(parser)
