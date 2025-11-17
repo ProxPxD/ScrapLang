@@ -147,16 +147,18 @@ class CLI:
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
-        assume = parsed.assume or self.context.assume
-        if assume == 'word':
-            logging.debug(f'Assuming {parsed.args} are words!')
-            parsed.words = parsed.args + parsed.words
-            parsed.args = []
-            return parsed
-        if assume == 'no' and parsed.args:
-            raise ValueError(f'Could not resolve arguments: {parsed.args}')
+        match assume := parsed.assume or self.context.assume:
+            case 'word':
+                logging.debug(f'Assuming {parsed.args} are words!')
+                parsed.words = parsed.args + parsed.words
+                parsed.args = []
+                return parsed
+            case 'no' if not parsed.args: return parsed
+            case 'no' if parsed.args: raise ValueError(f'Could not resolve arguments: {parsed.args}')
+            case 'lang': return self._distribute_args_by_langs(parsed)
+            case _: raise ValueError(f'Unexpected assume value: {assume}')
 
-        # assume == lang
+    def _distribute_args_by_langs(self, parsed: Namespace) -> Namespace:
         pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in self.context.langs]), default_box=True, default_box_attr=[])
         parsed.args = []
 
