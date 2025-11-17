@@ -16,9 +16,9 @@ class DataGatherer:
         self.shor_mem_mgr = ShortMemMgr(short_mem_file, length=ResourceConstants.SHORT_MEMORY_LENGTH) if short_mem_file else None
 
     def gather_valid_data(self, scrap_results: Iterable[Outcome]) -> None:
-        if self.context.gather_data in ['all', 'ai']:
+        if self.valid_args_mgr and self.context.gather_data in ['all', 'ai']:
             self.valid_args_mgr.gather(scrap_results)
 
     def gather_short_mem(self, parsed: Namespace) -> None:
-        if self.context.gather_data in ['all', 'time']:
+        if self.shor_mem_mgr and self.context.gather_data in ['all', 'time']:
             self.shor_mem_mgr.add(parsed)
