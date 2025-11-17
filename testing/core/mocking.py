@@ -1,3 +1,4 @@
+from functools import cache
 from pathlib import Path
 from typing import Callable
 
@@ -11,6 +12,7 @@ from src.scrapping.core.parsing import Result, ParsingException
 PAGES = Path(__file__).parent.parent / 'pages'
 
 
+@cache
 def get_filename_from_url(url: str) -> str:
     site = _.filter_({'glosbe', 'wiktio'}, url.__contains__)[0]
     params = []
@@ -30,6 +32,7 @@ def get_filename_from_url(url: str) -> str:
     return fullname
 
 
+@cache
 def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException | HTTPError]) -> list[Result] | HTTPError | ParsingException:
     filename = get_filename_from_url(url)
     with open(PAGES / filename, 'r') as f:
