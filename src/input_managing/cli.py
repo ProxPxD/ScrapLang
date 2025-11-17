@@ -7,7 +7,7 @@ import sys
 from argparse import ArgumentParser, Namespace, SUPPRESS, Action
 from functools import reduce
 from itertools import permutations, product, combinations, chain
-from typing import Optional, Iterable
+from typing import Iterable
 
 from more_itertools import flatten
 
@@ -21,7 +21,7 @@ from src.conf_domain import indirect, gather_data, infervia, groupby
 from src.context import Context
 from src.context_domain import UNSET, assume, at
 from src.logutils import setup_logging
-from src.outstemming import Outstemmer
+from src.input_managing.outstemming import Outstemmer
 from src.resouce_managing.data_gathering import DataGatherer
 
 
@@ -70,10 +70,8 @@ class AtSpecifierAction(Action):
 
 
 class CLI:
-    def __init__(self, context: Context, data_gatherer: DataGatherer = None):
-        self.context = context  # TODO: convert to using context and data_gatherer instead of conf
-        self.outstemmer = Outstemmer()
-        self.data_gatherer = data_gatherer or DataGatherer(context)
+    def __init__(self, context: Context):
+        self.context = context
 
     @property
     def parser(self) -> ArgumentParser:
@@ -135,33 +133,17 @@ class CLI:
         loop_control_exclusive.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
         return parser
 
-    def parse(self, args: list[str] | str = None) -> Namespace:
-        parsed = self.parse_base(args or sys.argv[1:])
-        self.data_gatherer.gather_short_mem(parsed)
-        parsed = self.process_parsed(parsed)
-        return parsed
 
-    def parse_base(self, args: list[str]):
-        if len(args) == 0:
+    def parse(self, args: list[str]):
+        if not args:
             self.parser.print_help()
             exit(0)  # change
 
-        args = [a for arg in args for a in arg.split('\xa0')]
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += remaining  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
-        return parsed
-
-    def process_parsed(self, parsed: Namespace) -> Namespace:
-        parsed = self._word_outstemming(parsed)
-        parsed = self._fill_default_args(parsed)
-        parsed = self._reverse_if_needed(parsed)
-        origs = list(parsed.words)
-        parsed = self._apply_mapping(parsed)
-        parsed.mapped = [o != m for o, m in zip(origs, parsed.words)]
-        logging.debug(f'Processed: {parsed}')
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
@@ -189,65 +171,4 @@ class CLI:
             pot.lang = []
         if pot.word:
             parsed.words += pot.word; logging.debug(f'Assuming "{pot.word}" should be in words')
-        return parsed
-
-    def _word_outstemming(self, parsed: Namespace) -> Namespace:
-        parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
-        parsed.words = [outstemmed for word in parsed.words for outstemmed in self.outstemmer.outstem(word)]
-        return parsed
-
-    def _fill_default_args(self, parsed: Namespace) -> Namespace:
-        parsed = self._predict_langs(parsed)
-        parsed = self._fill_last_used(parsed)
-        return parsed
-
-    def _predict_langs(self, parsed: Namespace) -> Namespace:
-        # TODO: How to handle Cyrillic written with latin and memory?
-        return parsed
-
-    def _fill_last_used(self, parsed: Namespace) -> Namespace:
-        used = _.filter_([parsed.from_lang] + parsed.to_langs)
-        pot_defaults = [lang for lang in self.context.langs if lang not in used]; logging.debug(f'Potential defaults: {pot_defaults}')
-        if len(self.context.langs) < (n_needed := int(not parsed.from_lang) + int(not parsed.to_langs)):
-            raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
-        # Do not require to translate on definition or inflection
-        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio):
-            if parsed.at.startswith('n'):
-                n_needed -= 1
-        to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
-        if not parsed.from_lang and to_fill:
-            from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with "{from_lang}"')
-            parsed.from_lang = from_lang
-        if not parsed.to_langs and to_fill:
-            to_lang = to_fill.pop(0); logging.debug(f'Filling to_lang with "{to_lang}"')
-            parsed.to_langs.append(to_lang)
-        return parsed
-
-    def _reverse_if_needed(self, parsed: Namespace) -> Namespace:
-        if parsed.reverse:
-            old_from, old_first_to = parsed.from_lang, parsed.to_langs[0]
-            logging.debug(f'Reversing: {old_from, old_first_to} => {old_first_to, old_from}')
-            parsed.from_lang = old_first_to
-            parsed.to_langs[0] = old_from
-        return parsed
-
-    def _uniq_langs(self, parsed: Namespace) -> Namespace:
-        # TODO: test
-        parsed.to_langs = _.uniq(parsed.to_langs)
-        return parsed
-
-    def _apply_mapping(self, parsed: Namespace) -> Namespace:
-        # todo: test żurawel (regex)
-        whole_lang_mapping: Box
-        if not (whole_lang_mapping := self.context.mappings.get(parsed.from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
-            return parsed
-        logging.debug(f'Applying mapping for "{parsed.from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
-        for single_mapping in whole_lang_mapping:
-            patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
-            whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
-            logging.debug(f'from_lang_map: {whole_lang_mapping}')
-            parsed.words = [
-                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
-                for word in parsed.words
-            ]
         return parsed

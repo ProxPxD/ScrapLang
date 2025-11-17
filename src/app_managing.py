@@ -10,6 +10,7 @@ from requests import Session
 from src.input_managing.cli import CLI
 from src.context import Context
 from src.exceptions import InvalidExecution
+from src.input_managing.input_managing import InputMgr
 from src.logutils import setup_logging
 from src.printer import Printer
 from src.resouce_managing import ConfMgr
@@ -24,7 +25,7 @@ class AppMgr:
         self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.data_gatherer = DataGatherer(context=self.context, valid_data_file=valid_data_file, short_mem_file=short_mem_file)
-        self.cli = CLI(context=self.context, data_gatherer=self.data_gatherer)
+        self.input_mgr = InputMgr(context=self.context, data_gatherer=self.data_gatherer)
         self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context, printer=printer)
 
@@ -47,7 +48,7 @@ class AppMgr:
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:
-        parsed = self.cli.parse(args)
+        parsed = self.input_mgr.ingest_input(args)
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
             self.conf_mgr.update_conf(parsed)
