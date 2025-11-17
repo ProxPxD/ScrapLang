@@ -154,8 +154,8 @@ class CLI:
                 parsed.words = parsed.args + parsed.words
                 parsed.args = []
                 return parsed
-            case 'no' if not parsed.args: return parsed
             case 'no' if parsed.args: raise ValueError(f'Could not resolve arguments: {parsed.args}')
+            case 'no': return parsed
             case 'lang': return self._distribute_args_by_langs(parsed)
             case _: raise ValueError(f'Unexpected assume value: {self.context.assume}')
 

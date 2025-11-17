@@ -24,4 +24,5 @@ class InputMgr:
         args = _.flat_map(args, c().split('\xa0'))  # TODO: add test
         parsed: Namespace = self.cli.parse(args)
         parsed = self.processor.process(parsed)
+        self.context.update(**vars(parsed))
         return parsed

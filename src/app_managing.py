@@ -53,7 +53,6 @@ class AppMgr:
             self.conf_mgr.update_conf(parsed)
             return
 
-        self.context.update(**vars(parsed))
         setup_logging(self.context)
         # if self.context.exit and args:
         #     return
