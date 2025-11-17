@@ -29,7 +29,7 @@ class Defaults:
     debug: bool = False
     test: bool = False
 
-    assume: str = 'word'  # TODO: remove
+    assume: str = 'lang'  # TODO: remove
     groupby: str = 'word'
     infervia: str = 'last'
     gather_data: str = 'all'
