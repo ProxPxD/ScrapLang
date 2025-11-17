@@ -100,8 +100,8 @@ class SystemTCG(TCG):
     def generate_tcs(cls) -> list:
         return [
             TC(
-                descr='Exact allflag configless call',
-                tags=['position', 'permutation'],
+                descr='Exact all-flag configless call',
+                tags=['all-flag', 'position', 'permutation'],
                 input=_.map_(permutations({'-w Frau', '-f de', '-t pl'}, 3), ' '.join),
                 context={
                     'from_lang': 'de',
@@ -217,6 +217,17 @@ class SystemTCG(TCG):
                     'to_langs': frozenset({'pl'}),
                 },
                 conf=base_langs_es_de_pl_en_conf,
+            ),
+            TC(
+                descr='No break space separation',
+                input='en pl bass water',
+                tags=['break-space'],
+                context={
+                    'from_lang': 'en',
+                    'to_langs': ['pl'],
+                    'words': ['bass', 'water']
+                },
+                conf=base_langs_es_de_pl_en_conf
             ),
             TC(
                 descr='Inflection',
