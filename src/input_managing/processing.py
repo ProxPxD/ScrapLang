@@ -21,7 +21,7 @@ class InputProcessor:
 
     def process(self, parsed: Namespace) -> Namespace:
         parsed = self._word_outstemming(parsed)
-        parsed = self._fill_default_args(parsed)
+        parsed = self._fill_args(parsed)
         parsed = self._reverse_if_needed(parsed)
         origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
@@ -34,7 +34,7 @@ class InputProcessor:
         parsed.words = [outstemmed for word in parsed.words for outstemmed in self.outstemmer.outstem(word)]
         return parsed
 
-    def _fill_default_args(self, parsed: Namespace) -> Namespace:
+    def _fill_args(self, parsed: Namespace) -> Namespace:
         # parsed = self._predict_langs(parsed)
         parsed = self._fill_last_used(parsed)
         return parsed
