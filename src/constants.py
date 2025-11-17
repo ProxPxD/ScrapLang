@@ -4,7 +4,7 @@ from typing import Type, TypeVar
 
 
 T = TypeVar("T")
-def preinitialized(cls: Type[T]) -> Type[T]:
+def preinitialized(cls: Type[T]) -> T:
     return cls()
 
 
