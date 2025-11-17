@@ -191,17 +191,6 @@ class CLI:
             parsed.words += pot.word; logging.debug(f'Assuming "{pot.word}" should be in words')
         return parsed
 
-    def _assume_first_word(self, pot: Box) -> Optional[str]:
-        if pot.word:
-            word = pot.word.pop(0)
-        elif len(pot.lang) > 2:
-            word = pot.lang.pop(0)
-        else:
-            logging.debug('No word to assume!')
-            return None
-        logging.debug(f'Assuming "{word}" should be in words')
-        return word
-
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
         parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
         parsed.words = [outstemmed for word in parsed.words for outstemmed in self.outstemmer.outstem(word)]
