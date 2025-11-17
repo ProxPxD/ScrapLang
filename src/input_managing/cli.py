@@ -142,12 +142,13 @@ class CLI:
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += remaining  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
+        self.context.update(**{**vars(parsed), 'words': [], 'from_lang': None, 'to_langs': []}); logging.debug('Updating context in CLI')
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
-        match assume := parsed.assume or self.context.assume:
+        match self.context.assume:
             case 'word':
                 logging.debug(f'Assuming {parsed.args} are words!')
                 parsed.words = parsed.args + parsed.words
@@ -156,7 +157,7 @@ class CLI:
             case 'no' if not parsed.args: return parsed
             case 'no' if parsed.args: raise ValueError(f'Could not resolve arguments: {parsed.args}')
             case 'lang': return self._distribute_args_by_langs(parsed)
-            case _: raise ValueError(f'Unexpected assume value: {assume}')
+            case _: raise ValueError(f'Unexpected assume value: {self.context.assume}')
 
     def _distribute_args_by_langs(self, parsed: Namespace) -> Namespace:
         pot = Box(_.group_by(parsed.args, lambda arg: ('word', 'lang')[arg in self.context.langs]), default_box=True, default_box_attr=[])

@@ -7,10 +7,9 @@ import pydash as _
 from more_itertools.more import seekable
 from requests import Session
 
-from src.input_managing.cli import CLI
 from src.context import Context
 from src.exceptions import InvalidExecution
-from src.input_managing.input_managing import InputMgr
+from src.input_managing import InputMgr
 from src.logutils import setup_logging
 from src.printer import Printer
 from src.resouce_managing import ConfMgr
