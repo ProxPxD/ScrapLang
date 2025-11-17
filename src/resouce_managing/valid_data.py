@@ -1,4 +1,4 @@
-from dataclasses import replace
+from dataclasses import replace, dataclass, asdict
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -11,11 +11,22 @@ from pydantic import BaseModel, field_validator, ConfigDict
 from pydash import chain as c
 
 from .file import FileMgr
-from ..constants import supported_languages
+from ..constants import supported_languages, preinitialized
 from ..context import Context
 from ..scrapping import Outcome, MainOutcomeKinds as Kinds
 from ..scrapping.wiktio.parsing import WiktioResult
 
+
+@preinitialized
+@dataclass
+class Columns:
+    LANG: str = 'lang'
+    WORD: str = 'word'
+    DIALECT: str = 'dialect'
+    PRONUNCIATION: str = 'pronunciation'
+    FEATURES: str = 'features'
+
+C = Columns
 
 class ValidArgs(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -26,7 +37,7 @@ class ValidArgs(BaseModel):
     pronunciations: list[str]
     features: list[str]
 
-    @field_validator('lang', mode='before')
+    @field_validator(C.LANG, mode='before')
     @classmethod
     def val_langs(cls, langs: list[str]):  # Truly not-needed, they have to be supported at this point
         supported = set(supported_languages.keys())
@@ -44,7 +55,7 @@ class ValidDataMgr:
 
     def gather(self, scrap_results: Iterable[Outcome]) -> None:
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
-        cols = ['lang', 'word', 'dialect', 'pronunciations', 'features']
+        cols = list(asdict(Columns).keys())
         success_data = DataFrame(c().concat(
                 self._gather_for_from_main_translations(success_results),
                 self._gather_for_lang_data(success_results),
@@ -95,4 +106,4 @@ class ValidDataMgr:
             else:
                 return group
 
-        return df.groupby(['lang', 'word']).apply(process_group).reset_index(drop=True)
+        return df.groupby([C.LANG, C.WORD]).apply(process_group).reset_index(drop=True)

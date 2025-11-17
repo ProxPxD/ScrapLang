@@ -1,7 +1,14 @@
+from pathlib import Path
+
+from pandas import DataFrame
+from sympy.core.cache import cached_property
+
 from src.constants import Paths
 from src.lang_detecting.preprocessing.data import DataPreprocessor
 from src.lang_detecting.lang_predictor import LangPredictor
 from src.resouce_managing.file import FileMgr
+from src.lang_detecting.preprocessing.data import Columns as C
+import ast
 
 try:
     import torch
@@ -19,12 +26,33 @@ if torch.cuda.is_available():
 
 
 class Detector:
-    def __init__(self):
-        ...
+    def __init__(self, valid_data_file: Path | str, lang_to_script_file: Path | str):
+        self._valid_data_mgr = FileMgr(valid_data_file)
+        self._lang_to_script_mgr = FileMgr(lang_to_script_file)
+        self.data_preprocessor = DataPreprocessor()
+        self.lang_predictor = LangPredictor(self.lang_script)
 
-sp = DataPreprocessor()
-preprocessed = sp.process(FileMgr(Paths.VALID_DATA_FILE).load())
+    @cached_property
+    def lang_script(self) -> DataFrame:
+        try:
+            lang_script = self._lang_to_script_mgr.load()
+        except FileNotFoundError:
+            lang_script = self.reanalyze()
+        lang_script[C.SCRIPTS] = lang_script[C.SCRIPTS].apply(ast.literal_eval)
+        lang_script[C.CHARS] = lang_script[C.CHARS].apply(set)
+        return lang_script
 
+    def reanalyze(self) -> DataFrame:
+        valid_data = self._valid_data_mgr.load()
+        lang_to_script = self.data_preprocessor.process(valid_data)
+        self._lang_to_script_mgr.save(lang_to_script)
+        return lang_to_script
+
+
+detector = Detector(Paths.VALID_DATA_FILE, Paths.LANG_SCRIPT_FILE)
+detector.reanalyze()
+pred = detector.lang_predictor.predict_lang('mieć')
+print(pred)
 
 # lang_script = sp.create_lang_script_correspondence()
 # script_predictor = LangPredictor(lang_script)
