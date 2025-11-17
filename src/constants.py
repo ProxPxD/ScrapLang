@@ -1,5 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Type, TypeVar
+
+
+T = TypeVar("T")
+def preinitialized(cls: Type[T]) -> Type[T]:
+    return cls()
 
 
 @dataclass(frozen=True)
@@ -10,7 +16,7 @@ class Paths:
     CONF_FILE = RESOURCES_DIR / 'conf.yaml'
     SHORT_MEM_FILE = RESOURCES_DIR / 'short_mem.yaml'
     VALID_DATA_FILE = RESOURCES_DIR / 'valid_data.csv'
-    LANG_TO_SCRIPT_FILE = RESOURCES_DIR / 'lang_to_script.yaml'
+    LANG_SCRIPT_FILE = RESOURCES_DIR / 'lang_scripts.csv'
 
 
 @dataclass(frozen=True)

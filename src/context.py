@@ -9,6 +9,7 @@ import pydash as _
 from box import Box
 from pydash import chain as c
 
+from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
     Color, color_names
 
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from src.scrapping import Outcome
     from src.resouce_managing.configuration import Conf
 
-@lambda k: k()
+@preinitialized
 @dataclass(frozen=True)
 class Defaults:
     at: str = 'from'
