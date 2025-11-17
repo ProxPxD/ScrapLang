@@ -1,3 +1,5 @@
+import ast
+import operator as op
 from functools import reduce
 from pathlib import Path
 from typing import Sequence, Optional
@@ -7,30 +9,28 @@ from pandas import DataFrame
 from sympy.core.cache import cached_property
 
 from src.constants import Paths
-from src.lang_detecting.preprocessing.data import DataPreprocessor
 from src.lang_detecting.lang_predictor import SimpleDetector
-from src.resouce_managing.file import FileMgr
 from src.lang_detecting.preprocessing.data import Columns as C
-import ast
-import operator as op
+from src.lang_detecting.preprocessing.data import DataPreprocessor
+from src.resouce_managing.file import FileMgr
 
 try:
     import torch
     has_torch = True
 except ImportError:
     has_torch = False
-
-print(f'Torch is {("un", "")[has_torch]}available')
-print("CUDA available:", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("CUDA device count:", torch.cuda.device_count())
-    print("Current device:", torch.cuda.current_device())
-    print("Device name:", torch.cuda.get_device_name(torch.cuda.current_device()))
+#
+# print(f'Torch is {("un", "")[has_torch]}available')
+# print("CUDA available:", torch.cuda.is_available())
+# if torch.cuda.is_available():
+#     print("CUDA device count:", torch.cuda.device_count())
+#     print("Current device:", torch.cuda.current_device())
+#     print("Device name:", torch.cuda.get_device_name(torch.cuda.current_device()))
 
 
 
 class Detector:
-    def __init__(self, valid_data_file: Path | str, lang_to_script_file: Path | str):
+    def __init__(self, *, valid_data_file: Path | str, lang_to_script_file: Path | str):
         self._valid_data_mgr = FileMgr(valid_data_file)
         self._lang_to_script_mgr = FileMgr(lang_to_script_file)
         self.data_preprocessor = DataPreprocessor()
@@ -62,22 +62,7 @@ class Detector:
         return None
 
 
-detector = Detector(Paths.VALID_DATA_FILE, Paths.LANG_SCRIPT_FILE)
+detector = Detector(valid_data_file=Paths.VALID_DATA_FILE, lang_to_script_file=Paths.LANG_SCRIPT_FILE)
 detector.reanalyze()
 pred = detector.detect_simple('mieć')
 print(pred)
-
-# lang_script = sp.create_lang_script_correspondence()
-# script_predictor = LangPredictor(lang_script)
-# words = [
-#     ['spać'],
-#     ['мати'],
-#     ['食べる'],
-#     ['食'],
-# ]
-# for group in words:
-#     pred = script_predictor.predict_lang(group)
-#     print(pred)
-#
-#
-# sp.create_script_set_model_groups()
