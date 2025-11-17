@@ -51,7 +51,7 @@ class Detector:
 
 detector = Detector(Paths.VALID_DATA_FILE, Paths.LANG_SCRIPT_FILE)
 detector.reanalyze()
-pred = detector.lang_predictor.predict_lang('mieć')
+pred = detector.lang_predictor.predict_lang_simple('mieć')
 print(pred)
 
 # lang_script = sp.create_lang_script_correspondence()

@@ -15,20 +15,16 @@ import pydash as _
 class LangPredictor:
     def __init__(self, lang_script: DataFrame):
         self._lang_script = lang_script
-        # lang_script[lang_script[]]
-        ...#self.lang_narrower = LangNarrower(lang_script)
 
-    def predict_lang(self, words: Sequence[str]) -> Optional[str]:
+    def predict_lang_simple(self, words: Sequence[str]) -> Optional[str]:
         scripts = set(sp(''.join(words))[-1]['details'].keys())
         chars = reduce(op.or_, map(set, words))
         fitting_scripts = self._filter_by_scripts(self._lang_script, scripts)
         fitting_chars = self._filter_by_chars(fitting_scripts, chars)
         if len(fitting_chars) == 1:
             return fitting_chars[C.LANG].iat[0]
-        # langs = self.lang_narrower.narrow_langs(scripts)
-        # if len(langs) == 1:
-        #     return  next(iter(langs))
-        return None # fitting_chars
+        return None
+
 
     @classmethod
     def _filter_by_scripts(cls, lang_script: DataFrame, scripts: set[str]) -> DataFrame:
