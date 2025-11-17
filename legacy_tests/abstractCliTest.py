@@ -1,6 +1,6 @@
 import abc
 
-from src.cli import TranslatorCli
+from src.input_managing.cli import TranslatorCli
 from tests.abstractTest import AbstractTest
 
 

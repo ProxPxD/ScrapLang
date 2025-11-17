@@ -1,6 +1,6 @@
 from parameterized import parameterized
 
-from src.cli import CURRENT_MODES_COL
+from src.input_managing.cli import CURRENT_MODES_COL
 from tests.abstractCliTest import AbstractCliTest
 
 

@@ -17,12 +17,12 @@ from more_itertools import circular_shifts
 from ordered_set import OrderedSet
 from pydash import chain as c
 
-from .conf_domain import indirect, gather_data, infervia, groupby
-from .context import Context
-from .context_domain import UNSET, assume, at
-from .logutils import setup_logging
-from .outstemming import Outstemmer
-from .resouce_managing.data_gathering import DataGatherer
+from src.conf_domain import indirect, gather_data, infervia, groupby
+from src.context import Context
+from src.context_domain import UNSET, assume, at
+from src.logutils import setup_logging
+from src.outstemming import Outstemmer
+from src.resouce_managing.data_gathering import DataGatherer
 
 
 class AtSpecifierAction(Action):

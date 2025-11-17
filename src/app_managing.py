@@ -7,7 +7,7 @@ import pydash as _
 from more_itertools.more import seekable
 from requests import Session
 
-from src.cli import CLI
+from src.input_managing.cli import CLI
 from src.context import Context
 from src.exceptions import InvalidExecution
 from src.logutils import setup_logging

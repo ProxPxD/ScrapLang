@@ -23,7 +23,7 @@ class Columns:
     LANG: str = 'lang'
     WORD: str = 'word'
     DIALECT: str = 'dialect'
-    PRONUNCIATION: str = 'pronunciation'
+    PRONUNCIATIONS: str = 'pronunciations'
     FEATURES: str = 'features'
 
 C = Columns
@@ -55,7 +55,7 @@ class ValidDataMgr:
 
     def gather(self, scrap_results: Iterable[Outcome]) -> None:
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
-        cols = list(asdict(Columns).keys())
+        cols = list(asdict(Columns).values())
         success_data = DataFrame(c().concat(
                 self._gather_for_from_main_translations(success_results),
                 self._gather_for_lang_data(success_results),
