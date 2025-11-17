@@ -134,7 +134,7 @@ class CLI:
         return parser
 
 
-    def parse(self, args: list[str]):
+    def parse(self, args: list[str]) -> Namespace:
         if not args:
             self.parser.print_help()
             exit(0)  # change

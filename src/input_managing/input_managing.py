@@ -22,7 +22,7 @@ class InputMgr:
     def ingest_input(self, args: list[str] | str = None):
         args = shlex.split(args) if isinstance(args, str) else (args or sys.argv[1:])
         args = _.flat_map(args, c().split('\xa0'))
-        parsed: Namespace = self.cli.parse(args)
+        parsed = self.cli.parse(args)
         parsed = self.processor.process(parsed)
         self.context.update(**vars(parsed))
         return parsed
