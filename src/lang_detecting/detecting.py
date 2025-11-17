@@ -1,14 +1,18 @@
+from functools import reduce
 from pathlib import Path
+from typing import Sequence, Optional
 
+from GlotScript import sp
 from pandas import DataFrame
 from sympy.core.cache import cached_property
 
 from src.constants import Paths
 from src.lang_detecting.preprocessing.data import DataPreprocessor
-from src.lang_detecting.lang_predictor import LangPredictor
+from src.lang_detecting.lang_predictor import SimpleDetector
 from src.resouce_managing.file import FileMgr
 from src.lang_detecting.preprocessing.data import Columns as C
 import ast
+import operator as op
 
 try:
     import torch
@@ -30,7 +34,7 @@ class Detector:
         self._valid_data_mgr = FileMgr(valid_data_file)
         self._lang_to_script_mgr = FileMgr(lang_to_script_file)
         self.data_preprocessor = DataPreprocessor()
-        self.lang_predictor = LangPredictor(self.lang_script)
+        self.simple_detector = SimpleDetector(self.lang_script)
 
     @cached_property
     def lang_script(self) -> DataFrame:
@@ -48,10 +52,19 @@ class Detector:
         self._lang_to_script_mgr.save(lang_to_script)
         return lang_to_script
 
+    def detect_simple(self, words: Sequence[str]) -> Optional[str]:
+        scripts = set(sp(''.join(words))[-1]['details'].keys())
+        if lang := self.simple_detector.detect_by_script(scripts):
+            return lang
+        chars = reduce(op.or_, map(set, words))
+        if lang := self.simple_detector.detect_by_chars(chars):
+            return lang
+        return None
+
 
 detector = Detector(Paths.VALID_DATA_FILE, Paths.LANG_SCRIPT_FILE)
 detector.reanalyze()
-pred = detector.lang_predictor.predict_lang_simple('mieć')
+pred = detector.detect_simple('mieć')
 print(pred)
 
 # lang_script = sp.create_lang_script_correspondence()

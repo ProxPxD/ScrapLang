@@ -1,35 +1,22 @@
-from functools import reduce
-from typing import Sequence, Optional
+from typing import Optional
 
 from pandas import DataFrame
-import operator as op
 
-from src.lang_detecting.lang_narrower import LangNarrower
-from src.lang_detecting.mbidict import MBidict
-from GlotScript import sp
 from src.lang_detecting.preprocessing.data import Columns as C
 
-from pydash import chain as c
-import pydash as _
 
-class LangPredictor:
+class SimpleDetector:
     def __init__(self, lang_script: DataFrame):
         self._lang_script = lang_script
 
-    def predict_lang_simple(self, words: Sequence[str]) -> Optional[str]:
-        scripts = set(sp(''.join(words))[-1]['details'].keys())
-        chars = reduce(op.or_, map(set, words))
-        fitting_scripts = self._filter_by_scripts(self._lang_script, scripts)
-        fitting_chars = self._filter_by_chars(fitting_scripts, chars)
-        if len(fitting_chars) == 1:
-            return fitting_chars[C.LANG].iat[0]
+    def _detect_on_by(self, column: str, values: set[str]) -> Optional[str]:
+        fitting = self._lang_script[self._lang_script[column].apply(values.issubset)]
+        if len(fitting) == 1:
+            return fitting[C.LANG].iat[0]
         return None
 
+    def detect_by_script(self, scripts: set[str]) -> Optional[str]:
+        return self._detect_on_by(C.SCRIPTS, scripts)
 
-    @classmethod
-    def _filter_by_scripts(cls, lang_script: DataFrame, scripts: set[str]) -> DataFrame:
-        return lang_script[lang_script[C.SCRIPTS].apply(scripts.issubset)]
-
-    @classmethod
-    def _filter_by_chars(cls, lang_script: DataFrame, chars: set[str]) -> DataFrame:
-        return lang_script[lang_script[C.CHARS].apply(chars.issubset)]
+    def detect_by_chars(self, chars: set[str]) -> Optional[str]:
+        return self._detect_on_by(C.CHARS, chars)
