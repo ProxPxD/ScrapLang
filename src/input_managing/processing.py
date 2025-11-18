@@ -24,7 +24,7 @@ class InputProcessor:
         self.context = context
         self.outstemmer = Outstemmer()
         self.data_processor = data_processor
-        self.detector = Detector(self.data_processor.lang_script_mgr.load())
+        self.detector = Detector(self.data_processor.lang_script_mgr.load()) if self.data_processor.lang_script_mgr else None
 
     def process(self, parsed: Namespace) -> Namespace:
         parsed = self._word_outstemming(parsed)
@@ -50,7 +50,7 @@ class InputProcessor:
         if parsed.from_lang:
             logging.debug('There exist "from_lang", not inferring')
             return parsed
-        if self.context.infervia in {'all', 'ai'}:
+        if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
             if from_lang := self.detector.detect_simple(parsed.words):
                 logging.debug(f'Inferred {from_lang}')

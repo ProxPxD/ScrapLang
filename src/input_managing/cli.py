@@ -174,5 +174,5 @@ class CLI:
             parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming "{pot.lang}" should be in to_langs')
             pot.lang = []
         if pot.word:
-            parsed.words += pot.word; logging.debug(f'Assuming "{pot.word}" should be in words')
+            parsed.words = pot.word + parsed.words; logging.debug(f'Assuming "{pot.word}" should be in words')
         return parsed

@@ -105,8 +105,8 @@ class SystemTCG(TCG):
                 input=_.map_(permutations({'-w Frau', '-f de', '-t pl'}, 3), ' '.join),
                 context={
                     'from_lang': 'de',
-                    'words': frozenset({'Frau'}),
-                    'to_langs': frozenset({'pl'}),
+                    'words': ['Frau'],
+                    'to_langs': ['pl'],
                 },
                 output=(frau_translation := '''
                             Frau: kobieta (noun) [feminine], żona (noun) [feminine], pani (noun) [abbreviation], małżonka, babka, mężatka, lady, Pani, kobièta, dama, WPani, facetka, kobita, kobitka, panna, ona, niewiasta, baba, samica, białogłowa, dupa, babsko, czyściocha, jejmość, p.
@@ -143,8 +143,8 @@ class SystemTCG(TCG):
                 },
                 context={
                     'from_lang': ('es'),
-                    'words': frozenset({'en', 'de', 'orden'}),
-                    'to_langs': frozenset({'de'}),
+                    'words': ['en', 'de', 'orden'],
+                    'to_langs': ['de'],
                 },
                 conf=(just_langs_es_de_pl_en_conf := Box({
                     'langs': ['es', 'de', 'pl', 'en'],
@@ -162,7 +162,7 @@ class SystemTCG(TCG):
                 },
                 context={
                     'from_lang': ('es'),
-                    'to_langs': frozenset({'pl', 'de'})
+                    'to_langs': ['pl', 'de']
                 },
                 exception=InvalidExecution,
                 conf=just_langs_es_de_pl_en_conf,
@@ -177,8 +177,8 @@ class SystemTCG(TCG):
                 },
                 context={
                     'from_lang': 'de',
-                    'words': frozenset({'Herr'}),
-                    'to_langs': frozenset({'pl'}),
+                    'words': ['Herr'],
+                    'to_langs': ['pl'],
                 },
                 conf=(base_langs_es_de_pl_en_conf := Box(dict(**just_langs_es_de_pl_en_conf, assume='lang'))),
             ),
@@ -193,8 +193,8 @@ class SystemTCG(TCG):
                 },
                 context={
                     'from_lang': ('en'),
-                    'words': frozenset({'water', 'bass'}),
-                    'to_langs': frozenset({'pl', 'de'}),
+                    'words': ['water', 'bass'],
+                    'to_langs': ['pl', 'de'],
                 },
                 conf=base_langs_es_de_pl_en_conf,
             ),
@@ -212,9 +212,9 @@ class SystemTCG(TCG):
                     'TO_LANG':   ['--to-lang', '--to-langs', '--to', '-to'],
                 },
                 context={
-                    'words': frozenset({'orden', 'conocer', 'en', 'de'}),
+                    'words': ['orden', 'conocer', 'en', 'de'],
                     'from_lang': ('es'),
-                    'to_langs': frozenset({'pl'}),
+                    'to_langs': ['pl'],
                 },
                 conf=base_langs_es_de_pl_en_conf,
             ),
@@ -229,6 +229,10 @@ class SystemTCG(TCG):
                 },
                 conf=base_langs_es_de_pl_en_conf
             ),
+            # TC(
+            #     descr='',
+            #     input=''
+            # ),
             TC(
                 descr='Inflection',
                 tags={'inflection'},
@@ -238,7 +242,7 @@ class SystemTCG(TCG):
                         input=_.map_(permutations({'Frau', 'de', '-i'}, 3), ' '.join),
                         context=(frau_infl_context := {
                             'from_lang': ('de'),
-                            'to_langs': frozenset(),
+                            'to_langs': [],
                             'inflection': True,
                             'words': ['Frau']
                         }),
@@ -342,7 +346,7 @@ class SystemTCG(TCG):
                         },
                         context=(conocer_context := {
                             'from_lang': ('es'),
-                            'to_langs': frozenset({'pl'}),
+                            'to_langs': ['pl'],
                             'words': ['conocer'],
                         }),
                     ),
@@ -568,7 +572,7 @@ class SystemTCG(TCG):
         match val:
             case str(): return val
             case _ if isinstance(val, (Collection, Iterable)) and not isinstance(val, str):
-                return frozenset(val)
+                return list(val)
             case _: return val
 
     @classmethod
@@ -584,7 +588,7 @@ class SystemTCG(TCG):
     def gather_tags(cls, tc: Tc) -> Iterable[str]:
         tc.tags += [f'conf/{key}/{val}' for key, val in tc.conf.items()]
         tc.tags += [f'flag/{flag}' for flag in shlex.split(tc.input) if flag.startswith('-')]
-        tc.tags += [f'context/should/{key}/{list(val) if isinstance(val, frozenset) else val}' for key, val in tc.context.items()]
+        tc.tags += [f'context/should/{key}/{list(val) if isinstance(val, list) else val}' for key, val in tc.context.items()]
         if '--set' in tc.input:
             tc.tags += [f'conf/set/{key.replace("_conf.")}/{val}' for key, val in tc.context.items() if '_conf.' in key]
         return tc.tags
@@ -619,7 +623,7 @@ def test(tc: Tc):
     for path, e_val in tc.context.items():
         a_val = _.get(app_mgr.context, path)
         if isinstance(e_val, (Collection, Iterable)) and not isinstance(e_val, str):
-            a_val = frozenset(a_val)
+            a_val = list(a_val)
         assert path == path and e_val == a_val
 
     if tc.output:
