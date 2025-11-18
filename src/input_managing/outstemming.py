@@ -1,20 +1,15 @@
-from __future__ import  annotations
+from __future__ import annotations
 
 import logging
 import re
 from functools import cached_property, cache
-from itertools import takewhile, product, combinations
-from typing import Sequence, Iterable, Callable, Optional
-
-import pydash as _
-from more_itertools import padded
-from pydash import chain as c
-import logging
-import re
+from itertools import combinations
+from typing import Sequence, Iterable, Optional
 
 import pydash as _
 from pydash import chain as c
 from toolz import valfilter
+
 
 class ReSymbolSet(frozenset):
     def __new__(cls, elems: str | Sequence[str]) -> ReSymbolSet:
@@ -76,7 +71,7 @@ class Outstemmer:
         # TODO: test for trimming '[password] [manager]'
         # Cause I want to take them literally out and not in the compound. 3 together would break, but maybe other operator would be better
         logging.debug(f'outstemming "{word}"')
-        modes = 'bracketed', 'postcutted', 'precutted'  # TODO: anhi: make precutted
+        modes = 'bracketed', 'cutted'
         for mode in modes:
             stemmer = getattr(self, f'_outstem_{mode}')
             if stemmeds := stemmer(word):
@@ -84,7 +79,7 @@ class Outstemmer:
         else:
             return [word]
 
-    def _flatmap_outstem(self, words: Iterable[str]) -> list[str]:
+    def flatmap_outstem(self, words: Iterable[str]) -> list[str]:
         return c(words).map(self.outstem).flatten().map(c().trim()).filter().uniq().value()
 
     def _outstem_bracketed(self, word: str) -> Optional[list[str]]:
@@ -97,24 +92,22 @@ class Outstemmer:
         if len(alts) == 1:
             alts.insert(0, '')
         outstemmeds = [word.replace(pattern, alt) for alt in alts]
-        return self._flatmap_outstem(outstemmeds)
+        return self.flatmap_outstem(outstemmeds)
 
-    def _outstem_postcutted(self, word: str) -> Optional[list[str]]:
-        if not (matched := self.postcutted(word)):
-            return None
-        logging.debug(f'matched postcutted "{matched}"')
+    def _outstem_cutted(self, word: str) -> Optional[list[str]]:
+        match word:
+            case _ if matched := self.postcutted(word): is_post = True
+            case _ if matched := self.precutted(word): is_post = False
+            case _: return None
+        logging.debug(f'Matched cutted "{matched}"')
 
-        start = matched.start(0) - len(matched.group(0))
-        end = matched.end(0)
-        bare = word[:start]
-        orig = bare + word[start]
-        novel = bare + word[end:]
-        return self._flatmap_outstem([orig, novel])
-
-    def _outstem_precutted(self, word: str) -> Optional[list[str]]:
-        if not (matched := self.precutted(word)):
-            return None
-        logging.debug(f'matched precutted "{matched}"')
+        cut = slice(*matched.span(0))
+        full = word[:cut.start] + word[cut.stop:]
+        n = cut.stop - cut.start
+        pivot = getattr(cut, 'start' if is_post else 'stop')
+        to_cut = slice(pivot - n, pivot)
+        cutted = full[:to_cut.start] + full[to_cut.stop:]
+        return self.flatmap_outstem((full, cutted))
 
     @classmethod
     def count(cls, string: str, chars: Iterable[str]) -> int:
