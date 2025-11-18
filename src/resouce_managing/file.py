@@ -3,13 +3,12 @@ import logging
 from pathlib import Path
 from typing import Optional, Any, Callable
 
-from box import Box
 import pandas as pd
+import pydash as _
+from box import Box
 from pandas import DataFrame
 from pandas.errors import EmptyDataError
-import pydash as _
 from pydantic import BaseModel, RootModel
-from toolz.functoolz import return_none
 
 UNSET = object()
 
