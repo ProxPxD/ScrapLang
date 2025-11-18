@@ -1,3 +1,4 @@
+import logging
 from dataclasses import replace, dataclass, asdict
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -53,7 +54,8 @@ class ValidDataMgr:
         self.context: Context = context
         self._n_parsed: int = n_parsed
 
-    def gather(self, scrap_results: Iterable[Outcome]) -> None:
+    def gather(self, scrap_results: Iterable[Outcome]) -> bool:
+        logging.debug('Searching something not-yet-gathered')
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
         cols = list(asdict(Columns).values())
         success_data = DataFrame(c().concat(
@@ -64,11 +66,14 @@ class ValidDataMgr:
             columns=cols,
         )
         if not success_data.empty:
+            logging.debug('Found potential new data for gathering')
             old = self._valid_data_file_mgr.load()
             valid_data = pd.concat([old, success_data], ignore_index=True)
             valid_data = self._merge_matching(valid_data)
             valid_data.sort_values(by=cols[:2], inplace=True)
             self._valid_data_file_mgr.save(valid_data.drop_duplicates())
+            return True
+        return False
 
     @classmethod
     def _gather_for_lang_data(cls, scrap_results: Iterable[Outcome]) -> list[Sequence[str]]:

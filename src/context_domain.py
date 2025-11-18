@@ -8,6 +8,7 @@ indirect = {'on', 'off', 'fail', 'conf'}
 assume = {'lang', 'word', 'no'}
 gather_data = {'all', 'ai', 'time', 'off', 'conf'}
 infervia = {'all', 'ai', 'time', 'last', 'off', 'conf'}
+reanalyze_on = {'gather', 'flag'}
 groupby = {'lang', 'word', 'conf'}
 at = {'from', 'to', 'f', 't', 'none'}
 
@@ -16,6 +17,7 @@ Indirect = Literal[*indirect]
 Assume = Literal[*assume]
 GatherData = Literal[*gather_data]
 InferVia = Literal[*infervia]
+ReanalyzeOn = Literal[*reanalyze_on]
 GroupBy = Literal[*groupby]
 Mappings = dict[str, list[dict[str, str]] | dict[str, str]]
 At = Literal[*at]

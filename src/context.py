@@ -11,7 +11,7 @@ from pydash import chain as c
 
 from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
-    Color, color_names
+    Color, color_names, ReanalyzeOn
 
 if TYPE_CHECKING:
     from src.scrapping import Outcome
@@ -32,6 +32,7 @@ class Defaults:
     assume: str = 'lang'  # TODO: remove
     groupby: str = 'word'
     infervia: str = 'last'
+    reanalyze_on: ReanalyzeOn = 'gather'
     gather_data: str = 'all'
     indirect: bool = 'fail'
 
@@ -111,10 +112,11 @@ class Context:
 
     assume: Assume = UNSET  # TODO: remove
     groupby: GroupBy = UNSET
-    infervia: InferVia = UNSET
-    gather_data: GatherData = UNSET
     indirect: Indirect = UNSET
     color: Box | Color = UNSET
+    gather_data: GatherData = UNSET
+    infervia: InferVia = UNSET
+    reanalyze_on: ReanalyzeOn = UNSET
 
     loop: bool = False
 
