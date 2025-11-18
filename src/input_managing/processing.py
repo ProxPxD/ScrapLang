@@ -37,8 +37,8 @@ class InputProcessor:
         return parsed
 
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
-        parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
-        parsed.words = [outstemmed for word in parsed.words for outstemmed in self.outstemmer.outstem(word)]
+        parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)  # TODO: test uniqness of outstemmeds
+        parsed.words = self.outstemmer.flatmap_outstem(parsed.words)
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
