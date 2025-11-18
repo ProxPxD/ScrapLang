@@ -229,10 +229,12 @@ class SystemTCG(TCG):
                 },
                 conf=base_langs_es_de_pl_en_conf
             ),
-            # TC(
-            #     descr='',
-            #     input=''
-            # ),
+            TC(
+                descr='Make duplicates unique',
+                tags={'repeated', 'duplicated', 'unique'},
+                input='Frau Frau de en',
+                context={'words': ['Frau']},
+            ),
             TC(
                 descr='Inflection',
                 tags={'inflection'},
