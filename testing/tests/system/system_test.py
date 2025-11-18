@@ -232,9 +232,22 @@ class SystemTCG(TCG):
             TC(
                 descr='Make duplicates unique',
                 tags={'repeated', 'duplicated', 'unique'},
-                input='Frau Frau de en',
+                input='Frau Frau de pl',
                 context={'words': ['Frau']},
+                conf=base_langs_es_de_pl_en_conf,
             ),
+            # TC(
+            #     descr='Outstemming',
+            #     tags={'outstem'},
+            #     input=[
+            #       IC(
+            #           input=[
+            #               r'\\porobić',
+            #               r'\\porobić',
+            #           ],
+            #       )
+            #     ],
+            # ),
             TC(
                 descr='Inflection',
                 tags={'inflection'},
