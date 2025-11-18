@@ -22,8 +22,8 @@ C = Columns
 
 class DataProcessor:
     def __init__(self, *, valid_data_file: Path | str, lang_script_file: Path | str):
-        self.valid_data_mgr = FileMgr(valid_data_file) if valid_data_file else None
-        self.lang_script_mgr = FileMgr(lang_script_file) if lang_script_file else None
+        self.valid_data_mgr = FileMgr(valid_data_file, create_if_not=True) if valid_data_file else None
+        self.lang_script_mgr = FileMgr(lang_script_file, create_if_not=True) if lang_script_file else None
 
     @property
     def lang_script(self) -> DataFrame:
