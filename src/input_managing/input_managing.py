@@ -1,6 +1,7 @@
 import shlex
 import sys
 from argparse import Namespace
+from pathlib import Path
 
 import pydash as _
 from pydash import chain as c
@@ -8,14 +9,20 @@ from pydash import chain as c
 from src.context import Context
 from src.input_managing.cli import CLI
 from src.input_managing.processing import InputProcessor
+from src.lang_detecting.preprocessing.data import DataProcessor
 from src.resouce_managing.data_gathering import DataGatherer
 
 
+
 class InputMgr:
-    def __init__(self, context: Context, data_gatherer: DataGatherer = None):
+    def __init__(self,
+                 context: Context,
+                 data_gatherer: DataGatherer = None,
+                 data_processor: DataProcessor = None,
+                 ):
         self.context = context # TODO: convert to using context and data_gatherer instead of conf
         self.cli = CLI(context)
-        self.processor = InputProcessor(context)
+        self.processor = InputProcessor(context, data_processor=data_processor)
         self.data_gatherer = data_gatherer or DataGatherer(context)
 
 

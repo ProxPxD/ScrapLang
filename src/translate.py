@@ -24,6 +24,7 @@ def main():
             conf_path=Paths.CONF_FILE,
             valid_data_file=Paths.VALID_DATA_FILE,
             short_mem_file=Paths.SHORT_MEM_FILE,
+            lang_script_file=Paths.LANG_SCRIPT_FILE
         ).run()
         #Configurations.change_last_used_languages(*system.langs)
         #Configurations.save_and_close()

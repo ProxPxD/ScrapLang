@@ -1,18 +1,11 @@
-import ast
 import operator as op
 from functools import reduce
-from pathlib import Path
 from typing import Sequence, Optional
 
 from GlotScript import sp
 from pandas import DataFrame
-from sympy.core.cache import cached_property
 
-from src.constants import Paths
 from src.lang_detecting.lang_predictor import SimpleDetector
-from src.lang_detecting.preprocessing.data import Columns as C
-from src.lang_detecting.preprocessing.data import DataPreprocessor
-from src.resouce_managing.file import FileMgr
 
 try:
     import torch
@@ -30,27 +23,10 @@ except ImportError:
 
 
 class Detector:
-    def __init__(self, *, valid_data_file: Path | str, lang_to_script_file: Path | str):
-        self._valid_data_mgr = FileMgr(valid_data_file)
-        self._lang_to_script_mgr = FileMgr(lang_to_script_file)
-        self.data_preprocessor = DataPreprocessor()
+    def __init__(self, lang_script: DataFrame):
+        self.lang_script = lang_script
         self.simple_detector = SimpleDetector(self.lang_script)
 
-    @cached_property
-    def lang_script(self) -> DataFrame:
-        try:
-            lang_script = self._lang_to_script_mgr.load()
-        except FileNotFoundError:
-            lang_script = self.reanalyze()
-        lang_script[C.SCRIPTS] = lang_script[C.SCRIPTS].apply(ast.literal_eval)
-        lang_script[C.CHARS] = lang_script[C.CHARS].apply(set)
-        return lang_script
-
-    def reanalyze(self) -> DataFrame:
-        valid_data = self._valid_data_mgr.load()
-        lang_to_script = self.data_preprocessor.process(valid_data)
-        self._lang_to_script_mgr.save(lang_to_script)
-        return lang_to_script
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         scripts = set(sp(''.join(words))[-1]['details'].keys())
@@ -60,9 +36,3 @@ class Detector:
         if lang := self.simple_detector.detect_by_chars(chars):
             return lang
         return None
-
-
-detector = Detector(valid_data_file=Paths.VALID_DATA_FILE, lang_to_script_file=Paths.LANG_SCRIPT_FILE)
-detector.reanalyze()
-pred = detector.detect_simple('mieć')
-print(pred)

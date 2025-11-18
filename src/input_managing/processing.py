@@ -13,11 +13,18 @@ from src.input_managing.outstemming import Outstemmer
 import pydash as _
 from pydash import chain as c
 
+from src.lang_detecting.detecting import Detector
+from src.lang_detecting.preprocessing.data import DataProcessor
+
 
 class InputProcessor:
-    def __init__(self, context: Context):
+    def __init__(self, context: Context,
+                 data_processor: DataProcessor = None,
+        ):
         self.context = context
         self.outstemmer = Outstemmer()
+        self.data_processor = data_processor
+        self.detector = Detector(self.data_processor.lang_script_mgr.load())
 
     def process(self, parsed: Namespace) -> Namespace:
         parsed = self._word_outstemming(parsed)
@@ -35,8 +42,12 @@ class InputProcessor:
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
-        # parsed = self._predict_langs(parsed)
+        parsed = self._detect_lang(parsed)
         parsed = self._fill_last_used(parsed)
+        return parsed
+
+    def _detect_lang(self, parsed: Namespace) -> Namespace:
+
         return parsed
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:

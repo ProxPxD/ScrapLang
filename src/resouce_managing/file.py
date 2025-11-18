@@ -22,7 +22,7 @@ class FileMgr:
 
     @property
     def content(self):
-        return self._content or self.load()
+        return self._content if self._content is not None else self.load()
 
     def refresh(self) -> None:
         self._content = None
@@ -36,6 +36,7 @@ class FileMgr:
 
     def save(self, content = None) -> None:
         self.save_file(self.path, content if content is not None else self.content)
+        self._content = content
 
     @classmethod
     def _get_file_extension(cls, path: str | Path) -> str:
@@ -95,7 +96,7 @@ class FileMgr:
         save = getattr(cls, f'save_{ext}')
         save(path, content)
         content_view = json.dumps(content, indent=4, ensure_ascii=False) if isinstance(content, (dict, list)) else str(content)
-        logging.debug(f'Loaded file "{path}": {content_view}')
+        logging.debug(f'Saved file "{path}": {content_view}')
 
     @classmethod
     def save_yaml(cls, path: str | Path, conf: dict) -> None:
