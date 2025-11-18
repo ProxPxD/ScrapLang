@@ -21,6 +21,7 @@ class Conf(BaseModel):
     langs: list[str] = UNSET
     mappings: Mappings = UNSET
     gather_data: ConfGatherData = Field(default=UNSET, alias=AliasChoices('gather-data', 'gather_data'))
+    infervia: ConfInferVia = UNSET
 
     @field_validator('color', mode='after')
     def val_color(cls, color: Color) -> dict:

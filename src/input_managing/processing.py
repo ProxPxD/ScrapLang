@@ -47,7 +47,16 @@ class InputProcessor:
         return parsed
 
     def _detect_lang(self, parsed: Namespace) -> Namespace:
-
+        if parsed.from_lang:
+            logging.debug('There exist "from_lang", not inferring')
+            return parsed
+        if self.context.infervia in {'all', 'ai'}:
+            logging.debug('Inferring thru a simple detector')
+            if from_lang := self.detector.detect_simple(parsed.words):
+                logging.debug(f'Inferred {from_lang}')
+                parsed.from_lang = from_lang
+                return parsed
+            # log
         return parsed
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:

@@ -1,3 +1,4 @@
+import logging
 import shlex
 import sys
 from argparse import Namespace
@@ -30,6 +31,11 @@ class InputMgr:
         args = shlex.split(args) if isinstance(args, str) else (args or sys.argv[1:])
         args = _.flat_map(args, c().split('\xa0'))
         parsed = self.cli.parse(args)
+        if parsed.reanalyze:
+            logging.debug('Reanalyzing')
+            self.processor.data_processor.reanalyze()
+            if not parsed.words:
+                exit(0)
         parsed = self.processor.process(parsed)
         self.context.update(**vars(parsed))
         return parsed
