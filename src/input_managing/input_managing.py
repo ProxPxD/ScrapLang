@@ -31,10 +31,11 @@ class InputMgr:
         args = shlex.split(args) if isinstance(args, str) else (args or sys.argv[1:])
         args = _.flat_map(args, c().split('\xa0'))
         parsed = self.cli.parse(args)
-        if parsed.reanalyze:
+        if parsed.reanalyze:  # TODO: test flag with(out) exiting
             logging.debug('Reanalyzing')
             self.processor.data_processor.reanalyze()
             if not parsed.words:
+                logging.debug('No words for scrapping, exiting after analysis')
                 exit(0)
         parsed = self.processor.process(parsed)
         self.context.update(**vars(parsed))
