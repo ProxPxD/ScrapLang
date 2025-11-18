@@ -124,6 +124,8 @@ class Outstemmer:
         bracket_diff = [self.count(word, self._left_brackets) - self.count(word, self._right_brackets) for word in words]
         if _.every(bracket_diff, c().eq(0)):
             return words
+        if sum(bracket_diff) != 0:
+            raise ValueError('Incorrect bracketing')
         joined_words, buffer, gauge = [], [], 0
         for part, diff in zip(words, bracket_diff):
             buffer.append(part)
