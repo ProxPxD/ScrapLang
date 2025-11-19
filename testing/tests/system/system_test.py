@@ -302,7 +302,12 @@ class SystemTCG(TCG):
                         tags={'bracket/separated', 'outstem/join'},
                         input='en pl [to ]water',
                         context={'words': ['water', 'to water']},
-                    )
+                    ),
+                    IC(
+                        tags={'bracket/two', 'bracket/repeated'},
+                        input='[a]bb[a]',
+                        context={'words': ['bb', 'bba', 'abb', 'abba']}
+                    ),
                 ],
                 conf=base_langs_es_de_pl_en_conf,
             ),
