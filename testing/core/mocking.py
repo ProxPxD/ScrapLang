@@ -32,10 +32,16 @@ def get_filename_from_url(url: str) -> str:
     return fullname
 
 
+class PageNotFound(FileNotFoundError):
+    pass
+
+
 @cache
 def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException | HTTPError]) -> list[Result] | HTTPError | ParsingException:
     filename = get_filename_from_url(url)
-    with open(PAGES / filename, 'r') as f:
+    if not (path := PAGES / filename).exists():
+        raise PageNotFound
+    with open(path, 'r') as f:
         content = f.read()
     return parse(content)
 
