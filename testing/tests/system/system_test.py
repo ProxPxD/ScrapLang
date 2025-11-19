@@ -258,14 +258,66 @@ class SystemTCG(TCG):
                         context={'words': ['water', 'watering']},
                     ),
                     IC(
+                        tags={'postcut/single', 'postcut/replace'},
+                        input=r'pl en bić/ty',
+                        context={'words': ['bić', 'bity']},
+                    ),
+                    IC(
+                        tags={'postcut/multi', 'postcut/replace/one'},
+                        input=r'pl en bity//ć',
+                        context={'words': ['bity', 'bić']},
+                    ),
+                    IC(
+                        tags={'postcut', 'postcut/replace/multi'},
+                        input=r'eo pl viro/ino/iĝi',
+                        context={'words': ['viro', 'virino', 'viriniĝi']},
+                    ),
+                    IC(
+                        tags={'postcut', 'postcut/replace/many-options'},
+                        input=r'eo pl granda/igi,iĝi',
+                        context={'words': ['granda', 'grandigi', 'grandiĝi']},
+                    ),
+                    IC(
+                        tags={'postcut/terminal', 'postcut/replace/one'},
+                        input=r'eo pl prze/y.łożyć',
+                        context={'words': ['przełożyć', 'przyłożyć']},
+                    ),
+
+                    IC(
                         tags={'precut/single'},
                         input=f'pl en {bs*1*2}wbić',
                         context={'words': ['bić', 'wbić']},
                     ),
+
                     IC(
                         tags={'precut/multi'},
                         input=f'pl en {bs*4*2}przebić',
                         context={'words': ['bić', 'przebić']},
+                    ),
+                    IC(
+                        tags={'precut/single', 'precut/replace'},
+                        input=f'pl en przy{bs*1*2}wbić',
+                        context={'words': ['przybić', 'wbić']},
+                    ),
+                    IC(
+                        tags={'precut/multi', 'precut/replace'},
+                        input=f'pl en za{bs*2*2}dobić',
+                        context={'words': ['zabić', 'dobić']},
+                    ),
+                    IC(
+                        tags={'precut', 'precut/replace/multi'},
+                        input=f'eo pl {bs*3*2}hin{bs*2*2}zugeben',
+                        context={'words': ['geben', 'zugeben', 'hinzugeben']},
+                    ),
+                    IC(
+                        tags={'precut', 'precut/replace/many-options'},
+                        input=f'eo pl do,za{bs*2*2}bić',
+                        context={'words': ['dobić', 'zabić']},
+                    ),
+                    IC(
+                        tags={'postcut/terminal', 'postcut/replace/one'},
+                        input=r'eo pl prz.e\yłożyć',
+                        context={'words': ['przełożyć', 'przyłożyć']},
                     ),
 
                     IC(

@@ -51,10 +51,9 @@ class TCG:
 
     @classmethod
     def _create_mark(cls, tag: str) -> Mark:
-        name, *val = tag.split('/')
-        kwargs = {} if not val else val[0]
+        name, *subs = tag.split('/')
         base_mark_decorator = pytest.mark.__getattr__(name.replace('-', '_'))
-        return base_mark_decorator((), kwargs).mark
+        return base_mark_decorator(*subs).mark
 
     @classmethod
     def _as_paramset(cls, tc, tags: list = None) -> ParameterSet:
