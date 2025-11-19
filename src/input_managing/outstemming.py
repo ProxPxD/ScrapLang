@@ -17,7 +17,8 @@ class ReSymbolSet(frozenset):
 
     @cache
     def alt(self) -> str:
-        return f'(?:{("|".join(map(re.escape, self)))})'
+        or_last = lambda e: int(e == '|')
+        return f'(?:{("".join(map(re.escape, sorted(self, key=or_last))))})'
 
     @cache
     def zero_or_more(self) -> str:
@@ -26,6 +27,10 @@ class ReSymbolSet(frozenset):
     @cache
     def one_or_more(self) -> str:
         return f'{self.alt()}+'
+
+    @cache
+    def alt_bracketed(self) -> str:
+        return f'[{self.alt()}]'
 
 
 class Outstemmer:
@@ -88,10 +93,11 @@ class Outstemmer:
         logging.debug(f'matched bracketed "{matched}"')
 
         pattern = matched.group(0)
-        alts = re.split(self._alt_seps.alt(), pattern[1:-1])
+        brackets = slice(*matched.span(0))
+        alts = re.split(self._alt_seps.alt_bracketed(), pattern[1:-1])
         if len(alts) == 1:
             alts.insert(0, '')
-        outstemmeds = [word.replace(pattern, alt) for alt in alts]
+        outstemmeds = [word[:brackets.start] + alt + word[brackets.stop:] for alt in alts]
         return self.flatmap_outstem(outstemmeds)
 
     def _outstem_cutted(self, word: str) -> Optional[list[str]]:
@@ -107,7 +113,7 @@ class Outstemmer:
         pivot = getattr(cut, 'start' if is_post else 'stop')
         to_cut = slice(pivot - n, pivot)
         cutted = full[:to_cut.start] + full[to_cut.stop:]
-        return self.flatmap_outstem((full, cutted))
+        return self.flatmap_outstem((cutted, full))
 
     @classmethod
     def count(cls, string: str, chars: Iterable[str]) -> int:
