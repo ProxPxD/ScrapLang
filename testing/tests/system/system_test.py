@@ -316,7 +316,7 @@ class SystemTCG(TCG):
                     ),
                     IC(
                         tags={'postcut/terminal', 'postcut/replace/one'},
-                        input=r'eo pl prz.e\yłożyć',
+                        input=r'PL EO prz.e\yłożyć',
                         context={'words': ['przełożyć', 'przyłożyć']},
                     ),
 
@@ -361,7 +361,7 @@ class SystemTCG(TCG):
                         context={'words': ['bb', 'bba', 'abb', 'abba']}
                     ),
                 ],
-                conf=base_langs_es_de_pl_en_conf,
+                conf={**base_langs_es_de_pl_en_conf, 'langs': ['eo', 'es', 'en', 'pl', 'de']},
             ),
             TC(
                 descr='Inflection',
@@ -555,6 +555,7 @@ class SystemTCG(TCG):
                 ],
                 conf=base_langs_es_de_pl_en_conf,
             ),
+
             TC(
                 descr='Sidality',
                 tags={'side', 'at'},
