@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import shlex
 from contextlib import nullcontext
 from dataclasses import dataclass, field, replace
@@ -16,7 +18,7 @@ from src.app_managing import AppMgr
 from src.context_domain import assume, indirect, gather_data, infervia, groupby
 from src.exceptions import InvalidExecution
 from testing.core import TCG
-from testing.core.mocking import mocked_scrap, CallCollector
+from testing.core.mocking import mocked_scrap, CallCollector, PageNotFound
 from testing.core.utils import remove_color
 
 SYSTEM_PATH = Path(__file__).parent
@@ -50,6 +52,7 @@ class TC:
     output: str = ''
     exception: type[BaseException] | Sequence[type[BaseException]] = None
     color: bool = False
+    skip_mocking: bool = False
 
     replacement: dict = field(default_factory=dict)
 
@@ -65,6 +68,7 @@ class Tc:
     output: str
     exception: type[BaseException] | Sequence[type[BaseException]] = None
     color: bool = False
+    skip_mocking: bool = False
 
 
 class SystemTCG(TCG):
@@ -98,6 +102,7 @@ class SystemTCG(TCG):
 
     @classmethod
     def generate_tcs(cls) -> list:
+        bs = "\\"
         return [
             TC(
                 descr='Exact all-flag configless call',
@@ -236,18 +241,71 @@ class SystemTCG(TCG):
                 context={'words': ['Frau']},
                 conf=base_langs_es_de_pl_en_conf,
             ),
-            # TC(
-            #     descr='Outstemming',
-            #     tags={'outstem'},
-            #     input=[
-            #       IC(
-            #           input=[
-            #               r'\\porobić',
-            #               r'\\porobić',
-            #           ],
-            #       )
-            #     ],
-            # ),
+            # TODO: extend cutting and modyfy outstemming by introducing another operator working as post-removal wihtout replacement
+            TC(
+                descr='Outstemming',
+                tags={'outstem'},
+                skip_mocking=True,
+                input=[
+                    IC(
+                        tags={'postcut/single'},
+                        input=r'en pl waters/',
+                        context={'words': ['water', 'waters']},
+                    ),
+                    IC(
+                        tags={'postcut/multi'},
+                        input=r'en pl watering///',
+                        context={'words': ['water', 'watering']},
+                    ),
+                    IC(
+                        tags={'precut/single'},
+                        input=f'pl en {bs*1*2}wbić',
+                        context={'words': ['bić', 'wbić']},
+                    ),
+                    IC(
+                        tags={'precut/multi'},
+                        input=f'pl en {bs*4*2}przebić',
+                        context={'words': ['bić', 'przebić']},
+                    ),
+
+                    IC(
+                        tags={'bracket/one-option'},
+                        input='pl en spot[y]kać',
+                        context={'words': ['spotkać', 'spotykać']}
+                    ),
+                    IC(
+                        tags={'bracket/trailing', 'sep/after'},
+                        input=[f'pl en spot[y{sep}]kać' for sep in ',|'],
+                        context={'words': ['spotykać', 'spotkać']}
+                    ),
+                    IC(
+                        tags={'bracket/trailing', 'sep/before'},
+                        input=[f'pl en spot[{sep}y]kać' for sep in ',|'],
+                        context={'words': ['spotkać', 'spotykać']}
+                    ),
+                    IC(
+                        tags={'bracket/many-options'},
+                        input=[f'pl en [nad{sep}do{sep}prze]robić' for sep in ',|'],
+                        context={'words': ['nadrobić', 'dorobić', 'przerobić']}
+                    ),
+                    IC(
+                        tags={'bracket/nested'},
+                        input=f'en pl nation[al[ize]]',
+                        context={'words': ['nation', 'national', 'nationalize']}
+                    ),
+                    IC(
+                        tags={'bracket/two'},
+                        input='en pl [pre]heat[ed]',
+                        context={'words': ['heat', 'heated', 'preheat', 'preheated']}
+                    ),
+                    IC(
+                        tags={'bracket/separated', 'outstem/join'},
+                        input='en pl [to ]water',
+                        context={'words': ['water', 'to water']},
+                    )
+                ],
+                conf=base_langs_es_de_pl_en_conf,
+            ),
             TC(
                 descr='Inflection',
                 tags={'inflection'},
@@ -577,6 +635,7 @@ class SystemTCG(TCG):
             exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
             conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
             color=tc.color,
+            skip_mocking=tc.skip_mocking
         )
         if '-h' in single.input:
             single.exception.append(SystemExit)
@@ -631,7 +690,12 @@ def test(tc: Tc):
     collector = CallCollector(line_mapper=c().trim_end())
     app_mgr = AppMgr(conf_path=TEST_CONF, printer=collector)
 
-    ctx = pytest.raises(tuple(tc.exception)) if tc.exception else nullcontext()
+    exceptions = []
+    if tc.exception:
+        exceptions.extend(tuple(tc.exception))
+    if tc.skip_mocking:
+        exceptions.append(PageNotFound)
+    ctx = pytest.raises(tuple(exceptions)) if exceptions else nullcontext()
     with ctx:
         app_mgr.run_single(shlex.split(tc.input))
 
