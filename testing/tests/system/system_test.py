@@ -247,109 +247,7 @@ class SystemTCG(TCG):
                 tags={'outstem'},
                 skip_mocking=True,
                 input=[
-                    # IC(
-                    #     tags={'cut/post', 'cut/single', 'cut/empty'},
-                    #     input=r'en pl waters/',
-                    #     context={'words': ['water', 'waters']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/multi', 'cut/empty'},
-                    #     input=r'en pl watering///',
-                    #     context={'words': ['water', 'watering']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/single', 'cut/replace'},
-                    #     input=r'pl en bić/ty',
-                    #     context={'words': ['bić', 'bity']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/multi', 'cut/replace/one'},
-                    #     input=r'pl en bity//ć',
-                    #     context={'words': ['bity', 'bić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/replace/multi'},
-                    #     input=r'eo pl viro/ino/iĝi',
-                    #     context={'words': ['viro', 'virino', 'viriniĝi']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/replace/multi', 'cut/empty'},
-                    #     input=r'en pl nationalize///.//',
-                    #     context={'words': ['viro', 'virino', 'viriniĝi']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/replace/many-options'},
-                    #     input=r'eo pl granda/igi,iĝi',
-                    #     context={'words': ['granda', 'grandigi', 'grandiĝi']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/terminal', 'cut/replace/one'},
-                    #     input=r'eo pl prze/y.łożyć',
-                    #     context={'words': ['przełożyć', 'przyłożyć']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/postcut', 'cut/terminal', 'cut/replace/one', 'cut/replace/many-options'},
-                    #     input=r'eo pl przy/e,ed.stawić',
-                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/post', 'cut/terminal', 'cut/replace/one', 'nested/bracket'},
-                    #     input=r'eo pl przy/e[d].stawić',
-                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
-                    # ),
-                    #
-                    # IC(
-                    #     tags={'cut/pre', 'cut/single'},
-                    #     input=f'pl en {bs*1*2}wbić',
-                    #     context={'words': ['bić', 'wbić']},
-                    # ),
-                    #
-                    # IC(
-                    #     tags={'cut/pre', 'cut/multi'},
-                    #     input=f'pl en {bs*4*2}przebić',
-                    #     context={'words': ['bić', 'przebić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/single', 'cut/replace'},
-                    #     input=f'pl en przy{bs*1*2}wbić',
-                    #     context={'words': ['przybić', 'wbić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/multi', 'cut/replace'},
-                    #     input=f'pl en za{bs*2*2}dobić',
-                    #     context={'words': ['zabić', 'dobić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/replace/multi'},
-                    #     input=f'eo pl {bs*3*2}hin,{bs*2*2}zugeben',
-                    #     context={'words': ['geben', 'zugeben', 'hinzugeben']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/replace/multi', 'cut/empty'},
-                    #     input=f'eo pl {bs*2*2}.{bs*3*2}hinzugeben',
-                    #     context={'words': ['geben', 'zugeben', 'hinzugeben']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/replace/many-options'},
-                    #     input=f'eo pl do,za{bs*1*2}ubić',
-                    #     context={'words': ['ubić', 'zabić', 'dobić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/terminal', 'cut/replace/one'},
-                    #     input=f'pl eo prz.e{bs*1*2}yłożyć',
-                    #     context={'words': ['przyłożyć', 'przełożyć']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/terminal', 'cut/replace/one', 'cut/replace/many-options'},
-                    #     input=f'eo pl prz.ed,e{bs*1*2}ystawić',
-                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
-                    # ),
-                    # IC(
-                    #     tags={'cut/pre', 'cut/terminal', 'cut/replace/one', 'nested/bracket'},
-                    #     input=f'eo pl prz.e[d]{bs*1*2}ystawić',
-                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
-                    # ),
-
+                    # Outstem/Bracket
                     IC(
                         tags={'bracket/one-option'},
                         input='pl en spot[y]kać',
@@ -427,9 +325,14 @@ class SystemTCG(TCG):
                         input='pl przy/e[d].stawić',
                         context={'words': ['przystawić', 'przestawić', 'przedstawić']}
                     ),
+                    IC(
+                        tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/end', 'cut/number', 'cut/many'},
+                        input='eo _/tra,el,en,al.iri',
+                        context={'words': ['iri', 'trairi', 'eliri', 'eniri', 'aliri']},
+                    ),
                     # IC(
                     #     tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/end', 'cut/number', 'cut/many'},
-                    #     input='pl ./hin,her.zu/2.geben',
+                    #     input='de hin_/.zu_/.geben',
                     #     context={'words': []}  # TODO: fill
                     # ),
                 ],
