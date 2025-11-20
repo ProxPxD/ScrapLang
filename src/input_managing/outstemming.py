@@ -2,35 +2,50 @@ from __future__ import annotations
 
 import logging
 import re
-from functools import cached_property, cache
-from itertools import combinations
-from typing import Sequence, Iterable, Optional
+from functools import cached_property
+from itertools import combinations, chain
+from typing import Sequence, Iterable, Optional, Callable
 
 import pydash as _
+import toolz.curried.operator as op
 from pydash import chain as c
 from toolz import valfilter
 
 
-class ReSymbolSet(frozenset):
-    def __new__(cls, elems: str | Sequence[str]) -> ReSymbolSet:
+class ReSymbolSet(frozenset[str]):
+    def __new__(cls, elems: str | Iterable[str]) -> ReSymbolSet:
         return super().__new__(cls, elems)
 
-    @cache
-    def alt(self) -> str:
+    def get_any(self) -> str:
+        return next(iter(self))
+
+    @cached_property
+    def together(self) -> str:
         or_last = lambda e: int(e == '|')
-        return f'(?:{("".join(map(re.escape, sorted(self, key=or_last))))})'
+        return "".join(map(re.escape, sorted(self, key=or_last)))
 
-    @cache
-    def zero_or_more(self) -> str:
-        return f'{self.alt()}*'
+    @cached_property
+    def group(self) -> str:
+        return f'(?:{self.together})'
 
-    @cache
-    def one_or_more(self) -> str:
-        return f'{self.alt()}+'
+    @cached_property
+    def star(self) -> str:
+        return f'{self.group}*'
 
-    @cache
-    def alt_bracketed(self) -> str:
-        return f'[{self.alt()}]'
+    @cached_property
+    def plus(self) -> str:
+        return f'{self.group}+'
+
+    @cached_property
+    def any(self) -> str:
+        return f'[{self.together}]'
+
+    @cached_property
+    def not_(self) -> str:
+        return f'[^{self.together}]'
+
+    def __or__(self, other):
+        return ReSymbolSet(set(self)|set(other))
 
 
 class Outstemmer:
@@ -40,32 +55,41 @@ class Outstemmer:
             alt_seps: str | Sequence[str] = ',|',
             postcutters: str | Sequence[str] = '/',
             precutters: str | Sequence[str] = '\\',
+            enders: str | Sequence[str] = '.',
         ):
-        self._left_brackets = ReSymbolSet(left_brackets)
-        self._right_brackets = ReSymbolSet(right_brackets)
-        self._alt_seps = ReSymbolSet(alt_seps)
-        self._postcutters = ReSymbolSet(postcutters)
-        self._precutters = ReSymbolSet(precutters)
+        self._left_brackets: ReSymbolSet = ReSymbolSet(left_brackets)
+        self._right_brackets: ReSymbolSet = ReSymbolSet(right_brackets)
+        self._alt_seps: ReSymbolSet = ReSymbolSet(alt_seps)
+        self._postcutters: ReSymbolSet = ReSymbolSet(postcutters)
+        self._precutters: ReSymbolSet = ReSymbolSet(precutters)
+        self._enders: ReSymbolSet = ReSymbolSet(enders)
         for (n1, s1), (n2, s2) in combinations(self._symbol_groups.items(), 2):
             if common := s1 & s2:
                 raise ValueError(f'Parameters {n1[1:]} and {n2[1:]} should have no common symbol: {common}')
+
+        # r'(?>/+)(?!\d)'
+        # self._cutters_sequence = re.compile(f'({self._postcutters.any_of})+\D')
+        lb, rb, s, c, e = self._left_brackets, self._right_brackets, self._alt_seps, self._postcutters, self._enders
+        lbt, rbt = lb.together, rb.together
+        self._bracketed = re.compile(fr'[{lbt}][^{lbt}{rbt}]+[{rbt}]')
+        ca = c.any
+        ea = e.any
+        sa = s.any
+        secn = ReSymbolSet(s|e|c).not_
+        self._invalid_seq = re.compile(f'{ca}{2,}\d')
+        self._cutter_seq = re.compile(f'({ca}+)(?!\d)')
+        self._is_cutted = re.compile(f'{ca}')
+        cut_scope = f'{ca}(?P<n>\d+)(?:({secn}+){s})*({secn}+)*'  # f'{ca}+(?:({secn}*){sa})*({secn}*){ea}?'
+        self._cutted = re.compile(cut_scope)
 
     @property
     def _symbol_groups(self) -> dict[str, set[str]]:
         return valfilter(c().is_set(), vars(self))
 
     @cached_property
-    def bracketed(self):
-        lbs, rbs = self._left_brackets.alt(), self._right_brackets.alt()
-        return re.compile(fr'[{lbs}][^{lbs}{rbs}]+[{rbs}]').search
-
-    @cached_property
-    def postcutted(self):
-        return re.compile(self._postcutters.one_or_more()).search
-
-    @cached_property
-    def precutted(self):
-        return re.compile(self._precutters.one_or_more()).search
+    def after_ender(self) -> Callable[[str], re.Match]:
+        e = self._enders.any
+        return re.compile(f'(.*){e}*(.*)').search
 
     def outstem(self, word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
@@ -84,36 +108,24 @@ class Outstemmer:
         else:
             return [word]
 
-    def flatmap_outstem(self, words: Iterable[str]) -> list[str]:
-        return c(words).map(self.outstem).flatten().map(c().trim()).filter().uniq().value()
+    def count_first(self, word: str, symbols: ReSymbolSet) -> int:
+        return len(re.match(symbols.star, word).group(0) or '')
+
+    def flatmap_outstem(self, words: Iterable[str], *others: str) -> list[str]:
+        return c(chain(words, others)).map(self.outstem).flatten().map(c().trim()).filter().uniq().value()
 
     def _outstem_bracketed(self, word: str) -> Optional[list[str]]:
-        if not (matched := self.bracketed(word)):
+        if not (matched := self._bracketed.search(word)):
             return None
         logging.debug(f'matched bracketed "{matched}"')
 
         pattern = matched.group(0)
         brackets = slice(*matched.span(0))
-        alts = re.split(self._alt_seps.alt_bracketed(), pattern[1:-1])
+        alts = re.split(self._alt_seps.any, pattern[1:-1])
         if len(alts) == 1:
             alts.insert(0, '')
         outstemmeds = [word[:brackets.start] + alt + word[brackets.stop:] for alt in alts]
         return self.flatmap_outstem(outstemmeds)
-
-    def _outstem_cutted(self, word: str) -> Optional[list[str]]:
-        match word:
-            case _ if matched := self.postcutted(word): is_post = True
-            case _ if matched := self.precutted(word): is_post = False
-            case _: return None
-        logging.debug(f'Matched cutted "{matched}"')
-
-        cut = slice(*matched.span(0))
-        full = word[:cut.start] + word[cut.stop:]
-        n = cut.stop - cut.start
-        pivot = getattr(cut, 'start' if is_post else 'stop')
-        to_cut = slice(pivot - n, pivot)
-        cutted = full[:to_cut.start] + full[to_cut.stop:]
-        return self.flatmap_outstem((cutted, full))
 
     @classmethod
     def count(cls, string: str, chars: Iterable[str]) -> int:
@@ -133,3 +145,40 @@ class Outstemmer:
                 joined_words.append(' '.join(buffer))
                 buffer = []
         return joined_words
+
+    @cached_property
+    def remove_enders(self) -> Callable[[str], str]:
+        return lambda word: re.compile(self._enders.any).sub('', word)
+
+    def _outstem_cutted(self, word: str) -> Optional[list[str]]:
+        if not self._is_cutted.search(word):
+            return None
+        if self._invalid_seq.search(word):
+            raise ValueError(f'Cannot have more than one cutter "{self._postcutters.together}" with a number')
+        def repl(m: re.Match):
+            c = self._postcutters.get_any()
+            return f'{c}{len(m.group(1))}'
+
+        wordy = self._cutter_seq.sub(repl, word)
+        matched = self._cutted.search(wordy)
+        n = int(matched.group('n'))
+        start = matched.start(0)
+        outer_slice = slice(start-n, start)
+        orig = wordy[:outer_slice.stop].rstrip('_')
+        cut = wordy[:outer_slice.start]
+        to_puts = c(matched.groups()[1:]).map(c().trim_start('_')).filter().value() or ['']
+        putteds = c(to_puts).map(op.add(cut)).value()
+        rest = wordy[matched.end(0):]
+        bare_rest = rest.lstrip('.')
+        fulls = c(putteds).map(c().add(rest.lstrip('.'))).value()
+        if rest.startswith('.'):
+            orig += bare_rest
+        return self.flatmap_outstem([orig.rstrip('_')], *fulls)
+        # rest = wordy[matched.end(0):]
+        # rest_match = self.after_ender(rest)
+        # immediate, continuation = rest_match.groups()
+        # # if immediate and not continuation:
+        # if immediate:
+        #     puts = c(puts).map(c().add(immediate)).value()
+        # joined = c((orig, *puts)).map(c().add(continuation or '')).value()
+        # return self.flatmap_outstem(joined)
