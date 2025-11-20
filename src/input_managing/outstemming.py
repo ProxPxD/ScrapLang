@@ -7,6 +7,7 @@ from itertools import combinations, chain
 from typing import Sequence, Iterable, Optional, Callable
 
 import pydash as _
+import regex
 import toolz.curried.operator as op
 from pydash import chain as c
 from toolz import valfilter
@@ -76,20 +77,15 @@ class Outstemmer:
         ea = e.any
         sa = s.any
         secn = ReSymbolSet(s|e|c).not_
-        self._invalid_seq = re.compile(f'{ca}{2,}\d')
-        self._cutter_seq = re.compile(f'({ca}+)(?!\d)')
-        self._is_cutted = re.compile(f'{ca}')
-        cut_scope = f'{ca}(?P<n>\d+)(?:({secn}+){s})*({secn}+)*'  # f'{ca}+(?:({secn}*){sa})*({secn}*){ea}?'
-        self._cutted = re.compile(cut_scope)
+        self._invalid_seq = re.compile(fr'{ca}{2,}\d')
+        self._cutter_seq = re.compile(fr'({ca}+)(?!\d)')
+        self._is_cutted = re.compile(fr'{ca}')
+        cut_scope = fr'{ca}(?P<n>\d+)(?:({secn}+){sa})*({secn}+)?'  # f'{ca}+(?:({secn}*){sa})*({secn}*){ea}?'
+        self._cutted = regex.compile(cut_scope)
 
     @property
     def _symbol_groups(self) -> dict[str, set[str]]:
         return valfilter(c().is_set(), vars(self))
-
-    @cached_property
-    def after_ender(self) -> Callable[[str], re.Match]:
-        e = self._enders.any
-        return re.compile(f'(.*){e}*(.*)').search
 
     def outstem(self, word: str) -> list:
         # TODO: anhi test (and improve for "normal[ize[d]]")
@@ -107,9 +103,6 @@ class Outstemmer:
                 return stemmeds
         else:
             return [word]
-
-    def count_first(self, word: str, symbols: ReSymbolSet) -> int:
-        return len(re.match(symbols.star, word).group(0) or '')
 
     def flatmap_outstem(self, words: Iterable[str], *others: str) -> list[str]:
         return c(chain(words, others)).map(self.outstem).flatten().map(c().trim()).filter().uniq().value()
@@ -146,10 +139,6 @@ class Outstemmer:
                 buffer = []
         return joined_words
 
-    @cached_property
-    def remove_enders(self) -> Callable[[str], str]:
-        return lambda word: re.compile(self._enders.any).sub('', word)
-
     def _outstem_cutted(self, word: str) -> Optional[list[str]]:
         if not self._is_cutted.search(word):
             return None
@@ -166,7 +155,7 @@ class Outstemmer:
         outer_slice = slice(start-n, start)
         orig = wordy[:outer_slice.stop].rstrip('_')
         cut = wordy[:outer_slice.start]
-        to_puts = c(matched.groups()[1:]).map(c().trim_start('_')).filter().value() or ['']
+        to_puts = c(matched.captures(2, 3)).flatten().map(c().trim_start('_')).filter().value() or ['']
         putteds = c(to_puts).map(op.add(cut)).value()
         rest = wordy[matched.end(0):]
         bare_rest = rest.lstrip('.')
