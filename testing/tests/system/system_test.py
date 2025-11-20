@@ -247,78 +247,108 @@ class SystemTCG(TCG):
                 tags={'outstem'},
                 skip_mocking=True,
                 input=[
-                    IC(
-                        tags={'postcut/single'},
-                        input=r'en pl waters/',
-                        context={'words': ['water', 'waters']},
-                    ),
-                    IC(
-                        tags={'postcut/multi'},
-                        input=r'en pl watering///',
-                        context={'words': ['water', 'watering']},
-                    ),
-                    IC(
-                        tags={'postcut/single', 'postcut/replace'},
-                        input=r'pl en bić/ty',
-                        context={'words': ['bić', 'bity']},
-                    ),
-                    IC(
-                        tags={'postcut/multi', 'postcut/replace/one'},
-                        input=r'pl en bity//ć',
-                        context={'words': ['bity', 'bić']},
-                    ),
-                    IC(
-                        tags={'postcut', 'postcut/replace/multi'},
-                        input=r'eo pl viro/ino/iĝi',
-                        context={'words': ['viro', 'virino', 'viriniĝi']},
-                    ),
-                    IC(
-                        tags={'postcut', 'postcut/replace/many-options'},
-                        input=r'eo pl granda/igi,iĝi',
-                        context={'words': ['granda', 'grandigi', 'grandiĝi']},
-                    ),
-                    IC(
-                        tags={'postcut/terminal', 'postcut/replace/one'},
-                        input=r'eo pl prze/y.łożyć',
-                        context={'words': ['przełożyć', 'przyłożyć']},
-                    ),
-
-                    IC(
-                        tags={'precut/single'},
-                        input=f'pl en {bs*1*2}wbić',
-                        context={'words': ['bić', 'wbić']},
-                    ),
-
-                    IC(
-                        tags={'precut/multi'},
-                        input=f'pl en {bs*4*2}przebić',
-                        context={'words': ['bić', 'przebić']},
-                    ),
-                    IC(
-                        tags={'precut/single', 'precut/replace'},
-                        input=f'pl en przy{bs*1*2}wbić',
-                        context={'words': ['przybić', 'wbić']},
-                    ),
-                    IC(
-                        tags={'precut/multi', 'precut/replace'},
-                        input=f'pl en za{bs*2*2}dobić',
-                        context={'words': ['zabić', 'dobić']},
-                    ),
-                    IC(
-                        tags={'precut', 'precut/replace/multi'},
-                        input=f'eo pl {bs*3*2}hin{bs*2*2}zugeben',
-                        context={'words': ['geben', 'zugeben', 'hinzugeben']},
-                    ),
-                    IC(
-                        tags={'precut', 'precut/replace/many-options'},
-                        input=f'eo pl do,za{bs*2*2}bić',
-                        context={'words': ['dobić', 'zabić']},
-                    ),
-                    IC(
-                        tags={'postcut/terminal', 'postcut/replace/one'},
-                        input=r'PL EO prz.e\yłożyć',
-                        context={'words': ['przełożyć', 'przyłożyć']},
-                    ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/single', 'cut/empty'},
+                    #     input=r'en pl waters/',
+                    #     context={'words': ['water', 'waters']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/multi', 'cut/empty'},
+                    #     input=r'en pl watering///',
+                    #     context={'words': ['water', 'watering']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/single', 'cut/replace'},
+                    #     input=r'pl en bić/ty',
+                    #     context={'words': ['bić', 'bity']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/multi', 'cut/replace/one'},
+                    #     input=r'pl en bity//ć',
+                    #     context={'words': ['bity', 'bić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/replace/multi'},
+                    #     input=r'eo pl viro/ino/iĝi',
+                    #     context={'words': ['viro', 'virino', 'viriniĝi']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/replace/multi', 'cut/empty'},
+                    #     input=r'en pl nationalize///.//',
+                    #     context={'words': ['viro', 'virino', 'viriniĝi']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/replace/many-options'},
+                    #     input=r'eo pl granda/igi,iĝi',
+                    #     context={'words': ['granda', 'grandigi', 'grandiĝi']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/terminal', 'cut/replace/one'},
+                    #     input=r'eo pl prze/y.łożyć',
+                    #     context={'words': ['przełożyć', 'przyłożyć']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/postcut', 'cut/terminal', 'cut/replace/one', 'cut/replace/many-options'},
+                    #     input=r'eo pl przy/e,ed.stawić',
+                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/terminal', 'cut/replace/one', 'nested/bracket'},
+                    #     input=r'eo pl przy/e[d].stawić',
+                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
+                    # ),
+                    #
+                    # IC(
+                    #     tags={'cut/pre', 'cut/single'},
+                    #     input=f'pl en {bs*1*2}wbić',
+                    #     context={'words': ['bić', 'wbić']},
+                    # ),
+                    #
+                    # IC(
+                    #     tags={'cut/pre', 'cut/multi'},
+                    #     input=f'pl en {bs*4*2}przebić',
+                    #     context={'words': ['bić', 'przebić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/single', 'cut/replace'},
+                    #     input=f'pl en przy{bs*1*2}wbić',
+                    #     context={'words': ['przybić', 'wbić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/multi', 'cut/replace'},
+                    #     input=f'pl en za{bs*2*2}dobić',
+                    #     context={'words': ['zabić', 'dobić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/replace/multi'},
+                    #     input=f'eo pl {bs*3*2}hin,{bs*2*2}zugeben',
+                    #     context={'words': ['geben', 'zugeben', 'hinzugeben']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/replace/multi', 'cut/empty'},
+                    #     input=f'eo pl {bs*2*2}.{bs*3*2}hinzugeben',
+                    #     context={'words': ['geben', 'zugeben', 'hinzugeben']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/replace/many-options'},
+                    #     input=f'eo pl do,za{bs*1*2}ubić',
+                    #     context={'words': ['ubić', 'zabić', 'dobić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/terminal', 'cut/replace/one'},
+                    #     input=f'pl eo prz.e{bs*1*2}yłożyć',
+                    #     context={'words': ['przyłożyć', 'przełożyć']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/terminal', 'cut/replace/one', 'cut/replace/many-options'},
+                    #     input=f'eo pl prz.ed,e{bs*1*2}ystawić',
+                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
+                    # ),
+                    # IC(
+                    #     tags={'cut/pre', 'cut/terminal', 'cut/replace/one', 'nested/bracket'},
+                    #     input=f'eo pl prz.e[d]{bs*1*2}ystawić',
+                    #     context={'words': ['przystawić', 'przestawić', 'przedstawić']},
+                    # ),
 
                     IC(
                         tags={'bracket/one-option'},
@@ -360,6 +390,48 @@ class SystemTCG(TCG):
                         input='[a]bb[a]',
                         context={'words': ['bb', 'bba', 'abb', 'abba']}
                     ),
+
+                    # Outstem/Cut
+                    IC(
+                        tags={'cut/post', 'cut/times/2', 'cut/size/1', 'seq'},
+                        input='eo viro/ino/iĝi',
+                        context={'words': ['viro', 'virino', 'viriniĝi']}
+                    ),
+                    IC(
+                        tags={'cut/post', 'cut/times/2', 'cut/size/3', 'seq'},
+                        input='eo viriniĝi///o///o',
+                        context={'words': ['viriniĝi', 'virino', 'viro']}
+                    ),
+                    IC(
+                        tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/empty/placetaker', 'seq'},
+                        input='en nationalize///_//',
+                        context={'words': ['nationalize', 'national', 'nation']}
+                    ),
+                    IC(
+                        tags={'cut/post', 'cut/times/2', 'cut/size/1', 'cut/empty/placeholder', 'seq'},
+                        input='en nation_/al_/ize',
+                        context={'words': ['nation', 'national', 'nationalize']}
+                    ),
+                    IC(
+                        tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/number', 'seq'},
+                        input='en nationalize/3/2',
+                        context={'words': ['nationalize', 'national', 'nation']}
+                    ),
+                    IC(
+                        tags={'cut/post', 'cut/times/1', 'cut/size/1', 'cut/end'},
+                        input='pl przy/e.łożyć',
+                        context={'words': ['przyłożyć', 'przełożyć']}
+                    ),
+                    IC(
+                        tags={'cut/post', 'cut/times/1', 'cut/size/1', 'cut/end', 'cut/bracket', 'bracket/cut'},
+                        input='pl przy/e[d].stawić',
+                        context={'words': ['przystawić', 'przestawić', 'przedstawić']}
+                    ),
+                    # IC(
+                    #     tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/end', 'cut/number', 'cut/many'},
+                    #     input='pl ./hin,her.zu/2.geben',
+                    #     context={'words': []}  # TODO: fill
+                    # ),
                 ],
                 conf={**base_langs_es_de_pl_en_conf, 'langs': ['eo', 'es', 'en', 'pl', 'de']},
             ),
