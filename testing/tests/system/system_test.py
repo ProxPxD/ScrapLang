@@ -615,6 +615,8 @@ class SystemTCG(TCG):
             ),
     ]
 
+    # TODO: fix or inform: 标 zh -o
+
     @classmethod
     def map_to_many(cls, tc: TC) -> Iterable[Tc]:
         tcs = cls.map_inputs(tc)  # input > InputCase (single)
