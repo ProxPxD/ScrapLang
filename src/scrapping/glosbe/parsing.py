@@ -8,9 +8,9 @@ import pandas as pd
 import pydash as _
 from bs4.element import Tag, ResultSet
 from pandas import DataFrame
-from pydash import chain as c
+from pydash import chain as c, partial, flow
 
-from ..core.parsing import  Result, Parser, with_ensured_tag, ParsingException
+from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
 
 
 class TransResultKind(Enum):
@@ -99,8 +99,10 @@ class InflectionParser(Parser):
         logging.debug('Parsing inflection table')
         if not (table_tags := tag.select('div #grammar_0_0 table')):
             return ParsingException('No inflection table!')
-        tables = [table for table_tag in table_tags for table in pd.read_html(StringIO(str(table_tag)), keep_default_na=False, header=None)]
-        return tables[0]
+        to_table = flow(str, StringIO, partial(pd.read_html, keep_default_na=False, header=None))
+        to_table_or_none = c().apply_catch(to_table, {ValueError}, None)
+        table = c(table_tags).flat_map(to_table_or_none).reject(_.is_none).head().value()
+        return table
 
 
 @dataclass(frozen=True)
