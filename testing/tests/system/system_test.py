@@ -37,6 +37,7 @@ class InputCase:
     context: dict[str, Any] = field(default_factory=dict)
     output: str = ''
     exception: type[BaseException] | Sequence[type[BaseException]] = None
+    skip_mocking: bool = False
 
     replacement: dict = field(default_factory=dict)
 
@@ -365,9 +366,13 @@ class SystemTCG(TCG):
                         replacement={'INFL_FLAG': ['--inflection', '--infl', '-infl']},
                         context=frau_infl_context,
                     ),
+                    IC(
+                        input='слать ru -i',
+                        context={'inflection': True},
+                    ),
                 ],
-                conf=(assume_langs_pl_de_en_es := Box({
-                    'langs': ['pl', 'de', 'en', 'es'],
+                conf=(assume_langs_pl_de_en_es_ru := Box({
+                    'langs': ['pl', 'de', 'en', 'es', 'ru'],
                 })),
             ),
             TC(
@@ -403,7 +408,7 @@ class SystemTCG(TCG):
                         context=frau_def_context,
                     ),
                 ],
-                conf=assume_langs_pl_de_en_es,
+                conf=assume_langs_pl_de_en_es_ru,
             ),
             TC(
                 descr='Overview',
@@ -436,7 +441,7 @@ class SystemTCG(TCG):
                         context=frau_overview_context,
                     ),
                 ],
-                conf=assume_langs_pl_de_en_es,
+                conf=assume_langs_pl_de_en_es_ru,
             ),
             TC(
                 descr='Reverse',
@@ -611,7 +616,7 @@ class SystemTCG(TCG):
                         ''',
                     ),
                 ],
-                conf=assume_langs_pl_de_en_es,
+                conf=assume_langs_pl_de_en_es_ru,
             ),
     ]
 
@@ -670,7 +675,7 @@ class SystemTCG(TCG):
             exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
             conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
             color=tc.color,
-            skip_mocking=tc.skip_mocking
+            skip_mocking=tc.skip_mocking or tc.input.skip_mocking,
         )
         if '-h' in single.input:
             single.exception.append(SystemExit)
