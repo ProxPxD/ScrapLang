@@ -6,7 +6,7 @@ from GlotScript import sp
 from pandas import DataFrame
 
 from src.lang_detecting.advanced_predictor import AdvancedDetector
-from src.lang_detecting.simple_predictor import SimpleDetector
+from src.lang_detecting.simple_detector import SimpleDetector
 
 try:
     import torch
