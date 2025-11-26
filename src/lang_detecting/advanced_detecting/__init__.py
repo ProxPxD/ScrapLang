@@ -1,1 +1,1 @@
-from advanced_detector import AdvancedDetector
+from .advanced_detector import AdvancedDetector
