@@ -1,3 +1,5 @@
+from pandas import DataFrame
+
 try:
     import torch
     has_torch = True
@@ -14,4 +16,5 @@ if torch.cuda.is_available():
 
 
 class AdvancedDetector:
-    ...
+    def __init__(self, lang_script: DataFrame):
+        self.lang_script = lang_script

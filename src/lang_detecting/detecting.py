@@ -5,8 +5,8 @@ from typing import Sequence, Optional
 from GlotScript import sp
 from pandas import DataFrame
 
-from src.lang_detecting.advanced_predictor import AdvancedDetector
-from src.lang_detecting.simple_detector import SimpleDetector
+from src.lang_detecting.advanced_detecting.advanced_detector import AdvancedDetector
+from src.lang_detecting.simple_detecting import SimpleDetector
 
 try:
     import torch
@@ -19,7 +19,7 @@ class Detector:
     def __init__(self, lang_script: DataFrame):
         self.lang_script = lang_script
         self.simple_detector = SimpleDetector(self.lang_script)
-        self.advanced_detector = AdvancedDetector() if has_torch else None
+        self.advanced_detector = AdvancedDetector(self.lang_script) if has_torch else None
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         scripts = set(sp(''.join(words))[-1]['details'].keys())
