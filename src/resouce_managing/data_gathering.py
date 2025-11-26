@@ -3,7 +3,7 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Iterable
 
-from src.constants import Paths, ResourceConstants
+from src.constants import ResourceConstants
 from src.context import Context
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.resouce_managing.short_mem import ShortMemMgr

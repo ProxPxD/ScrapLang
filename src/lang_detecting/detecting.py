@@ -5,7 +5,6 @@ from typing import Sequence, Optional
 from GlotScript import sp
 from pandas import DataFrame
 
-from src.lang_detecting.advanced_detecting.advanced_detector import AdvancedDetector
 from src.lang_detecting.simple_detecting import SimpleDetector
 
 try:
@@ -13,6 +12,9 @@ try:
     has_torch = True
 except ImportError:
     has_torch = False
+
+if has_torch:
+    from src.lang_detecting.advanced_detecting import AdvancedDetector
 
 
 class Detector:
