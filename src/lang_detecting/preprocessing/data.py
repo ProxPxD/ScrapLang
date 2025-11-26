@@ -29,7 +29,7 @@ class DataProcessor:
     def lang_script(self) -> DataFrame:
         return self.lang_script_mgr.content
 
-    def _reanalyze(self, data: DataFrame) -> DataFrame:
+    def _generate_script_summary(self, data: DataFrame) -> DataFrame:
         """
         :param data: [lang: str, word: str]
         :return:
@@ -41,8 +41,8 @@ class DataProcessor:
         # print(lang_data[~lang_data[C.LANG].isin(langs_to_filter)].to_string(justify='left'))
         return lang_script
 
-    def reanalyze(self) -> DataFrame:
+    def generate_script_summary(self) -> DataFrame:
         valid_data = self.valid_data_mgr.load()
-        lang_script = self._reanalyze(valid_data)
+        lang_script = self._generate_script_summary(valid_data)
         self.lang_script_mgr.save(lang_script)
         return self.lang_script

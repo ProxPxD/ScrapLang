@@ -28,7 +28,7 @@ class DataGatherer:
             gathered = self.valid_args_mgr.gather(scrap_results)
             if gathered:  # TODO: test
                 logging.debug('Reanalyzing after having data gathered')
-                self.data_processor.reanalyze()
+                self.data_processor.generate_script_summary()
 
     def gather_short_mem(self, parsed: Namespace) -> None:
         if self.shor_mem_mgr and self.context.gather_data in ['all', 'time']:
