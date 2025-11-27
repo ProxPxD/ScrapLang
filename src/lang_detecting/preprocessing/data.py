@@ -44,8 +44,6 @@ class DataProcessor:
         lang_script = data.groupby(GC.LANG)[GC.WORD].apply(_.flow(''.join, set, sorted, ''.join)).reset_index()
         lang_script.rename(columns={GC.WORD: C.CHARS, GC.LANG: C.LANG}, inplace=True)
         lang_script[C.SCRIPTS] = lang_script[C.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
-        # langs_to_filter = []  # ['ja', 'zh']
-        # print(lang_data[~lang_data[C.LANG].isin(langs_to_filter)].to_string(justify='left'))
         return lang_script
 
     def generate_script_summary(self) -> DataFrame:
