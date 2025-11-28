@@ -22,7 +22,7 @@ class TCG:
         return cls.tcs
 
     @classmethod
-    def map(cls, tc) -> tuple:
+    def map(cls, tc):
         return tc
 
     @classmethod
