@@ -28,7 +28,7 @@ class InputMgr:
 
 
     def ingest_input(self, args: list[str] | str = None):
-        args = shlex.split(args) if isinstance(args, str) else (args or sys.argv[1:])
+        args = _.apply_if(args, shlex.split, _.is_string) or sys.argv[1:]
         args = _.flat_map(args, c().split('\xa0'))
         parsed = self.cli.parse(args)
         if parsed.reanalyze:  # TODO: test flag with(out) exiting
