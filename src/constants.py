@@ -14,9 +14,11 @@ class Paths:
     RESOURCES_DIR = WORKING_DIR / 'resources'
     LOG_DIR = RESOURCES_DIR / 'logs.log'
     CONF_FILE = RESOURCES_DIR / 'conf.yaml'
-    SHORT_MEM_FILE = RESOURCES_DIR / 'short_mem.yaml'
-    VALID_DATA_FILE = RESOURCES_DIR / 'valid_data.csv'
-    LANG_SCRIPT_FILE = RESOURCES_DIR / 'lang_scripts.csv'
+    DETECTION_DIR = RESOURCES_DIR / 'detection'
+    SHORT_MEM_FILE = DETECTION_DIR / 'short_mem.yaml'
+    VALID_DATA_FILE = DETECTION_DIR / 'valid_data.csv'
+    LANG_SCRIPT_FILE = DETECTION_DIR / 'lang_scripts.csv'
+    MODEL_IO_FILE = DETECTION_DIR / 'model_io.yaml'
 
 
 @dataclass(frozen=True)
