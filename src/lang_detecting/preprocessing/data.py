@@ -6,10 +6,12 @@ from typing import Optional
 import pydash as _
 from GlotScript import sp
 from pandas import DataFrame
+from pydash import flow
 
 from src.constants import preinitialized
 from src.resouce_managing.file import FileMgr
 from src.resouce_managing.valid_data import Columns as GC
+from pydash import chain as c
 
 @preinitialized
 @dataclass
@@ -41,7 +43,7 @@ class DataProcessor:
         :param data: [lang: str, word: str]
         :return:
         """
-        lang_script = data.groupby(GC.LANG)[GC.WORD].apply(_.flow(''.join, set, sorted, ''.join)).reset_index()
+        lang_script = data.groupby(GC.LANG)[GC.WORD].apply(flow(''.join, set, c().flat_map(lambda c: [c, c.upper()]), set, sorted, ''.join)).reset_index()
         lang_script.rename(columns={GC.WORD: C.CHARS, GC.LANG: C.LANG}, inplace=True)
         lang_script[C.SCRIPTS] = lang_script[C.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
         return lang_script
