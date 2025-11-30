@@ -291,12 +291,12 @@ class SystemTCG(TCG):
                     ),
                     IC(
                         tags={'bracket/two', 'bracket/repeated', 'outestem/remove/empty'},
-                        input='[teil][nehmen]',
+                        input='de [teil][nehmen]',
                         context={'words': ['nehmen', 'teil', 'teilnehmen']},
                     ),
                     IC(
-                        tags={'bracket/two', 'bracket/repeated', 'outestem/trim'},
-                        input='[password] [manager]',
+                        tags={'bracket/two', 'bracket/repeated', 'outestem/trim/space', 'space'},
+                        input='en "[password] [manager]"',
                         context={'words': ['manager', 'password', 'password manager']},
                     ),
 
