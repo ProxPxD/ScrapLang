@@ -341,6 +341,11 @@ class SystemTCG(TCG):
                         input='eo _/tra,el,en,al.iri',
                         context={'words': ['iri', 'trairi', 'eliri', 'eniri', 'aliri']},
                     ),
+                    # IC(  # TODO handle?
+                    #     tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/end', 'cut/number', 'cut/many'},
+                    #     input='pl do,s,po\\chować',
+                    #     context={'words': ['iri', 'trairi', 'eliri', 'eniri', 'aliri']},
+                    # ),
                     # IC(  # TODO: Think if this should be imlpemented at all (current solution: [[hin]zu]geben
                     #     tags={'cut/post', 'cut/times/2', 'cut/size/3', 'cut/size/2', 'cut/end', 'cut/number', 'cut/many'},
                     #     input='de hin/3.zu/2.geben',
