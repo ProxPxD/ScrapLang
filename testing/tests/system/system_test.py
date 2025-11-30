@@ -289,6 +289,16 @@ class SystemTCG(TCG):
                         input='[a]bb[a]',
                         context={'words': ['bb', 'bba', 'abb', 'abba']}
                     ),
+                    IC(
+                        tags={'bracket/two', 'bracket/repeated', 'outestem/remove/empty'},
+                        input='[teil][nehmen]',
+                        context={'words': ['nehmen', 'teil', 'teilnehmen']},
+                    ),
+                    IC(
+                        tags={'bracket/two', 'bracket/repeated', 'outestem/trim'},
+                        input='[password] [manager]',
+                        context={'words': ['manager', 'password', 'password manager']},
+                    ),
 
                     # Outstem/Cut
                     IC(
