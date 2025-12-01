@@ -72,6 +72,7 @@ class AtSpecifierAction(Action):
 class CLI:
     def __init__(self, context: Context):
         self.context = context
+        self._direct_arg = re.compile(r"^-[A-Za-z]\d")
 
     @property
     def parser(self) -> ArgumentParser:
@@ -141,7 +142,7 @@ class CLI:
             exit(0)  # change
 
         parsed, remaining = self.parser.parse_known_args(args)
-        parsed.args += remaining  # make test for this fix: t ksiądz -i pl
+        parsed.args += _.reject(remaining, '--'.__eq__)  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
         self.context.update(**{**vars(parsed), 'words': [], 'from_lang': None, 'to_langs': []}); logging.debug('Updating context in CLI')
         parsed = self._distribute_args(parsed)
