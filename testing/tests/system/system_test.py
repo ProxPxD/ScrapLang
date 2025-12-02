@@ -707,10 +707,12 @@ class SystemTCG(TCG):
             descr=tc.descr,
             tags=list(tc.tags) + list(tc.input.tags),
             input=tc.input.input,
-            context={key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()},
+            context=Box(
+                {key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()}
+            ).to_dict(),
             output=cls.regularize_output(tc.input.output or tc.output),
             exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
-            conf={**tc.conf, **tc.input.conf},
+            conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
             color=tc.color,
             skip_mocking=tc.skip_mocking or tc.input.skip_mocking,
         )
