@@ -56,7 +56,9 @@ class Printer:
         return colored(to_color, color)
 
     def print_separator(self, group: str, sep: str) -> None:
-        self.printer(f'{sep*8} {group} {sep*25}')
+        bias = len(group)
+        colored_group = self.color(group, self.context.color.main)
+        self.printer(f'{sep*4} {colored_group} {sep*(36-bias)}{sep*4}')
 
     def print_inflection(self, outcome: Outcome) -> None:
         if outcome.is_fail():
