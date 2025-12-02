@@ -707,9 +707,7 @@ class SystemTCG(TCG):
             descr=tc.descr,
             tags=list(tc.tags) + list(tc.input.tags),
             input=tc.input.input,
-            context=Box(
-                {key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()}
-            ).to_dict(),
+            context=Box({key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()}).to_dict(),
             output=cls.regularize_output(tc.input.output or tc.output),
             exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
             conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
