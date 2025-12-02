@@ -96,7 +96,7 @@ class Context:
     _conf: Conf = None
 
     words: frozenset[str] = frozenset()
-    from_lang: str = None
+    from_langs: frozenset[str] = frozenset()
     to_langs: frozenset[str] = frozenset()
 
     mapped: tuple[bool] = tuple()
@@ -164,7 +164,7 @@ class Context:
 
     @property
     def all_langs(self) -> list:
-        return [self.from_lang, *self.to_langs]
+        return _.interleave(self.from_langs, self.to_langs)
 
     @property
     def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
@@ -173,10 +173,6 @@ class Context:
             case 'lang': return product(to_langs, self.words)
             case 'word': return ((to_lang, word) for word, to_lang in product(self.words, to_langs))
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
-
-    @property
-    def source_pairs(self) -> Iterable[tuple[str, str]]:
-        return zip(repeat(self.from_lang), self.words)
 
     @property
     def url_triples(self) -> Iterable[tuple[str, Optional[str], str]]:

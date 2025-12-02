@@ -83,8 +83,7 @@ class CLI:
         base_group = parser.add_argument_group(title='Base Arguments')
         base_group.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
         base_group.add_argument('--words', '-words', '-words', '-word', '-w', nargs='+', default=[], help='Words to translate')
-        base_group.add_argument('--from-lang', '--from', '-from', '-f', dest='from_lang', help=(lang_help := 'Languages supported by glosbe.com'))
-        #base_group.add_argument('--from-langs', '--from-lang', '--from', '-from', '-f', dest='from_langs', nargs='+', default=[], help=(lang_help := 'Languages supported by glosbe.com'))
+        base_group.add_argument('--from-langs', '--from-lang', '--from', '-from', '-f', dest='from_langs', nargs='+', default=[], help=(lang_help := 'Languages supported by glosbe.com'))
         base_group.add_argument('--to-langs', '--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
         return parser
@@ -102,7 +101,7 @@ class CLI:
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
         cli_reasoning_group = parser.add_argument_group(title='CLI Reasoning Modes')
-        cli_reasoning_group.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang with the first to_lang')
+        cli_reasoning_group.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang(s) with the first to_lang')
         cli_reasoning_group.add_argument('--assume', choices=assume, default=UNSET, help='What to assume for a positional args in doubt of')
         cli_reasoning_group.add_argument('--gather-data', '--gd', '-gd', choices=gather_data, default=UNSET, help='What to gather user input for')
         cli_reasoning_group.add_argument('--infervia', '--iv', '-iv', choices=infervia, default=UNSET, help='How to infer the lang(s)')
@@ -139,7 +138,7 @@ class CLI:
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += _.reject(remaining, '--'.__eq__)  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
-        self.context.update(**{**vars(parsed), 'words': [], 'from_lang': None, 'to_langs': []}); logging.debug('Updating context in CLI')
+        self.context.update(**{**vars(parsed), 'words': [], 'from_langs': None, 'to_langs': []}); logging.debug('Updating context in CLI')
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
         return parsed
@@ -163,9 +162,9 @@ class CLI:
         # if not parsed.words and (assumed_word := self._assume_first_word(pot)):
         #     parsed.words.append(assumed_word)
         logging.debug(f'Potential langs: {pot.lang}')
-        if pot.lang and not parsed.from_lang:
-            from_lang = pot.lang.pop(0); logging.debug(f'Assuming "{from_lang}" should be in from_lang')
-            parsed.from_lang = from_lang
+        if pot.lang and not parsed.from_langs:
+            from_langs = pot.lang.pop(0); logging.debug(f'Assuming "{from_langs}" should be in from_langs')
+            parsed.from_langs = from_langs
         if pot.lang:
             parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming "{pot.lang}" should be in to_langs')
             pot.lang = []
