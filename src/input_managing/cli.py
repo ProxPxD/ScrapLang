@@ -151,6 +151,7 @@ class CLI:
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
         match self.context.assume:
+            case 'lang': return self._distribute_args_by_langs(parsed)
             case 'word':
                 logging.debug(f'Assuming {parsed.args} are words!')
                 parsed.words = parsed.args + parsed.words
@@ -158,7 +159,6 @@ class CLI:
                 return parsed
             case 'no' if parsed.args: raise ValueError(f'Could not resolve arguments: {parsed.args}')
             case 'no': return parsed
-            case 'lang': return self._distribute_args_by_langs(parsed)
             case _: raise ValueError(f'Unexpected assume value: {self.context.assume}')
 
     def _distribute_args_by_langs(self, parsed: Namespace) -> Namespace:
@@ -171,7 +171,7 @@ class CLI:
         if pot.lang and not parsed.from_lang:
             from_lang = pot.lang.pop(0); logging.debug(f'Assuming "{from_lang}" should be in from_lang')
             parsed.from_lang = from_lang
-        if pot.lang and not parsed.to_langs:
+        if pot.lang:
             parsed.to_langs = pot.lang + parsed.to_langs; logging.debug(f'Assuming "{pot.lang}" should be in to_langs')
             pot.lang = []
         if pot.word:
