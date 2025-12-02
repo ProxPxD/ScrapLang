@@ -155,6 +155,8 @@ class SystemTCG(TCG):
                             'from_lang': ('en'),
                             'to_langs': ['fr', 'sv', 'ar'],
                         },
+                        skip_mocking=True,
+                        output=None,
                     ),
                 ],
                 context={
@@ -782,6 +784,6 @@ def test(tc: Tc):
             a_val = list(a_val)
         assert path == path and e_val == a_val
 
-    if tc.output:
+    if not tc.skip_mocking and tc.output:
         a_output = (_.identity if tc.color else remove_color)(collector.output)
         assert tc.output == a_output
