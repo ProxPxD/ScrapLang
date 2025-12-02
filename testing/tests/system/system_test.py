@@ -142,18 +142,28 @@ class SystemTCG(TCG):
             ),
             TC(
                 descr='Assume sunny resolution',
-                input={
+                tags={'assume'},
+                input=[
                     'es de -w en de orden --assume lang',  # lang
                     'en de orden --assume word',  # word
                     'es de -w en de orden',  # Default
-                },
+                    IC(
+                        tags={'lang/arg', 'lang/flag'},
+                        input='crime en fr -t sv ar',
+                        context={
+                            'words': ['crime'],
+                            'from_lang': ('en'),
+                            'to_langs': ['fr', 'sv', 'ar'],
+                        },
+                    ),
+                ],
                 context={
                     'from_lang': ('es'),
                     'words': ['en', 'de', 'orden'],
                     'to_langs': ['de'],
                 },
                 conf=(just_langs_es_de_pl_en_conf := Box({
-                    'langs': ['es', 'de', 'pl', 'en'],
+                    'langs': ['es', 'de', 'pl', 'en', 'fr'],
                 })),
                 output='''
                     en: in (adposition), an (adposition), auf (adposition), bei, über, anderswo, zu, nach, im, binnen, neben, verstehen, für, mit, unter, innerhalb, b., um, während, zwischen, inmitten, drin, von, gestellt, gegen, je, pro, at, à, nahe bei, um zu, en, hinein, mit Hilfe von, nahe
