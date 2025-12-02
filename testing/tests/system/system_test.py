@@ -148,7 +148,7 @@ class SystemTCG(TCG):
                     'en de orden --assume word',  # word
                     'es de -w en de orden',  # Default
                     IC(
-                        tags={'lang/arg', 'lang/flag'},
+                        tags={'to-lang/arg', 'to-lang/flag', 'to-lang/dual'},
                         input='crime en fr -t sv ar',
                         context={
                             'words': ['crime'],
