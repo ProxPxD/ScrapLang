@@ -225,6 +225,18 @@ class SystemTCG(TCG):
                 conf=base_langs_es_de_pl_en_conf,
             ),
             TC(
+              descr='Option separation',
+                tags=['separate/argument', 'separate/option'],
+                input='en de -- -wards',
+                context={
+                    'words': ['-wards'],
+                    'from_lang': ('en'),
+                    'to_langs': ['de'],
+                },
+                conf=base_langs_es_de_pl_en_conf,
+                skip_mocking=True,
+            ),
+            TC(
                 descr='No break space separation',
                 input='en pl bass water',
                 tags=['break-space'],
