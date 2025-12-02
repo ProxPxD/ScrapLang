@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
-import sys
 from argparse import ArgumentParser, Namespace, SUPPRESS, Action
-from functools import reduce
 from itertools import permutations, product, combinations, chain
 from typing import Iterable
-
-from more_itertools import flatten
 
 import pydash as _
 from box import Box
 from more_itertools import circular_shifts
+from more_itertools import flatten
 from ordered_set import OrderedSet
 from pydash import chain as c
 
@@ -21,8 +17,6 @@ from src.conf_domain import indirect, gather_data, infervia, groupby
 from src.context import Context
 from src.context_domain import UNSET, assume, at
 from src.logutils import setup_logging
-from src.input_managing.outstemming import Outstemmer
-from src.resouce_managing.data_gathering import DataGatherer
 
 
 class AtSpecifierAction(Action):
@@ -90,6 +84,7 @@ class CLI:
         base_group.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
         base_group.add_argument('--words', '-words', '-words', '-word', '-w', nargs='+', default=[], help='Words to translate')
         base_group.add_argument('--from-lang', '--from', '-from', '-f', dest='from_lang', help=(lang_help := 'Languages supported by glosbe.com'))
+        #base_group.add_argument('--from-langs', '--from-lang', '--from', '-from', '-f', dest='from_langs', nargs='+', default=[], help=(lang_help := 'Languages supported by glosbe.com'))
         base_group.add_argument('--to-langs', '--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
         # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
         return parser
