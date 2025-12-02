@@ -55,6 +55,9 @@ class ScrapIterator:
         self.to_lang: str = to_lang
         self.word: str = word
 
+    def __repr__(self) -> str:
+        return f'ScrapIt(i={self.i}, from={self.from_lang}, word={self.word}, to={self.to_lang})'
+
     @property
     def args(self) -> tuple[str, str, str]:
         return self.from_lang, self.to_lang, self.word
@@ -192,8 +195,8 @@ class Context:
     @property
     def n_main_members(self) -> int:
         match self.groupby:
-            case 'lang': return len(self.words) // self.n_subgroups
-            case 'word': return len(self.to_langs)
+            case 'lang': return len(self.words) * self.n_subgroups
+            case 'word': return len(self.to_langs) * self.n_subgroups
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
@@ -224,7 +227,10 @@ class Context:
 
     @property
     def url_triples(self) -> Iterable[tuple[str, str]]:
-        return ((from_lang, *dest) for dest, from_lang in zip(self.dest_pairs, cycle(self.from_langs)))
+        match self.groupby:
+            case 'word': return ((from_lang, *dest) for dest, from_lang in zip(self.dest_pairs, _.flat_map(self.from_langs, lambda x: [x] * len(self.to_langs))))
+            case 'lang': return ((from_lang, *dest) for dest, from_lang in zip(self.dest_pairs, cycle(self.from_langs)))
+            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     def iterate_args(self) -> Iterable[ScrapIterator]:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
@@ -233,7 +239,7 @@ class Context:
     def get_words_of_from_lang(self, from_lang: str) -> Collection[str]:
         n: int = len(self.from_langs)
         i: int = self.from_langs.index(from_lang)
-        return self.words[i::n]
+        return self.words[i:(i+1)*n]
 
 
     @property
