@@ -710,7 +710,7 @@ class SystemTCG(TCG):
             context={key: cls.map_context_val(val) for key, val in {**tc.context, **tc.input.context}.items()},
             output=cls.regularize_output(tc.input.output or tc.output),
             exception=c([tc.input.exception] + [tc.exception]).flatten().filter().value(),
-            conf=Box({**tc.conf, **tc.input.conf}).to_dict(),
+            conf={**tc.conf, **tc.input.conf},
             color=tc.color,
             skip_mocking=tc.skip_mocking or tc.input.skip_mocking,
         )
