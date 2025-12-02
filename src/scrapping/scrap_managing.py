@@ -38,9 +38,10 @@ class ScrapMgr:
     def scrap(self, context: Context) -> Iterable[Outcome]:
         for scrap_it in context.iterate_args():
             from_lang, to_lang, word = scrap_it.args
-            if scrap_it.is_first_in_group():
-                group = to_lang if context.groupby == 'lang' else word
-                yield Outcome(OutcomeKinds.SEPERATOR, results=group)
+            if scrap_it.is_first_in_main_group():
+                yield Outcome(OutcomeKinds.MAIN_GROUP_SEPERATOR, results=scrap_it.main_group)
+            if scrap_it.is_first_in_subgroup():
+                yield Outcome(OutcomeKinds.SUBGROUP_SEPERATOR, results=scrap_it.subgroup)
             if context.is_at_from() and scrap_it.is_at_inflection():
                 yield self.scrap_inflections(from_lang, word)
             if scrap_it.is_at_translation():

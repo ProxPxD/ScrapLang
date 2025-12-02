@@ -32,8 +32,10 @@ class Printer:
 
     def print_result(self, outcome: Outcome) -> None:
         match outcome.kind:
-            case OutcomeKinds.SEPERATOR:
-                self.print_separator(outcome.results)
+            case OutcomeKinds.MAIN_GROUP_SEPERATOR:
+                self.print_separator(outcome.results, '━')  # TODO: add as configurable together with numbers
+            case OutcomeKinds.SUBGROUP_SEPERATOR:
+                self.print_separator(outcome.results, '─')  # TODO: add as configurable together with numbers
             case OutcomeKinds.INFLECTION:
                 self.print_inflection(outcome)
             case OutcomeKinds.MAIN_TRANSLATION:
@@ -53,8 +55,7 @@ class Printer:
     def color(self, to_color, color: str | tuple[int, int, int]) -> str:
         return colored(to_color, color)
 
-    def print_separator(self, group: str) -> None:
-        sep = '-'  # TODO: add as configurable together with numbers
+    def print_separator(self, group: str, sep: str) -> None:
         self.printer(f'{sep*8} {group} {sep*25}')
 
     def print_inflection(self, outcome: Outcome) -> None:

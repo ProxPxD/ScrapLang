@@ -30,7 +30,8 @@ class MainOutcomeKinds(BaseDC):
 
 @dataclass(frozen=True)
 class HelperOutcomeKinds(BaseDC):
-    SEPERATOR: str = 'seperator'
+    MAIN_GROUP_SEPERATOR: str = 'main-sep'
+    SUBGROUP_SEPERATOR: str = 'sub-sep'
     NEWLINE: str = '\n'
 
 

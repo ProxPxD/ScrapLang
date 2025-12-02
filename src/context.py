@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from functools import cached_property, cache, lru_cache
-from itertools import product, repeat
-from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING
+from itertools import product, repeat, cycle
+from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Collection
 
 import pydash as _
 from box import Box
+from more_itertools import chunked
 from pydash import chain as c
 
 from src.constants import preinitialized
@@ -59,20 +60,38 @@ class ScrapIterator:
         return self.from_lang, self.to_lang, self.word
 
     @lru_cache()
-    def is_first(self) -> bool:
-        return self._context.n_members == 0 or self.i % self._context.n_members == 0
+    def is_first_in_main_group(self) -> bool:
+        return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
 
     @lru_cache()
-    def is_last(self) -> bool:
+    def is_first_in_subgroup(self) -> bool:
+        return self._context.n_sub_members > 1 and self.i % self._context.n_sub_members == 0
+
+    @property
+    def main_group(self) -> str:  # TODO: abstract?
+        match self._context.groupby:
+            case 'lang': return self.from_lang
+            case 'word': return '·'.join(self._context.get_words_of_from_lang(self.from_lang))
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    @property
+    def subgroup(self) -> str:
+        match self._context.groupby:
+            case 'lang': return '·'.join(self._context.get_words_of_from_lang(self.from_lang))
+            case 'word': return self.from_lang
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    @lru_cache()
+    def is_last_in_main_group(self) -> bool:
         return self._context.n_members == 0 or self.i % self._context.n_members == self._context.n_members - 1
 
     @lru_cache()
     def is_first_in_group(self) -> bool:
-        return self.is_first() and not self.is_last() and self._context.n_groups > 1
+        return self.is_first_in_main_group() and not self.is_last_in_main_group() and self._context.n_main_groups > 1
 
     @lru_cache()
     def is_at_inflection(self) -> bool:
-        return self._context.inflection and self.is_first()
+        return self._context.inflection and self.is_first_in_main_group()
 
     @lru_cache()
     def is_at_translation(self) -> bool:
@@ -80,11 +99,11 @@ class ScrapIterator:
 
     @lru_cache()
     def is_at_wiktio(self) -> bool:
-        return self._context.wiktio and self.is_last()
+        return self._context.wiktio and self.is_last_in_main_group()
 
     @lru_cache()
     def is_at_definition(self) -> bool:
-        return self._context.definition and self.is_last
+        return self._context.definition and self.is_last_in_main_group
 
     @cached_property
     def at_lang(self) -> str:
@@ -95,9 +114,9 @@ class ScrapIterator:
 class Context:
     _conf: Conf = None
 
-    words: frozenset[str] = frozenset()
-    from_langs: frozenset[str] = frozenset()
-    to_langs: frozenset[str] = frozenset()
+    words: tuple[str] = tuple()
+    from_langs: tuple[str] = tuple()
+    to_langs: tuple[str] = tuple()
 
     mapped: tuple[bool] = tuple()
 
@@ -167,17 +186,15 @@ class Context:
         return _.interleave(self.from_langs, self.to_langs)
 
     @property
-    def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
-        to_langs = self.to_langs or [None]
-        match self.groupby:
-            case 'lang': return product(to_langs, self.words)
-            case 'word': return ((to_lang, word) for word, to_lang in product(self.words, to_langs))
-            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+    def n_sub_members(self) -> int:
+        return len(self.from_langs)
 
     @property
-    def url_triples(self) -> Iterable[tuple[str, Optional[str], str]]:
-        for to_lang, word in self.dest_pairs:
-            yield self.from_lang, to_lang, word
+    def n_main_members(self) -> int:
+        match self.groupby:
+            case 'lang': return len(self.words) // self.n_subgroups
+            case 'word': return len(self.to_langs)
+            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
     def n_members(self) -> int:
@@ -187,15 +204,37 @@ class Context:
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
-    def n_groups(self) -> int:
+    def n_main_groups(self) -> int:
         match self.groupby:
             case 'lang': return len(self.to_langs)
             case 'word': return len(self.words)
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
+    @property
+    def n_subgroups(self) -> int:
+        return len(self.from_langs)
+
+    @property
+    def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
+        to_langs = self.to_langs or [None]
+        match self.groupby:
+            case 'lang': return product(to_langs, self.words)
+            case 'word': return ((to_lang, word) for word, to_lang in product(self.words, to_langs))
+            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+
+    @property
+    def url_triples(self) -> Iterable[tuple[str, str]]:
+        return ((from_lang, *dest) for dest, from_lang in zip(self.dest_pairs, cycle(self.from_langs)))
+
     def iterate_args(self) -> Iterable[ScrapIterator]:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
             yield ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word)
+
+    def get_words_of_from_lang(self, from_lang: str) -> Collection[str]:
+        n: int = len(self.from_langs)
+        i: int = self.from_langs.index(from_lang)
+        return self.words[i::n]
+
 
     @property
     def grouparg(self) -> str:
