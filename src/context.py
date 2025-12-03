@@ -259,11 +259,3 @@ class Context:
     def is_at_to(self) -> bool:
         return self.at.startswith('t')
 
-    @property
-    def at_full(self) -> str:
-        if self.at.startswith('f'):
-            return 'from'
-        if self.at.startswith('t'):
-            return 'to'
-        raise ValueError(f'Unexpected value for at: {self.at}')
-
