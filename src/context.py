@@ -9,10 +9,12 @@ import pydash as _
 from box import Box
 from more_itertools import chunked
 from pydash import chain as c, flow
+from sympy.abc import lamda
 
 from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
     Color, color_names, ReanalyzeOn
+from src.utils import apply
 
 if TYPE_CHECKING:
     from src.scrapping import Outcome
@@ -205,6 +207,7 @@ class Context:
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
+    # @apply(on_result=[lambda r: print(f'n_main_groups: {r}')])
     def n_main_groups(self) -> int:
         match self.groupby:
             case 'lang': return len(self.to_langs)
