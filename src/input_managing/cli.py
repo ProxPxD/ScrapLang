@@ -32,7 +32,7 @@ class AtSpecifierAction(Action):
 
     @classmethod
     def side_mode_fusions(cls) -> Iterable[str]:
-        conflicting_like = {f'{s}{m}' for m in cls.modes for s in cls.sides}
+        conflicting_like = {'to'}  #{f'{s}{m}' for m in cls.modes for s in cls.sides}
         perms = chain(
             cls.mode_permutations(),
             flatten((map(''.join, circular_shifts(side+perm)) for side, perm in product(cls.sides, cls.mode_permutations())))
