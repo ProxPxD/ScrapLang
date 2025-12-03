@@ -64,7 +64,8 @@ class ScrapIterator:
 
     @lru_cache()
     def is_first_in_main_group(self) -> bool:
-        return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
+        #return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
+        return self._context.n_main_groups > 1 and self._context.n_all_members > 1 and self.i % self._context.n_all_members == 0
 
     @lru_cache()
     def is_first_in_subgroup(self) -> bool:
@@ -86,7 +87,7 @@ class ScrapIterator:
 
     @lru_cache()
     def is_last_in_main_group(self) -> bool:
-        return self._context.n_main_members == 0 or self.i % self._context.n_main_members == self._context.n_main_members - 1
+        return self._context.n_all_members == 0 or self.i % self._context.n_all_members == self._context.n_all_members - 1
 
     @lru_cache()
     def is_first_in_group(self) -> bool:
@@ -201,7 +202,7 @@ class Context:
         return len(self.from_langs)
 
     @property
-    def n_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
+    def n_all_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
         match self.groupby:
             case 'lang': return self.n_from_langs * len(list(self.from_lang_word_bundles))
             case 'word': return self.n_from_langs * len(self.to_langs)
