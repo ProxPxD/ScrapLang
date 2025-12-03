@@ -242,7 +242,7 @@ class SystemTCG(TCG):
                 input='en de -- -wards',
                 context={
                     'words': ['-wards'],
-                    'from_langs': ('en'),
+                    'from_langs': ('en',),
                     'to_langs': ['de'],
                 },
                 conf=base_langs_es_de_pl_en_conf,
