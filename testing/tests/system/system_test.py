@@ -91,13 +91,13 @@ class SystemTCG(TCG):
     ] if next(iter(conf.values())) != 'conf']
 
     perm_base = Box({
-        'from_lang': 'en',
+        'from_langs': ('en',),
         'to_langs': ('pl', 'de'),
         'words': ('water', 'bass'),
     })
     multi_perm = Box({
-        'langs': (perm_base.from_lang, *perm_base.to_langs),
-        'args': (perm_base.from_lang, *perm_base.to_langs, *perm_base.words),
+        'langs': (*perm_base.from_langs, *perm_base.to_langs),
+        'args': (*perm_base.from_langs, *perm_base.to_langs, *perm_base.words),
         **perm_base,
     })
 
@@ -110,7 +110,7 @@ class SystemTCG(TCG):
                 tags=['all-flag', 'position', 'permutation'],
                 input=_.map_(permutations({'-w Frau', '-f de', '-t pl'}, 3), ' '.join),
                 context={
-                    'from_lang': 'de',
+                    'from_langs': ('de',),
                     'words': ['Frau'],
                     'to_langs': ['pl'],
                 },
@@ -152,7 +152,7 @@ class SystemTCG(TCG):
                         input='crime en fr -t sv ar',
                         context={
                             'words': ['crime'],
-                            'from_lang': ('en'),
+                            'from_langs': ('en',),
                             'to_langs': ['fr', 'sv', 'ar'],
                         },
                         skip_mocking=True,
@@ -160,7 +160,7 @@ class SystemTCG(TCG):
                     ),
                 ],
                 context={
-                    'from_lang': ('es'),
+                    'from_langs': ('es',),
                     'words': ['en', 'de', 'orden'],
                     'to_langs': ['de'],
                 },
@@ -179,7 +179,7 @@ class SystemTCG(TCG):
                     'es pl de --assume lang'
                 },
                 context={
-                    'from_lang': ('es'),
+                    'from_langs': ('es',),
                     'to_langs': ['pl', 'de']
                 },
                 exception=InvalidExecution,
@@ -194,7 +194,7 @@ class SystemTCG(TCG):
                     'de pl Herr',
                 },
                 context={
-                    'from_lang': 'de',
+                    'from_langs': ('de',),
                     'words': ['Herr'],
                     'to_langs': ['pl'],
                 },
@@ -210,7 +210,7 @@ class SystemTCG(TCG):
                     if all(i < j for group in (cls.multi_perm.langs, cls.multi_perm.words) for i, j in windowed(map(perm.index, group), 2))
                 },
                 context={
-                    'from_lang': ('en'),
+                    'from_langs': ('en',),
                     'words': ['water', 'bass'],
                     'to_langs': ['pl', 'de'],
                 },
@@ -221,17 +221,17 @@ class SystemTCG(TCG):
                 tags=set(),
                 input={
                     'es pl orden conocer <WORD_FLAG> en de',
-                    'pl orden conocer -w en de <FROM_LANG> es',
+                    'pl orden conocer -w en de <FROM_LANGS> es',
                     'es orden conocer -w en de <TO_LANG> pl',
                 },
                 replacement={
                     'WORD_FLAG': ['--word', '--words', '-word', '-words'],
-                    'FROM_LANG': ['--from-lang', '--from', '-from'],
+                    'FROM_LANGS': ['--from-lang', '--from', '-from'],
                     'TO_LANG':   ['--to-lang', '--to-langs', '--to', '-to'],
                 },
                 context={
                     'words': ['orden', 'conocer', 'en', 'de'],
-                    'from_lang': ('es'),
+                    'from_langs': ('es',),
                     'to_langs': ['pl'],
                 },
                 conf=base_langs_es_de_pl_en_conf,
@@ -242,7 +242,7 @@ class SystemTCG(TCG):
                 input='en de -- -wards',
                 context={
                     'words': ['-wards'],
-                    'from_lang': ('en'),
+                    'from_langs': ('en'),
                     'to_langs': ['de'],
                 },
                 conf=base_langs_es_de_pl_en_conf,
@@ -253,7 +253,7 @@ class SystemTCG(TCG):
                 input='en pl bass water',
                 tags=['break-space'],
                 context={
-                    'from_lang': 'en',
+                    'from_langs': ('en',),
                     'to_langs': ['pl'],
                     'words': ['bass', 'water']
                 },
@@ -386,7 +386,7 @@ class SystemTCG(TCG):
                         tags={'inflection', 'nontranslate', 'permutation', 'position'},
                         input=_.map_(permutations({'Frau', 'de', '-i'}, 3), ' '.join),
                         context=(frau_infl_context := {
-                            'from_lang': ('de'),
+                            'from_langs': ('de',),
                             'to_langs': [],
                             'inflection': True,
                             'words': ['Frau']
@@ -422,7 +422,7 @@ class SystemTCG(TCG):
                         tags={'nontranslate', 'definition', 'permutation', 'position'},
                         input=_.map_(permutations({'Frau', 'de', '-d'}, 3), ' '.join),
                         context=(frau_def_context := {
-                            'from_lang': ('de'),
+                            'from_langs': ('de',),
                             'definition': True,
                             'words': ['Frau']
                         }),
@@ -457,7 +457,7 @@ class SystemTCG(TCG):
                         tags={'nontranslate', 'permutation', 'position'},
                         input=_.map_(permutations({'Frau', 'de', '-o'}, 3), ' '.join),
                         context=(frau_overview_context := {
-                            'from_lang': ('de'),
+                            'from_langs': ('de',),
                             'wiktio': True,
                             'words': ['Frau']
                         }),
@@ -494,7 +494,7 @@ class SystemTCG(TCG):
                             'pl -r es conocer',
                         },
                         context=(conocer_context := {
-                            'from_lang': ('es'),
+                            'from_langs': ('es',),
                             'to_langs': ['pl'],
                             'words': ['conocer'],
                         }),
@@ -519,10 +519,10 @@ class SystemTCG(TCG):
                         tags={'flag/groupby/lang'},
                         input='es pl de -w conocer orden --groupby lang',
                         output='''
-                            -------- pl -------------------------
+                            ──── pl ──────────────────────────────────────
                             conocer: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
                             orden: porządek (noun) [masculine], rząd (noun) [masculine], rozkaz (noun) [masculine], zakon, zamówienie, polecenie, nakaz, kolejność, order, zarząd, zarządzenie, instrukcja, dyspozycja, kategoria, komenda, odznaczenie, rozporządzenie, szyk, układ, zalecenie, zamówić, wyrok, ustawa, zamawiać, przykazanie, zlecenie, relacja porządkowa, relacja porządku, ład, wskazówka, ustawodawstwo, prawodawstwo, konta, odpisu, uporządkowanie
-                            -------- de -------------------------
+                            ──── de ──────────────────────────────────────
                             conocer: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
                             orden: Ordnung (noun) [masculine], Befehl (noun) [feminine], Reihenfolge (noun) [masculine], Orden, Kommando, Auftrag, Anordnung, Anweisung, Gebot, Bestellung, ordnung, Order, Geheiß, Verfügung, Regierung, Behörde, Leitung, Regieren, befehlen, Reihe, Vorstand, verordnung, Vorschrift, bestellen, serie, Bereich, Erlass, Geschäftsordnung, Instruktion, Komplex, Königswürde, Ordentlichkeit, Rang, Rangordnung, Recht, Systematik, Säulenordnung, Veranlassung, Weihe, Weihen, Ordnungsrelation, Aneinanderreihung, Abbuchungsauftrag, Verkettung, Organisation, Richtlinie, Sinn, zeitliche Ordnung, Verordnung, Weisung, Dienst, Gesetz, System, Sortierung, Diktat, Klasse, Ordo, Serie, Kategorie, Gesetzesentwurf, Gesetzgebung, Gerichtsurteil, Methode, Orden und Ehrenzeichen, Urteil, orden und ehrenzeichen#verdienstauszeichnungen
                         '''
@@ -531,10 +531,10 @@ class SystemTCG(TCG):
                         tags={'flag/groupby/word'},
                         input='es pl de -w conocer orden -by word',
                         output='''
-                            -------- conocer -------------------------
+                            ──── conocer ─────────────────────────────────
                             pl: znać (Modal) [impf], znany (adjective), poznać (verb), poznawać, poznać się, znać się, wiedzieć, umieć, wiedzieć z góry
                             de: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lernen, begreifen, befinden, sehen, sich auskennen, urteilen, wissen, erkennen, auskennen, besichtigen, kennen lernen
-                            -------- orden -------------------------
+                            ──── orden ───────────────────────────────────
                             pl: porządek (noun) [masculine], rząd (noun) [masculine], rozkaz (noun) [masculine], zakon, zamówienie, polecenie, nakaz, kolejność, order, zarząd, zarządzenie, instrukcja, dyspozycja, kategoria, komenda, odznaczenie, rozporządzenie, szyk, układ, zalecenie, zamówić, wyrok, ustawa, zamawiać, przykazanie, zlecenie, relacja porządkowa, relacja porządku, ład, wskazówka, ustawodawstwo, prawodawstwo, konta, odpisu, uporządkowanie
                             de: Ordnung (noun) [masculine], Befehl (noun) [feminine], Reihenfolge (noun) [masculine], Orden, Kommando, Auftrag, Anordnung, Anweisung, Gebot, Bestellung, ordnung, Order, Geheiß, Verfügung, Regierung, Behörde, Leitung, Regieren, befehlen, Reihe, Vorstand, verordnung, Vorschrift, bestellen, serie, Bereich, Erlass, Geschäftsordnung, Instruktion, Komplex, Königswürde, Ordentlichkeit, Rang, Rangordnung, Recht, Systematik, Säulenordnung, Veranlassung, Weihe, Weihen, Ordnungsrelation, Aneinanderreihung, Abbuchungsauftrag, Verkettung, Organisation, Richtlinie, Sinn, zeitliche Ordnung, Verordnung, Weisung, Dienst, Gesetz, System, Sortierung, Diktat, Klasse, Ordo, Serie, Kategorie, Gesetzesentwurf, Gesetzgebung, Gerichtsurteil, Methode, Orden und Ehrenzeichen, Urteil, orden und ehrenzeichen#verdienstauszeichnungen
                         '''
@@ -588,7 +588,7 @@ class SystemTCG(TCG):
                             'inflection': True,
                             'wiktio': True,
                             'words': {'Frau'},
-                            'from_lang': ('de'),
+                            'from_langs': ('de',),
                         },
                         output=''.join((frau_inflection.rstrip(), frau_overview.rstrip(), frau_definition)),
                     ),
@@ -601,7 +601,7 @@ class SystemTCG(TCG):
                             'inflection': True,
                             'wiktio': True,
                             'words': {'Frau'},
-                            'from_lang': ('de'),
+                            'from_langs': ('de',),
                         },
                         output=''.join((
                             frau_inflection.rstrip(),
@@ -619,7 +619,7 @@ class SystemTCG(TCG):
                             'inflection': True,
                             'wiktio': True,
                             'words': {'Frau'},
-                            'from_lang': ('de'),
+                            'from_langs': ('de',),
                         },
                         output='''
                             ╭───┬──────────────┬──────────┬───────────╮
@@ -778,7 +778,7 @@ def test(tc: Tc):
 
     for path, e_val in tc.context.items():
         a_val = _.get(app_mgr.context, path)
-        if isinstance(e_val, (Collection, Iterable)) and not isinstance(e_val, str):
+        if isinstance(e_val, (Collection, Iterable)) and not isinstance(e_val, str) and isinstance(a_val, (Collection, Iterable)):
             a_val = list(a_val)
         assert path == path and e_val == a_val
 
