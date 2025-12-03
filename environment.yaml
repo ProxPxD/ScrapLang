@@ -1,0 +1,18 @@
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pydash
+  - requests
+  - beautifulsoup4
+  - numpy
+  - tabulate
+  - more-itertools
+  - python-box
+  - pandas
+  - decorator
+  - apscheduler
+  - termcolor
+  - yaml
+  - pyyaml
+  - lxml

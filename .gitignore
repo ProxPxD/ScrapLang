@@ -1,5 +1,8 @@
 venv
-src/resources/configurations.json
 .idea
-src/resources
+src/resources/
+resources/
 /src/testing_utils.py
+**/__pycache__/
+testnig/**/tmp
+testnig/**/tmp/**

@@ -1,0 +1,115 @@
+
+	<div class="pt-4">
+		<h3 class="pb-2   text-gray-600 py-2 uppercase text-sm section_header border-t border-slate-200 border-dashed">Definicje</h3>
+        <input type="checkbox" id="__expandable_model_1761515317370" class="expandableContent__model" />
+        <div id="__expandable_container_1761515317370" class="expandableContent__container">
+            <div style="box-sizing: border-box">
+		<ul class="dir-aware-pl-6 list-disc " data-element="definitions-list">
+	<li class="pb-2 text-sm">
+
+        	<p class=" text-gray-900 "  lang="de"  >
+junger Mensch männlichen Geschlechts        	</p>
+    </li>
+	<li class="pb-2 text-sm">
+        	<p  >
+młody człowiek płci męskiej			</p>
+
+    </li>
+	<li class="pb-2 text-sm">
+        	<p  >
+Młoda osoba płci męskiej, zwykle dziecko lub nastolatek.			</p>
+
+        	<p class="pl-4 text-gray-900 "  lang="de"  >
+Junge männliche Person, gewöhnlich ein Kind oder Jugendlicher.        	</p>
+			<div class="dir-aware-pl-2 border-gray-300 border-l-2 py-1 my-1">
+				<p>Es war dem <strong>Jungen</strong> unmöglich, über den Fluss zu schwimmen.</p>
+				<p class="pl-4 text-gray-900">Przepłynięcie przez tę rzekę było dla <strong>chłopca</strong> niemożliwe.</p>
+			</div>
+    </li>
+		</ul>
+            </div>
+            <label for="__expandable_model_1761515317370" id="__expandable_controller_1761515317370" class="expandableContent__controller hidden">
+                <span class="button-xs" type="button">
+więcej                </span>
+            </label>
+        </div>
+        <script data-after-load="true">
+        (function() {
+            try {
+                const maxHeightInPx = 20 * 2 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+                const container = document.getElementById("__expandable_container_1761515317370");
+                const child = container.children[0];
+                const childTotalHeight = child.offsetHeight + child.offsetTop;
+                container.setAttribute("style", "--expandableContainerMaxHeight: " + childTotalHeight + "px");
+                if (childTotalHeight <= maxHeightInPx) {
+                    document.getElementById("__expandable_model_1761515317370").checked = true;
+                    container.classList.add('noAnimate');
+                    container.setAttribute("style", "--expandableContainerMaxHeight: unset;--expandableContainerBaseHeight: unset");
+                } else {
+                    const controller = document.getElementById('__expandable_controller_1761515317370');
+                    if (controller) {
+                        controller.classList.remove('hidden');
+                        controller.addEventListener('click', function() {
+                            // recalculate height to make sure we aren't missing anything (part of css goes into the footer)
+                            const childTotalHeight = child.offsetHeight + child.offsetTop;
+
+                            container.setAttribute("style", "--expandableContainerMaxHeight: " + childTotalHeight + "px");
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error when installing expandable component", error);
+            }
+        })();
+        </script>
+	</div>
+
+
+        <input type="checkbox" id="__expandable_model_1761515317371" class="expandableContent__model" />
+        <div id="__expandable_container_1761515317371" class="expandableContent__container">
+            <div style="box-sizing: border-box">
+	<div class="pt-4" id="grammar_0_0">
+		<h3 class="pb-2  text-gray-600 py-2 uppercase text-sm section_header border-t border-slate-200 border-dashed">Gramatyka</h3>
+		<ul class="text-sm grammar-tables dir-aware-pl-2">
+			<li class="pb-2 overflow-x-auto"><b>Junge</b> <i>n.</i> ( <i>genitive</i> <b>Jungen</b>, <i>plural</i> <b>Jungen</b>)</li>
+			<li class="pb-2 overflow-x-auto"><b>Junge</b> <i>m.</i> ( <i>genitive</i> <b>Jungen</b>, <i>plural</i> <b>Jungen</b> <i>or</i> <b>Jungs</b> <i>or</i> <b>Jungens</b>)</li>
+			<li class="pb-2 overflow-x-auto"><i>lp</i>  <i>liczba pojedyncza</i> der Junge, ~n, ~n, ~n; <i>lm</i>  <i>liczba mnoga</i> die Jungen, ~en, ~en, ~en; ( <i>pot.</i>  <i>potocznie</i> die Jungs, Jungs, Jungs, Jungs) <i>lp</i>  <i>liczba pojedyncza</i> das Junge, ~n, ~, ~; <i>lm</i>  <i>liczba mnoga</i> die Jungen, ~n, ~n, ~n</li>
+			<li class="pb-2 overflow-x-auto">Junge <i>m</i> (<i>genitive</i> <b>Jungen</b>, <i>plural</i> <b>Jungen</b> <i>or</i> <b>Jungs</b> <i>or</i> <b>Jungens</b>, <i>diminutive</i> <b>Jünglein</b> <i>n</i> <i>or</i> <b>Jüngelchen</b> <i>n</i>) ;; Declension of Junge <table><tbody><tr><th> </th><th colspan="3"> singular </th><th colspan="2"> plural </th></tr><tr><th> </th><th> indef. </th><th> def. </th><th> noun </th><th> def. </th><th> noun </th></tr><tr><th> nominative </th><td> ein </td><td> der </td><td> Junge </td><td> die </td><td> Jungen </td></tr><tr><th> genitive </th><td> eines </td><td> des </td><td> Jungen </td><td> der </td><td> Jungen </td></tr><tr><th> dative </th><td> einem </td><td> dem </td><td> Jungen </td><td> den </td><td> Jungen </td></tr><tr><th> accusative </th><td> einen </td><td> den </td><td> Jungen </td><td> die </td><td> Jungen </td></tr></tbody></table></li>
+		</ul>
+	</div>
+            </div>
+            <label for="__expandable_model_1761515317371" id="__expandable_controller_1761515317371" class="expandableContent__controller hidden">
+                <span class="button-xs" type="button">
+więcej                </span>
+            </label>
+        </div>
+        <script data-after-load="true">
+        (function() {
+            try {
+                const maxHeightInPx = 20 * 2 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+                const container = document.getElementById("__expandable_container_1761515317371");
+                const child = container.children[0];
+                const childTotalHeight = child.offsetHeight + child.offsetTop;
+                container.setAttribute("style", "--expandableContainerMaxHeight: " + childTotalHeight + "px");
+                if (childTotalHeight <= maxHeightInPx) {
+                    document.getElementById("__expandable_model_1761515317371").checked = true;
+                    container.classList.add('noAnimate');
+                    container.setAttribute("style", "--expandableContainerMaxHeight: unset;--expandableContainerBaseHeight: unset");
+                } else {
+                    const controller = document.getElementById('__expandable_controller_1761515317371');
+                    if (controller) {
+                        controller.classList.remove('hidden');
+                        controller.addEventListener('click', function() {
+                            // recalculate height to make sure we aren't missing anything (part of css goes into the footer)
+                            const childTotalHeight = child.offsetHeight + child.offsetTop;
+
+                            container.setAttribute("style", "--expandableContainerMaxHeight: " + childTotalHeight + "px");
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error when installing expandable component", error);
+            }
+        })();
+        </script>
+
