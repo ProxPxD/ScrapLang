@@ -63,9 +63,13 @@ class ScrapIterator:
         return self.from_lang, self.to_lang, self.word
 
     @lru_cache()
+    def _is_first_in_all_main_members(self):
+        return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == 0
+
+    @lru_cache()
     def is_first_in_main_group(self) -> bool:
         #return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
-        return self._context.n_main_groups > 1 and self._context.n_all_members > 1 and self.i % self._context.n_all_members == 0
+        return self._context.n_main_groups > 1 and self._context.n_all_main_members > 1 and self._is_first_in_all_main_members()
 
     @lru_cache()
     def is_first_in_subgroup(self) -> bool:
@@ -75,27 +79,23 @@ class ScrapIterator:
     def main_group(self) -> str:  # TODO: abstract?
         match self._context.groupby:
             case 'lang': return self.to_lang
-            case 'word': return '·'.join(self._context.get_words_of_word(self.word))
+            case 'word': return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     @property
     def subgroup(self) -> str:
         match self._context.groupby:
-            case 'lang': return '·'.join(self._context.get_words_of_word(self.word))
+            case 'lang': return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
             case 'word': return self.to_lang
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     @lru_cache()
     def is_last_in_main_group(self) -> bool:
-        return self._context.n_all_members == 0 or self.i % self._context.n_all_members == self._context.n_all_members - 1
-
-    @lru_cache()
-    def is_first_in_group(self) -> bool:
-        return self.is_first_in_main_group() and not self.is_last_in_main_group() and self._context.n_main_groups > 1
+        return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == self._context.n_all_main_members - 1
 
     @lru_cache()
     def is_at_inflection(self) -> bool:
-        return self._context.inflection and self.is_first_in_main_group()
+        return self._context.inflection and self._is_first_in_all_main_members()
 
     @lru_cache()
     def is_at_translation(self) -> bool:
@@ -202,7 +202,7 @@ class Context:
         return len(self.from_langs)
 
     @property
-    def n_all_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
+    def n_all_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
         match self.groupby:
             case 'lang': return self.n_from_langs * len(list(self.from_lang_word_bundles))
             case 'word': return self.n_from_langs * len(self.to_langs)
@@ -214,10 +214,6 @@ class Context:
             case 'lang': return len(self.to_langs)
             case 'word': return len(self.words)
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
-
-    @property
-    def n_subgroups(self) -> int:
-        return len(self.from_langs)
 
     @property
     def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
@@ -235,7 +231,7 @@ class Context:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
             yield ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word)
 
-    def get_words_of_word(self, word: str) -> Collection[str]:
+    def get_from_lang_word_bundle_by_word(self, word: str) -> Collection[str]:
         n: int = len(self.from_langs)
         i: int = self.words.index(word) // n
         return self.words[i*n:(i+1)*n]
