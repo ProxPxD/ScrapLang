@@ -53,10 +53,10 @@ class ScrapIterator:
     def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str, prev: ScrapIterator):
         self._context = context
         self.i: int = i
-        self.prev = prev
         self.from_lang: str = from_lang
         self.to_lang: str = to_lang
         self.word: str = word
+        self.prev = prev
 
     def __repr__(self) -> str:
         return f'ScrapIt(i={self.i}, from={self.from_lang}, word={self.word}, to={self.to_lang})'
@@ -65,31 +65,40 @@ class ScrapIterator:
     def args(self) -> tuple[str, str, str]:
         return self.from_lang, self.to_lang, self.word
 
-    @lru_cache()
     def _is_first_in_all_main_members(self):
         return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == 0
 
-    @lru_cache()
+    def is_in_same_word_bundle_as_prev(self) -> bool:
+        prev_bundle = self._context.get_from_lang_word_bundle_by_word(self.prev.word)
+        curr_bundle = self._context.get_from_lang_word_bundle_by_word(self.word)
+        return prev_bundle != curr_bundle
+
     def is_first_in_main_group(self) -> bool:
+        if self.prev is None:
+            return True
+        match self._context.groupby:
+            case 'lang': return self.prev.to_lang != self.to_lang
+            case 'word': return self.is_in_same_word_bundle_as_prev()
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
         #return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
         return self._context.n_main_groups > 1 and self._context.n_all_main_members > 1 and self._is_first_in_all_main_members()
 
-    @lru_cache()
     def is_first_in_subgroup(self) -> bool:
         if self.prev is None:
             return True
         match self._context.groupby:
-            case 'lang':
-                prev_bundle = self._context.get_from_lang_word_bundle_by_word(self.prev.word)
-                curr_bundle = self._context.get_from_lang_word_bundle_by_word(self.word)
-                return prev_bundle != curr_bundle
-            case 'word':
-                return self.prev.to_lang != self.to_lang
+            case 'lang': return self.is_in_same_word_bundle_as_prev()
+            case 'word': return self.prev.to_lang != self.to_lang
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
-    @lru_cache()
     def is_first_in_poly_subgroup(self) -> bool:
         return self._context.n_from_langs > 1 and self.is_first_in_subgroup()
+
+    def is_in_poly_main_group(self) -> bool:
+        return len(self._context.words) > 1 and len(self._context.to_langs) > 1
+
+    def is_first_in_poly_main_group(self) -> bool:
+        return self.is_in_poly_main_group() and self.is_first_in_main_group()
 
     @property
     def main_group(self) -> str:

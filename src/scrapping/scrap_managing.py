@@ -38,7 +38,7 @@ class ScrapMgr:
     def scrap(self, context: Context) -> Iterable[Outcome]:
         for scrap_it in context.iterate_args():
             from_lang, to_lang, word = scrap_it.args
-            if scrap_it.is_first_in_main_group():
+            if scrap_it.is_first_in_poly_main_group():
                 yield Outcome(OutcomeKinds.get_main_separator(context), results=scrap_it.main_group)
             if scrap_it.is_first_in_poly_subgroup():
                 yield Outcome(OutcomeKinds.SUBGROUP_SEPERATOR, results=scrap_it.subgroup)
