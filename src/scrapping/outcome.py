@@ -35,10 +35,11 @@ class HelperOutcomeKinds(BaseDC):
     SUBGROUP_SEPERATOR: str = 'sub-sep'
     NEWLINE: str = '\n'
 
-    def get_main_separator(self, context: Context) -> str:
+    @classmethod
+    def get_main_separator(cls, context: Context) -> str:
         if len(context.from_langs) > 1:
-            return self.MAIN_GROUP_SEPERATOR
-        return self.SUBGROUP_SEPERATOR
+            return cls.MAIN_GROUP_SEPERATOR
+        return cls.SUBGROUP_SEPERATOR
 
 
 @dataclass(frozen=True)

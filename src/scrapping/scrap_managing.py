@@ -45,7 +45,7 @@ class ScrapMgr:
             if context.is_at_from() and scrap_it.is_at_inflection():
                 yield self.scrap_inflections(from_lang, word)
             if scrap_it.is_at_translation():
-                main = self.scrap_main_translaztions(from_lang, to_lang, word)
+                main = self.scrap_main_translations(from_lang, to_lang, word)
                 if context.is_at_to() and scrap_it.is_at_inflection():
                     yield self.scrap_inflections(to_lang, main.results[0].word)
                 yield main
