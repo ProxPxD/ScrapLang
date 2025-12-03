@@ -78,18 +78,22 @@ class ScrapIterator:
         return self._context.n_sub_members > 1 and self.i % self._context.n_sub_members == 0
 
     @property
-    def main_group(self) -> str:  # TODO: abstract?
+    def main_group(self) -> str:
         match self._context.groupby:
             case 'lang': return self.to_lang
-            case 'word': return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
+            case 'word': return self.word_group
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     @property
     def subgroup(self) -> str:
         match self._context.groupby:
-            case 'lang': return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
+            case 'lang': return self.word_group
             case 'word': return self.to_lang
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    @property
+    def word_group(self) -> str:
+        return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
 
     @lru_cache()
     def is_last_in_main_group(self) -> bool:
