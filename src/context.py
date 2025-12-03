@@ -8,7 +8,7 @@ from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Collection
 import pydash as _
 from box import Box
 from more_itertools import chunked
-from pydash import chain as c
+from pydash import chain as c, flow
 
 from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
@@ -218,19 +218,23 @@ class Context:
         return len(self.from_langs)
 
     @property
-    def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
+    def dest_pairs(self) -> Iterable[tuple[str, Optional[str]]]:
         to_langs = self.to_langs or [None]
         match self.groupby:
-            case 'lang': return product(to_langs, self.words)
-            case 'word': return ((to_lang, word) for word, to_lang in product(self.words, to_langs))
+            case 'lang': return c(product(self.words, to_langs)).map(_.reverse).value()
+            case 'word': return product(to_langs, self.words)
+            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+
+    @property
+    def from_lang_map(self) -> Iterable[str]:
+        match self.groupby:
+            case 'word': return cycle(self.from_langs)
+            case 'lang': return _.flat_map(self.from_langs, lambda x: [x] * len(self.to_langs))
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
     def url_triples(self) -> Iterable[tuple[str, str]]:
-        match self.groupby:
-            case 'word': return ((from_lang, *dest) for dest, from_lang in zip(self.dest_pairs, _.flat_map(self.from_langs, lambda x: [x] * len(self.to_langs))))
-            case 'lang': return ((from_lang, *dest) for dest, from_lang in zip(self.dest_pairs, cycle(self.from_langs)))
-            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+        return ((from_lang, *dest) for from_lang, dest in zip(self.from_lang_map, self.dest_pairs))
 
     def iterate_args(self) -> Iterable[ScrapIterator]:
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
@@ -239,8 +243,7 @@ class Context:
     def get_words_of_from_lang(self, from_lang: str) -> Collection[str]:
         n: int = len(self.from_langs)
         i: int = self.from_langs.index(from_lang)
-        return self.words[i:(i+1)*n]
-
+        return self.words[i:(i+1)*n:n]
 
     @property
     def grouparg(self) -> str:

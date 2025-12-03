@@ -8,6 +8,7 @@ from box import Box
 from pandas import DataFrame
 
 from .core.parsing import Result
+from ..context import Context
 
 
 # TODO: Everywhere fix hinting
@@ -33,6 +34,11 @@ class HelperOutcomeKinds(BaseDC):
     MAIN_GROUP_SEPERATOR: str = 'main-sep'
     SUBGROUP_SEPERATOR: str = 'sub-sep'
     NEWLINE: str = '\n'
+
+    def get_main_separator(self, context: Context) -> str:
+        if len(context.from_langs) > 1:
+            return self.MAIN_GROUP_SEPERATOR
+        return self.SUBGROUP_SEPERATOR
 
 
 @dataclass(frozen=True)
