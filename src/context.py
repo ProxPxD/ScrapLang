@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from functools import cached_property, cache, lru_cache
 from itertools import product, repeat, cycle
-from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Collection
+from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Collection, Sequence
 
 import pydash as _
 from box import Box
@@ -50,9 +50,10 @@ class Defaults:
 
 
 class ScrapIterator:
-    def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str):
+    def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str, prev: ScrapIterator):
         self._context = context
         self.i: int = i
+        self.prev = prev
         self.from_lang: str = from_lang
         self.to_lang: str = to_lang
         self.word: str = word
@@ -75,7 +76,20 @@ class ScrapIterator:
 
     @lru_cache()
     def is_first_in_subgroup(self) -> bool:
-        return self._context.n_sub_members > 1 and self.i % self._context.n_sub_members == 0
+        if self.prev is None:
+            return True
+        match self._context.groupby:
+            case 'lang':
+                prev_bundle = self._context.get_from_lang_word_bundle_by_word(self.prev.word)
+                curr_bundle = self._context.get_from_lang_word_bundle_by_word(self.word)
+                return prev_bundle != curr_bundle
+            case 'word':
+                return self.prev.to_lang != self.to_lang
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    @lru_cache()
+    def is_first_in_poly_subgroup(self) -> bool:
+        return self._context.n_from_langs > 1 and self.is_first_in_subgroup()
 
     @property
     def main_group(self) -> str:
@@ -196,7 +210,7 @@ class Context:
         return len(self.from_langs)
 
     @property
-    def from_lang_word_bundles(self) -> Iterable[Iterable[str]]:
+    def from_lang_word_bundles(self) -> Sequence[Sequence[str]]:
         return _.chunk(self.words, self.n_from_langs)
 
     @property
@@ -231,10 +245,12 @@ class Context:
         return ((from_lang, *dest) for from_lang, dest in zip(cycle(self.from_langs), self.dest_pairs))
 
     def iterate_args(self) -> Iterable[ScrapIterator]:
+        scrap_it = None
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
-            yield ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word)
+            scrap_it = ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word, prev=scrap_it)
+            yield scrap_it
 
-    def get_from_lang_word_bundle_by_word(self, word: str) -> Collection[str]:
+    def get_from_lang_word_bundle_by_word(self, word: str) -> Sequence[str]:
         n: int = len(self.from_langs)
         i: int = self.words.index(word) // n
         return self.words[i*n:(i+1)*n]
