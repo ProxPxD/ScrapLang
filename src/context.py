@@ -109,10 +109,6 @@ class ScrapIterator:
     def is_at_definition(self) -> bool:
         return self._context.definition and self.is_last_in_main_group
 
-    @cached_property
-    def at_lang(self) -> str:
-        return getattr(self, self._context.at_lang_side)
-
 
 @dataclass(frozen=False, init=False)
 class Context:
@@ -257,12 +253,6 @@ class Context:
     def exit(self) -> bool:
         return not self.loop
 
-    def is_setting_context(self) -> bool:
-        return not self.words and self.loop
-
-    def is_at(self) -> bool:
-        return super().__getattribute__('at') is not UNSET
-
     def is_at_from(self) -> bool:
         return self.at.startswith('f') or self.at.startswith('n')
 
@@ -277,6 +267,3 @@ class Context:
             return 'to'
         raise ValueError(f'Unexpected value for at: {self.at}')
 
-    @property
-    def at_lang_side(self) -> str:
-        return f'{self.at_full}_lang'
