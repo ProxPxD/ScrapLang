@@ -85,7 +85,7 @@ class Printer:
             case OutcomeKinds.MAIN_TRANSLATION:
                 match len(self.context.from_langs):
                     case 1: return f'{outcome.args[self.context.member_prefix_arg]}: '
-                    case _: return f'{outcome.args.from_lang}>: '
+                    case _: return f'{outcome.args.word}: '
             case OutcomeKinds.INDIRECT_TRANSLATION: return ' ' * 4 if outcome.is_success() else ''
             case _: raise ValueError(f'Unexpected transltation type: {outcome.kind}')
 
