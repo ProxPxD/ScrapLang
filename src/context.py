@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
-from functools import cached_property, cache, lru_cache
-from itertools import product, repeat, cycle
-from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Collection, Sequence
+from functools import lru_cache
+from itertools import product, cycle
+from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Sequence
 
 import pydash as _
 from box import Box
-from more_itertools import chunked
-from pydash import chain as c, flow
-from sympy.abc import lamda
+from pydash import chain as c
 
 from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
@@ -17,7 +15,6 @@ from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherDat
 from src.utils import apply
 
 if TYPE_CHECKING:
-    from src.scrapping import Outcome
     from src.resouce_managing.configuration import Conf
 
 @preinitialized
@@ -68,10 +65,26 @@ class ScrapIterator:
     def _is_first_in_all_main_members(self):
         return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == 0
 
+    @property
+    def curr_bundle(self) -> Sequence[str]:
+        return self._context.get_from_lang_word_bundle_by_word(self.word)
+
+    @property
+    def prev_bundle(self) -> Sequence[str]:
+        return self._context.get_from_lang_word_bundle_by_word(self.prev.word)
+
     def is_in_same_word_bundle_as_prev(self) -> bool:
-        prev_bundle = self._context.get_from_lang_word_bundle_by_word(self.prev.word)
-        curr_bundle = self._context.get_from_lang_word_bundle_by_word(self.word)
-        return prev_bundle != curr_bundle
+        return self.prev_bundle != self.curr_bundle
+
+    @apply(on_result=lambda r: print(f'poly-main: {r}'))
+    @lru_cache()
+    def is_in_poly_main_group(self) -> bool:
+        if self._context.n_from_langs == 1:
+            return len(self._context.words) > 1 and len(self._context.to_langs) > 1
+        match self._context.groupby:
+            case 'lang': return len(self._context.to_langs) > 1
+            case 'word': return len(self._context.from_lang_word_bundles) > 1
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     def is_first_in_main_group(self) -> bool:
         if self.prev is None:
@@ -80,8 +93,17 @@ class ScrapIterator:
             case 'lang': return self.prev.to_lang != self.to_lang
             case 'word': return self.is_in_same_word_bundle_as_prev()
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
-        #return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
-        return self._context.n_main_groups > 1 and self._context.n_all_main_members > 1 and self._is_first_in_all_main_members()
+
+    def is_first_in_poly_main_group(self) -> bool:
+        return self.is_in_poly_main_group() and self.is_first_in_main_group()
+
+    def is_in_poly_subgroup(self) -> bool:
+        if self._context.n_from_langs == 1:
+            return False
+        match self._context.groupby:
+            case 'lang': return len(self._context.from_lang_word_bundles) > 1
+            case 'word': return len(self._context.to_langs) > 1
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     def is_first_in_subgroup(self) -> bool:
         if self.prev is None:
@@ -92,13 +114,7 @@ class ScrapIterator:
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     def is_first_in_poly_subgroup(self) -> bool:
-        return self._context.n_from_langs > 1 and self.is_first_in_subgroup()
-
-    def is_in_poly_main_group(self) -> bool:
-        return len(self._context.words) > 1 and len(self._context.to_langs) > 1
-
-    def is_first_in_poly_main_group(self) -> bool:
-        return self.is_in_poly_main_group() and self.is_first_in_main_group()
+        return self.is_in_poly_subgroup() and self.is_first_in_subgroup()
 
     @property
     def main_group(self) -> str:
