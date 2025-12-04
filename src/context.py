@@ -12,7 +12,6 @@ from pydash import chain as c
 from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
     Color, color_names, ReanalyzeOn
-from src.utils import apply
 
 if TYPE_CHECKING:
     from src.resouce_managing.configuration import Conf
@@ -76,7 +75,6 @@ class ScrapIterator:
     def is_in_same_word_bundle_as_prev(self) -> bool:
         return self.prev_bundle != self.curr_bundle
 
-    @apply(on_result=lambda r: print(f'poly-main: {r}'))
     @lru_cache()
     def is_in_poly_main_group(self) -> bool:
         if self._context.n_from_langs == 1:
@@ -250,7 +248,6 @@ class Context:
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
-    # @apply(on_result=[lambda r: print(f'n_main_groups: {r}')])
     def n_main_groups(self) -> int:
         match self.groupby:
             case 'lang': return len(self.to_langs)
