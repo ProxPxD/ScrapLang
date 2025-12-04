@@ -192,7 +192,7 @@ class Context:
 
     def __getattribute__(self, name: str) -> Any:
         try:
-            if val := super().__getattribute__(name) is not UNSET:
+            if (val := super().__getattribute__(name)) is not UNSET:
                 return val
         except AttributeError as ar:
             if ar.args[0] != f"'{Context.__name__}' object has no attribute '{name}'":
