@@ -191,8 +191,12 @@ class Context:
         self.update(**conf.model_dump())
 
     def __getattribute__(self, name: str) -> Any:
-        if (val := _.apply_catch(name, super().__getattribute__, [AttributeError], UNSET)) is not UNSET:
-            return val
+        try:
+            if val := super().__getattribute__(name) is not UNSET:
+                return val
+        except AttributeError as ar:
+            if ar.args[0] != f"'{Context.__name__}' object has no attribute '{name}'":
+                raise ar
         if (val := getattr(self._conf, name, UNSET)) is not UNSET:
             return val
         if (val := getattr(Defaults, name, UNSET)) is not UNSET:
