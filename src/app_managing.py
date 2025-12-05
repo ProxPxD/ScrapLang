@@ -10,6 +10,7 @@ from requests import Session
 from src.context import Context
 from src.exceptions import InvalidExecution
 from src.input_managing import InputMgr
+from src.input_managing.exception import InputException
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
 from src.printer import Printer
@@ -55,6 +56,13 @@ class AppMgr:
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:
+        try:
+            self._raw_run_single(args)
+        except InputException as e:
+            msg = e.args[0]
+            self.printer.printer(msg)
+
+    def _raw_run_single(self, args: list[str] = None) -> None:
         parsed = self.input_mgr.ingest_input(args)
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
