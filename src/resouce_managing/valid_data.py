@@ -13,7 +13,7 @@ from pydash import chain as c
 
 from .file import FileMgr
 from ..constants import supported_languages, preinitialized
-from ..lang_detecting.preprocessing.data import LSC
+# from ..lang_detecting.preprocessing.data import LSC # TODO: fix imports
 from ..scrapping import Outcome, MainOutcomeKinds as Kinds
 from ..scrapping.wiktio.parsing import WiktioResult
 
@@ -114,5 +114,5 @@ class ValidDataMgr:
 
     def remove_entries_of_lang(self, lang: str) -> None:
         valid_data: DataFrame = self._valid_data_file_mgr.load()
-        cleaned_valid_data = valid_data[valid_data[LSC.LANG] != lang].reset_index()
+        cleaned_valid_data = valid_data[valid_data['lang'] != lang].reset_index()
         self._valid_data_file_mgr.save(cleaned_valid_data)

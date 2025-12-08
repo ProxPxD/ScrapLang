@@ -178,11 +178,7 @@ class SystemTCG(TCG):
                 input={
                     'es pl de --assume lang'
                 },
-                context={
-                    'from_langs': ('es',),
-                    'to_langs': ['pl', 'de']
-                },
-                exception=InvalidExecution,
+                output='No word specified!',
                 conf=just_langs_es_de_pl_en_conf,
             ),
             TC(

@@ -8,8 +8,8 @@ import pydash as _
 from pydash import chain as c
 
 from src.context import Context
+from src.exceptions import InvalidExecution
 from src.input_managing.cli import CLI
-from src.input_managing.exception import InputException
 from src.input_managing.processing import InputProcessor
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.resouce_managing.data_gathering import DataGatherer
@@ -38,7 +38,7 @@ class InputMgr:
             if not parsed.words:
                 logging.debug('No words for scrapping, exiting after analysis')
         elif not parsed.words:
-            raise InputException('No word specified!')
+            raise InvalidExecution('No word specified!')
         parsed = self.processor.process(parsed)
         self.context.update(**vars(parsed))
         return parsed
