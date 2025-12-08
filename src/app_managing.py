@@ -16,6 +16,7 @@ from src.logutils import setup_logging
 from src.printer import Printer
 from src.resouce_managing import ConfMgr
 from src.resouce_managing.data_gathering import DataGatherer
+from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
 
@@ -29,10 +30,11 @@ class AppMgr:
                  printer: Callable[[str], Any] = None,
                  ):
         setup_logging()
-        self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
-        self.context: Context = Context(self.conf_mgr.conf)
         self.data_processor = DataProcessor(valid_data_file=valid_data_file, lang_script_file=lang_script_file)
-        self.data_gatherer = DataGatherer(context=self.context, valid_data_file=valid_data_file, short_mem_file=short_mem_file, data_processor=self.data_processor)
+        self.valid_data_mgr = ValidDataMgr(valid_data_file) if valid_data_file else None  # TODO: Reowkr
+        self.conf_mgr = ConfMgr(conf_path, valid_data_mgr=self.valid_data_mgr)  # TODO: Move paths to context and work from there
+        self.context: Context = Context(self.conf_mgr.conf)
+        self.data_gatherer = DataGatherer(context=self.context, valid_data_mgr=self.valid_data_mgr, short_mem_file=short_mem_file, data_processor=self.data_processor)
         self.input_mgr = InputMgr(context=self.context, data_gatherer=self.data_gatherer, data_processor=self.data_processor)
         self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context, printer=printer)

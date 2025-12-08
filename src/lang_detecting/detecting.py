@@ -6,7 +6,7 @@ from typing import Sequence, Optional
 from GlotScript import sp
 from pandas import DataFrame
 
-from src.lang_detecting.preprocessing.data import C
+from src.lang_detecting.preprocessing.data import LSC
 from src.lang_detecting.simple_detecting import SimpleDetector
 
 try:

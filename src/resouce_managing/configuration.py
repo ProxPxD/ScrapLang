@@ -6,13 +6,15 @@ from pathlib import Path
 
 import pydash as _
 
-from .file import FileMgr, UNSET
+from .file import FileMgr
+from .valid_data import ValidDataMgr
 from .. import context_domain
 from ..conf_domain import Conf
 
 
 class ConfMgr:
-    def __init__(self, conf_file: Path | str):
+    def __init__(self, conf_file: Path | str, valid_data_mgr: ValidDataMgr):
+        self._valid_data_mgr = valid_data_mgr
         self._file_mgr = FileMgr(conf_file, func=lambda conf: Conf(**(conf or {})))
 
     @property
@@ -44,6 +46,7 @@ class ConfMgr:
                 for val in vals:
                     if val in self.conf.langs:
                         self.conf.langs.remove(val)
+                        self._valid_data_mgr.remove_entries_of_lang(val)
             else:
                 raise NotImplementedError('Only lang-removing is currently supported')
 

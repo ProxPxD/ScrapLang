@@ -8,7 +8,7 @@ from torchgen.utils import OrderedSet
 
 from src.constants import Paths
 from src.lang_detecting.advanced_detecting.model import Moe
-from src.lang_detecting.preprocessing.data import C
+from src.lang_detecting.preprocessing.data import LSC
 import pydash as _
 from src.resouce_managing.file import FileMgr
 import operator as op
@@ -28,11 +28,11 @@ class AdvancedDetector:
 
     @classmethod
     def extract_shary_scripts(cls, lang_script: DataFrame) -> dict[str, dict[str, str | list]]:
-        script_lang = lang_script.explode(C.SCRIPTS).rename(columns={C.SCRIPTS: C.SCRIPT})
-        sclc = script_common_langs_chars = script_lang.groupby(C.SCRIPT, as_index=False).agg({
-            C.LANG: flow(sorted, list),
-            C.CHARS: c().apply(lambda cs: combinations(map(set, cs), 2)).map(spread(op.and_)).reduce_(lambda a, b: a|b, set()).to_list().sort().join()
-        }).rename(columns={C.LANG: C.LANGS})
-        sclc = sclc[(sclc[C.LANGS].map(len) > 1) & (sclc[C.CHARS].map(len) > 0)].reset_index(drop=True)
-        shary_script = {row[C.SCRIPT]: {C.LANGS: row[C.LANGS], C.CHARS: ''.join(row[C.CHARS])} for idx, row in sclc.iterrows()}
+        script_lang = lang_script.explode(LSC.SCRIPTS).rename(columns={LSC.SCRIPTS: LSC.SCRIPT})
+        sclc = script_common_langs_chars = script_lang.groupby(LSC.SCRIPT, as_index=False).agg({
+            LSC.LANG: flow(sorted, list),
+            LSC.CHARS: c().apply(lambda cs: combinations(map(set, cs), 2)).map(spread(op.and_)).reduce_(lambda a, b: a | b, set()).to_list().sort().join()
+        }).rename(columns={LSC.LANG: LSC.LANGS})
+        sclc = sclc[(sclc[LSC.LANGS].map(len) > 1) & (sclc[LSC.CHARS].map(len) > 0)].reset_index(drop=True)
+        shary_script = {row[LSC.SCRIPT]: {LSC.LANGS: row[LSC.LANGS], LSC.CHARS: ''.join(row[LSC.CHARS])} for idx, row in sclc.iterrows()}
         return shary_script

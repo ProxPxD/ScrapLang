@@ -13,21 +13,21 @@ from pydash import chain as c
 
 from .file import FileMgr
 from ..constants import supported_languages, preinitialized
-from ..context import Context
+from ..lang_detecting.preprocessing.data import LSC
 from ..scrapping import Outcome, MainOutcomeKinds as Kinds
 from ..scrapping.wiktio.parsing import WiktioResult
 
 
 @preinitialized
 @dataclass
-class Columns:
+class ValidDataColumns:
     LANG: str = 'lang'
     WORD: str = 'word'
     DIALECT: str = 'dialect'
     PRONUNCIATIONS: str = 'pronunciations'
     FEATURES: str = 'features'
 
-C = Columns
+VDC = ValidDataColumns
 
 class ValidArgs(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -38,7 +38,7 @@ class ValidArgs(BaseModel):
     pronunciations: list[str]
     features: list[str]
 
-    @field_validator(C.LANG, mode='before')
+    @field_validator(VDC.LANG, mode='before')
     @classmethod
     def val_langs(cls, langs: list[str]):  # Truly not-needed, they have to be supported at this point
         supported = set(supported_languages.keys())
@@ -49,15 +49,14 @@ class ValidArgs(BaseModel):
 
 
 class ValidDataMgr:
-    def __init__(self, conf_file: Path | str, context: Context, n_parsed: int = 32):
+    def __init__(self, conf_file: Path | str, n_parsed: int = 32):
         self._valid_data_file_mgr = FileMgr(conf_file)
-        self.context: Context = context
         self._n_parsed: int = n_parsed
 
     def gather(self, scrap_results: Iterable[Outcome]) -> bool:
         logging.debug('Searching something not-yet-gathered')
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
-        cols = list(asdict(Columns).values())
+        cols = list(asdict(ValidDataColumns).values())
         success_data = DataFrame(c().concat(
                 self._gather_for_from_main_translations(success_results),
                 self._gather_for_lang_data(success_results),
@@ -111,4 +110,9 @@ class ValidDataMgr:
             else:
                 return group
 
-        return df.groupby([C.LANG, C.WORD]).apply(process_group).reset_index(drop=True)
+        return df.groupby([VDC.LANG, VDC.WORD]).apply(process_group).reset_index(drop=True)
+
+    def remove_entries_of_lang(self, lang: str) -> None:
+        valid_data: DataFrame = self._valid_data_file_mgr.load()
+        cleaned_valid_data = valid_data[valid_data[LSC.LANG] != lang].reset_index()
+        self._valid_data_file_mgr.save(cleaned_valid_data)

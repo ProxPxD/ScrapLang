@@ -14,13 +14,13 @@ from src.scrapping import Outcome
 class DataGatherer:
     def __init__(self,
                  context: Context,
-                 valid_data_file: str | Path = None,
+                 valid_data_mgr: ValidDataMgr = None,
                  short_mem_file: str | Path = None,
                  data_processor: DataProcessor = None,
         ):
         self.context: Context = context
         self.data_processor = data_processor
-        self.valid_args_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None
+        self.valid_args_mgr = valid_data_mgr
         self.shor_mem_mgr = ShortMemMgr(short_mem_file, length=ResourceConstants.SHORT_MEMORY_LENGTH) if short_mem_file else None
 
     def gather_valid_data(self, scrap_results: Iterable[Outcome]) -> None:
