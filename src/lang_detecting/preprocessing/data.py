@@ -24,7 +24,8 @@ class LangScriptColumns:
 LSC = LangScriptColumns
 
 def adjust_lang_script(lang_script: DataFrame) -> DataFrame:
-    lang_script[LSC.SCRIPTS] = lang_script[LSC.SCRIPTS].apply(ast.literal_eval)
+    if lang_script is not None:
+        lang_script[LSC.SCRIPTS] = lang_script[LSC.SCRIPTS].apply(ast.literal_eval)
     return lang_script
 
 

@@ -22,7 +22,7 @@ class AdvancedDetector:
         shary_script = self.extract_shary_scripts(lang_script)
         if old_script_langs != shary_script:
             logging.debug(f'Updating model IO')
-            # model_io.save(shary_script) # TODO: Uncomment after retraining functionality
+            model_io.save(shary_script) # TODO: Uncomment after retraining functionality
             # raise ValueError('Model requires retraining and thats unsupported and unhandled for now')
         self.moe = Moe(shary_script)
 
