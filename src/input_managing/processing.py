@@ -53,7 +53,7 @@ class InputProcessor:
         if parsed.set or parsed.add or parsed.delete:
             logging.debug('Conf editing is run, not inferring')
             return parsed
-        if self.context.infervia in {'all', 'ai'} and self.detector:
+        if self.context.infervia in {'all', 'ai'} and self.detector and self.detector.is_enough_data_gathered():
             logging.debug('Inferring thru a simple detector')
             if from_lang := self.detector.detect_simple(parsed.words):
                 logging.debug(f'Inferred {from_lang}')
