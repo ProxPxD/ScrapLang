@@ -17,7 +17,7 @@ from pydash import chain as c
 
 class AdvancedDetector:
     def __init__(self, lang_script: DataFrame):
-        model_io = FileMgr(Paths.MODEL_IO_FILE)
+        model_io = FileMgr(Paths.MODEL_IO_FILE, create_if_not=True)
         old_script_langs = model_io.load()
         shary_script = self.extract_shary_scripts(lang_script)
         if old_script_langs != shary_script:

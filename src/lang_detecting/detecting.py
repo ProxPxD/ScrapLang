@@ -22,8 +22,8 @@ if has_torch:
 class Detector:
     def __init__(self, lang_script: DataFrame):
         self.lang_script = lang_script
-        self.simple_detector = SimpleDetector(self.lang_script) if lang_script else None
-        self.advanced_detector = AdvancedDetector(self.lang_script) if has_torch and lang_script else None
+        self.simple_detector = SimpleDetector(self.lang_script) if lang_script is not None else None
+        self.advanced_detector = AdvancedDetector(self.lang_script) if has_torch and lang_script is not None else None
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         scripts = set(sp(''.join(words))[-1]['details'].keys())
