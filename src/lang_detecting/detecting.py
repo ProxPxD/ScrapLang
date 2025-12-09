@@ -26,10 +26,10 @@ class Detector:
         self.advanced_detector = AdvancedDetector(self.lang_script) if has_torch and lang_script is not None else None
 
     def is_enough_data_gathered_for_simple(self) -> bool:
-        return self.lang_script.size > 50
+        return self.lang_script.size > 2**5
 
     def is_enough_data_gathered_for_advanced(self) -> bool:
-        return self.lang_script.size > 240
+        return self.lang_script.size > 2**7
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         scripts = set(sp(''.join(words))[-1]['details'].keys())
