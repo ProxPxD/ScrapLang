@@ -64,6 +64,7 @@ class ValidDataMgr:
             ).map(c().concat([None]*len(cols)).take(len(cols)))([]),
             columns=cols,
         )
+        # success_data = success_data[success_data[VDC.LANG] != self.]  # TODO: Fix for gathering only supported languages
         if not success_data.empty:
             logging.debug('Found potential new data for gathering')
             old = self._valid_data_file_mgr.load()

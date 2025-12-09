@@ -39,8 +39,8 @@ class ConfMgr:
                 raise NotImplementedError('Only lang-adding is currently supported')
 
     def _update_del_conf(self, del_bundles: list[list[str]]) -> None:
-        for add_bundle in del_bundles:
-            key, *vals = add_bundle
+        for del_bundle in del_bundles:
+            key, *vals = del_bundle
             # TODO: Replace with schema  # TODO: make both lang(s) work
             if key.startswith('lang'):
                 for val in vals:

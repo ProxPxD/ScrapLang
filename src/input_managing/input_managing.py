@@ -37,7 +37,7 @@ class InputMgr:
             self.processor.data_processor.generate_script_summary()
             if not parsed.words:
                 logging.debug('No words for scrapping, exiting after analysis')
-        elif not parsed.words:
+        elif not parsed.words and not (parsed.set or parsed.add or parsed.delete):
             raise InvalidExecution('No word specified!')
         parsed = self.processor.process(parsed)
         self.context.update(**vars(parsed))

@@ -50,6 +50,9 @@ class InputProcessor:
         if parsed.from_langs:
             logging.debug('There exist "from_lang", not inferring')
             return parsed
+        if parsed.set or parsed.add or parsed.delete:
+            logging.debug('Conf editing is run, not inferring')
+            return parsed
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
             if from_lang := self.detector.detect_simple(parsed.words):
