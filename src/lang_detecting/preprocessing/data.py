@@ -31,7 +31,7 @@ def adjust_lang_script(lang_script: DataFrame) -> DataFrame:
 
 class DataProcessor:
     def __init__(self, *, valid_data_mgr: ValidDataMgr, lang_script_file: Path | str):
-        self.valid_data_mgr = valid_data_mgr
+        self.valid_data_mgr: ValidDataMgr = valid_data_mgr
         self.lang_script_mgr = FileMgr(lang_script_file, create_if_not=True, func=adjust_lang_script) if lang_script_file else None
 
     @property
@@ -44,13 +44,13 @@ class DataProcessor:
         :param data: [lang: str, word: str]
         :return:
         """
-        lang_script = data.groupby(VDC.LANG)[VDC.WORD].apply(flow(''.join, set, c().flat_map(lambda c: [c, c.upper()]), set, sorted, ''.join)).reset_index()
+        lang_script = data[~data[VDC.IS_MAPPED]].groupby(VDC.LANG)[VDC.WORD].apply(flow(''.join, set, c().flat_map(lambda c: [c, c.upper()]), set, sorted, ''.join)).reset_index()
         lang_script.rename(columns={VDC.WORD: LSC.CHARS, VDC.LANG: LSC.LANG}, inplace=True)
         lang_script[LSC.SCRIPTS] = lang_script[LSC.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
         return lang_script
 
     def generate_script_summary(self) -> DataFrame:
-        valid_data = self.valid_data_mgr.load()
+        valid_data = self.valid_data_mgr.valid_data_file_mgr.load()
         lang_script = self._generate_script_summary(valid_data)
         self.lang_script_mgr.save(lang_script)
         return self.lang_script

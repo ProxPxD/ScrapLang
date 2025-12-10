@@ -316,3 +316,7 @@ class Context:
     def is_mapped(self, word: str) -> bool:
         i = self.words.index(word)
         return self.is_mappeds[i]
+
+    def get_unmmapped(self, word: str) -> str:
+        i = self.words.index(word)
+        return self.unmapped[i]

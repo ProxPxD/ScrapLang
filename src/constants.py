@@ -14,6 +14,7 @@ class Paths:
     RESOURCES_DIR = WORKING_DIR / 'resources'
     LOG_DIR = RESOURCES_DIR / 'logs.log'
     CONF_FILE = RESOURCES_DIR / 'conf.yaml'
+    VERSION_FILE = RESOURCES_DIR / 'version.txt'
     DETECTION_DIR = RESOURCES_DIR / 'detection'
     SHORT_MEM_FILE = DETECTION_DIR / 'short_mem.yaml'
     VALID_DATA_FILE = DETECTION_DIR / 'valid_data.csv'

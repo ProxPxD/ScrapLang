@@ -12,6 +12,7 @@ from src.exceptions import ScrapLangException
 from src.input_managing import InputMgr
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
+from src.migration_managing import MigrationManager
 from src.printer import Printer
 from src.resouce_managing import ConfMgr
 from src.resouce_managing.data_gathering import DataGatherer
@@ -32,6 +33,7 @@ class AppMgr:
         self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.valid_data_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None  # TODO: Rework
+        self.migration_mgr = MigrationManager(self.valid_data_mgr)
         self.conf_mgr.valid_data_mgr = self.valid_data_mgr
         self.data_processor = DataProcessor(valid_data_mgr=self.valid_data_mgr , lang_script_file=lang_script_file)
         self.data_gatherer = DataGatherer(context=self.context, valid_data_mgr=self.valid_data_mgr, short_mem_file=short_mem_file, data_processor=self.data_processor)
@@ -53,6 +55,8 @@ class AppMgr:
                 session.close()
 
     def run(self) -> None:
+        if self.migration_mgr.is_migration_needed():
+            self.migration_mgr.migrate()
         self.run_single()
         while self.context.loop:
             self.run_single(shlex.split(input()))
