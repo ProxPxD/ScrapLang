@@ -40,7 +40,7 @@ class PageNotFound(FileNotFoundError):
 def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException | HTTPError]) -> list[Result] | HTTPError | ParsingException:
     filename = get_filename_from_url(url)
     if not (path := PAGES / filename).exists():
-        raise PageNotFound
+        raise PageNotFound(path)
     with open(path, 'r') as f:
         content = f.read()
     return parse(content)
