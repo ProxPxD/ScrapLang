@@ -30,9 +30,10 @@ class AppMgr:
                  ):
         setup_logging()
         self.data_processor = DataProcessor(valid_data_file=valid_data_file, lang_script_file=lang_script_file)
-        self.valid_data_mgr = ValidDataMgr(valid_data_file) if valid_data_file else None  # TODO: Rework
-        self.conf_mgr = ConfMgr(conf_path, valid_data_mgr=self.valid_data_mgr)  # TODO: Move paths to context and work from there
+        self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
+        self.valid_data_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None  # TODO: Rework
+        self.conf_mgr.valid_data_mgr = self.valid_data_mgr
         self.data_gatherer = DataGatherer(context=self.context, valid_data_mgr=self.valid_data_mgr, short_mem_file=short_mem_file, data_processor=self.data_processor)
         self.input_mgr = InputMgr(context=self.context, data_gatherer=self.data_gatherer, data_processor=self.data_processor)
         self.scrap_mgr = ScrapMgr()
