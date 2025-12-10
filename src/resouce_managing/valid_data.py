@@ -123,5 +123,5 @@ class ValidDataMgr:
 
     def remove_entries_of_lang(self, lang: str) -> None:
         valid_data: DataFrame = self._valid_data_file_mgr.load()
-        cleaned_valid_data = valid_data[valid_data['lang'] != lang].drop_index()
+        cleaned_valid_data = valid_data[valid_data[VDC.LANG] != lang].drop_index()
         self._valid_data_file_mgr.save(cleaned_valid_data)
