@@ -90,17 +90,15 @@ class InputProcessor:
         return parsed
 
     def _uniq_langs(self, parsed: Namespace) -> Namespace:
-        # TODO: test
         parsed.to_langs = _.uniq(parsed.to_langs)
         return parsed
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
-        # todo: test żurawel (regex)
-
-        whole_lang_mapping: Box # TODO: Fix for many from_langs
+        whole_lang_mapping: Box
         mapped_words = []
         for from_lang, word in zip(cycle(parsed.from_langs), parsed.words):
             if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
+                mapped_words.append(word)
                 continue
             logging.debug(f'Applying mapping for "{from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
             for single_mapping in whole_lang_mapping:
