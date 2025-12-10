@@ -272,7 +272,7 @@ class SystemTCG(TCG):
                 ],
                 conf=base_langs_es_de_pl_en_conf,
             ),
-            # TODO: extend cutting and modyfy outstemming by introducing another operator working as post-removal wihtout replacement
+            # TODO: extend cutting and modyfy outstemming by introducing another operator working as post-removal without replacement
             TC(
                 descr='Outstemming',
                 tags={'outstem'},

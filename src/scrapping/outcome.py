@@ -50,7 +50,7 @@ class OutcomeKinds(MainOutcomeKinds, HelperOutcomeKinds):
 @dataclass
 class Outcome:
     kind: str | OutcomeKinds  # Incorect syntax, but there's no right solution
-    args: Box = field(default_factory=Box)  # TODO: think of restricting
+    args: Box = field(default_factory=Box)
     results: Optional[DataFrame | Iterable[Result]] = None
 
     def __post_init__(self):

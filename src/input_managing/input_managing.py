@@ -22,7 +22,7 @@ class InputMgr:
                  data_gatherer: DataGatherer = None,
                  data_processor: DataProcessor = None,
                  ):
-        self.context = context # TODO: convert to using context and data_gatherer instead of conf
+        self.context = context
         self.cli = CLI(context)
         self.processor = InputProcessor(context, data_processor=data_processor)
         self.data_gatherer = data_gatherer or DataGatherer(context)

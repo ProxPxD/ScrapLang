@@ -85,7 +85,6 @@ class CLI:
         base_group.add_argument('--words', '-words', '-words', '-word', '-w', nargs='+', default=[], help='Words to translate')
         base_group.add_argument('--from-langs', '--from-lang', '--from', '-from', '-f', dest='from_langs', nargs='+', default=[], help=(lang_help := 'Languages supported by glosbe.com'))
         base_group.add_argument('--to-langs', '--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
-        # TODO: think of adding a flag --lang/-l being generic for both to- and from- langs
         return parser
 
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
@@ -95,9 +94,9 @@ class CLI:
 
         translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang side to apply the mode to', choices=at, default='none')
         translation_mode_group.add_argument(*tuple(AtSpecifierAction.side_mode_fusions()), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
-        translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='#todo')
-        translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='#todo')
+        translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', action='store_true', default=False, help='Show morphological and etymological data')
+        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='Show inflection table')
+        translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='Show word definitions')
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
         cli_reasoning_group = parser.add_argument_group(title='CLI Reasoning Modes')
@@ -114,7 +113,7 @@ class CLI:
         parser.add_argument('--test', action='store_true', help=SUPPRESS)
         return parser
 
-    # TODO: anhi: add and think through the displayal mode
+    # TODO: add and think through the settings displayal mode
     def _add_setting_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         setting_group = parser.add_argument_group(title='Setting')
         setting_group.add_argument('--set', '-set', '-s', action='append', nargs='+', default=[])

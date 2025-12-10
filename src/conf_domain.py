@@ -25,10 +25,3 @@ class Conf(BaseModel):
     gather_data: ConfGatherData = Field(default=UNSET, alias=AliasChoices('gather-data', 'gather_data'))
     infervia: ConfInferVia = UNSET
     reanalyze_on: ConfReanalyzeOn =  Field(default=UNSET, alias=AliasChoices('reanalyze-on', 'reanalyze_on'))
-
-    @field_validator('color', mode='after')
-    def val_color(cls, color: Color) -> dict:
-        # try:  # TODO: get to work on both devices properly
-        #     return color.root if isinstance(color, ColorSchema) else color
-        # except Exception:
-            return color

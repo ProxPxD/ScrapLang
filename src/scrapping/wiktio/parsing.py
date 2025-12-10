@@ -21,7 +21,6 @@ class SurfacingEquivalents:
     pos: Sequence[str] = field(default=('Pos', 'Noun', 'Verb', 'Adjective', 'Adverb', 'Particle', 'Article', 'Pronoun', 'Suffix', 'Prefix', 'Interfix', 'Infix', 'Preposition', 'Circumfix', 'Interjection', 'Determiner', 'Conjunction'))
     pronunciation: Sequence[str] = field(default=('Pronunciation',))
     etymology: Sequence[str] = field(default=('Etymology',))
-    inflection: Sequence[str] = field(default=('Inflection', 'Declension', 'Conjugation'))
 
 @dataclass(frozen=True)
 class Pronunciation:
@@ -33,7 +32,6 @@ class Meaning:
     rel_data: dict[str, str]  = field(default_factory=dict)
     pronunciations: list[Pronunciation] = field(default_factory=list)
     etymology: list[str] = field(default_factory=list)
-    inflection: DataFrame = None
 
 @dataclass(frozen=True)
 class WiktioResult(Result, Meaning):
@@ -160,10 +158,6 @@ class WiktioParser(Parser):
         etymology_chain = frommeds if first_from else [etymology_chain[0]] + frommeds
         dc = replace(dc, etymology=[sent.replace('  ', ' ') for sent in etymology_chain])
         return dc
-
-    @classmethod
-    def _parse_inflection(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
-        return dc  # TODO: implemet
 
     @classmethod
     def _postprocess(cls, result: WiktioResult) -> WiktioResult:

@@ -28,7 +28,7 @@ class Defaults:
     debug: bool = False
     test: bool = False
 
-    assume: str = 'lang'  # TODO: remove
+    assume: str = 'lang'
     groupby: str = 'word'
     infervia: str = 'last'
     reanalyze_on: ReanalyzeOn = 'gather'
