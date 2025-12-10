@@ -183,7 +183,7 @@ class SystemTCG(TCG):
             ),
             TC(
                 descr='Single translation of any arg placement resolution',
-                tags={'permutation', 'position', 'single-from-lang', 'single-to-lang', 'single-word'},
+                tags={'permutation', 'position', 'single/from-langs', 'single/to-langs', 'single/words'},
                 input={
                     'Herr de pl',
                     'de Herr pl',
@@ -198,7 +198,7 @@ class SystemTCG(TCG):
             ),
             TC(
                 descr='Multiword from single lang to multilang translation of any arg placement resolution',
-                tags={'permutation', 'position', 'multi-word', 'multi-to-lang', 'single-from-lang'},
+                tags={'permutation', 'position', 'multi/words', 'multi/to-langs', 'single/from-lang'},
                 input={
                     ' '.join(perm)
                     for perm
@@ -570,7 +570,22 @@ class SystemTCG(TCG):
                 ],
                 conf=base_langs_es_de_pl_en_conf,
             ),
-
+            TC(
+                descr='Multi from-langs',
+                tags={'multi/from-langs'},
+                input=[
+                    IC(
+                        tags=set(),
+                        input='kobieta Frau -f pl de -t en',
+                        context={
+                            'words': ['kobieta', 'Frau'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en'],
+                        },
+                        skip_mocking=True,  # TODO: Make mocking possible and test output with various groupby types
+                    ),
+                ],
+            ),
             TC(
                 descr='Sidality',
                 tags={'side', 'at'},
