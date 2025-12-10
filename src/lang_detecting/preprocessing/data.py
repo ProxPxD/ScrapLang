@@ -9,7 +9,7 @@ from pydash import flow
 
 from src.constants import preinitialized
 from src.resouce_managing.file import FileMgr
-from src.resouce_managing.valid_data import VDC
+from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
 
 @preinitialized
@@ -30,8 +30,8 @@ def adjust_lang_script(lang_script: DataFrame) -> DataFrame:
 
 
 class DataProcessor:
-    def __init__(self, *, valid_data_file: Path | str, lang_script_file: Path | str):
-        self.valid_data_mgr = FileMgr(valid_data_file, create_if_not=True) if valid_data_file else None
+    def __init__(self, *, valid_data_mgr: ValidDataMgr, lang_script_file: Path | str):
+        self.valid_data_mgr = valid_data_mgr
         self.lang_script_mgr = FileMgr(lang_script_file, create_if_not=True, func=adjust_lang_script) if lang_script_file else None
 
     @property
