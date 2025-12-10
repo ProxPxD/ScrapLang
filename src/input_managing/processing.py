@@ -3,6 +3,7 @@ import logging
 import re
 from argparse import Namespace
 from functools import reduce
+from itertools import cycle
 
 from box import Box
 
@@ -97,15 +98,16 @@ class InputProcessor:
         # todo: test żurawel (regex)
 
         whole_lang_mapping: Box # TODO: Fix for many from_langs
-        if not (whole_lang_mapping := self.context.mappings.get(parsed.from_langs[0])) or whole_lang_mapping and not whole_lang_mapping[0]:
-            return parsed
-        logging.debug(f'Applying mapping for "{parsed.from_langs[0]}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
-        for single_mapping in whole_lang_mapping:
-            patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
-            whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
-            logging.debug(f'from_lang_map: {whole_lang_mapping}')
-            parsed.words = [
-                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
-                for word in parsed.words
-            ]
+        mapped_words = []
+        for from_lang, word in zip(cycle(parsed.from_langs), parsed.words):
+            if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
+                continue
+            logging.debug(f'Applying mapping for "{from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
+            for single_mapping in whole_lang_mapping:
+                patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
+                whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
+                logging.debug(f'from_lang_map: {whole_lang_mapping}')
+                word = reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
+            mapped_words.append(word)
+        parsed.words = mapped_words
         return parsed
