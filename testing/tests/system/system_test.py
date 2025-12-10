@@ -582,7 +582,154 @@ class SystemTCG(TCG):
                             'from_langs': ['pl', 'de'],
                             'to_langs': ['en'],
                         },
-                        skip_mocking=True,  # TODO: Make mocking possible and test output with various groupby types
+                        output='''
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                        ''',
+                    ),
+                    IC(
+                        tags={'multi/to-langs', 'groupby/lang'},
+                        input='kobieta Frau -f pl de -t en es --groupby=lang',
+                        context={
+                            'words': ['kobieta', 'Frau'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en', 'es'],
+                        },
+                        output='''
+                            ━━━━ en ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                            ━━━━ es ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            kobieta: mujer (noun) [feminine], hembra (noun) [feminine], mujeres (noun) [feminine], femenino, señor, tía, mina, papel de la mujer, sexo femenino
+                            Frau: mujer (noun) [feminine], esposa (noun) [feminine], señora (noun) [feminine], Señora, doña, marida, hembra, mujeres, Sra, fémina, individua, máquina, pariente, señor, dama, casar, cónyuge, persona, mina, galla, Sra., ella, sexo femenino, señorita, sra., tía, usted
+                        ''',
+                    ),
+                    IC(
+                        tags={'multi/to-langs', 'groupby/word'},
+                        input='kobieta Frau -f pl de -t en es --groupby=word',
+                        context={
+                            'words': ['kobieta', 'Frau'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en', 'es'],
+                        },
+                        output='''
+                            ──── en ──────────────────────────────────────
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                            ──── es ──────────────────────────────────────
+                            kobieta: mujer (noun) [feminine], hembra (noun) [feminine], mujeres (noun) [feminine], femenino, señor, tía, mina, papel de la mujer, sexo femenino
+                            Frau: mujer (noun) [feminine], esposa (noun) [feminine], señora (noun) [feminine], Señora, doña, marida, hembra, mujeres, Sra, fémina, individua, máquina, pariente, señor, dama, casar, cónyuge, persona, mina, galla, Sra., ella, sexo femenino, señorita, sra., tía, usted
+                        ''',
+                    ),
+                    IC(
+                        tags={'groupby/lang'},
+                        input='kobieta Frau -f pl de -t en --groupby=lang',
+                        context={
+                            'words': ['kobieta', 'Frau'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en'],
+                        },
+                        output='''
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                        ''',
+                    ),
+                    IC(
+                        tags={'groupby/word'},
+                        input='kobieta Frau -f pl de -t en --groupby=word',
+                        context={
+                            'words': ['kobieta', 'Frau'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en'],
+                        },
+                        output='''
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                        ''',
+                    ),
+                    IC(
+                        tags={'groupby/lang'},
+                        input='kobieta Frau pan Herr -f pl de -t en --groupby=lang',
+                        context={
+                            'words': ['kobieta', 'Frau', 'pan', 'Herr'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en'],
+                        },
+                        output='''
+                            ──── kobieta·Frau ────────────────────────────
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                            ──── pan·Herr ────────────────────────────────
+                            pan: master (noun) [masculine], gentleman (noun) [masculine], sir (noun), mister, man, lord, Mr., lordship, Mr, Sir, Mister, gent, you, ruler, baboo, M., owner, Monsieur, between you and me, goodman, lording, monsieur, padrone, signore, the Lord, thou, thy, ye, yer, signor, squire, overlord, proprietor, swayer, possessor, adult male, pan, Senor, teacher, slaveholder, babu, buckra, instructor, man of means, men, mr., rich man, wealthy man
+                            Herr: gentleman (noun) [masculine], Lord (proper) [noun], lord (noun) [masculine], sir, master, mister, man, Mr, Mister, gent, Mr., owner, Sir, you, signor, God, sovereign, male, esquire, shepherd, madam, god, boss, M., lordship, arbiter, baas, partner, ruler, sahib, the Lord, Father, chief, husband, host, leader, lover, mr., father, overlord, landlord, employer, guv, benefactor, saint, uncle, priest, mistress, almsgiver, bwana, slaveholder, almsgiving, alms, hostess, authority, Mrs., counter for people, gentleman (irr.), the main thing, the majority, the primary concern, this lady or gentleman
+                        ''',
+                    ),
+                    IC(
+                        tags={'groupby/word'},
+                        input='kobieta Frau pan Herr -f pl de -t en --groupby=word',
+                        context={
+                            'words': ['kobieta', 'Frau', 'pan', 'Herr'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en'],
+                        },
+                        output='''
+                            ━━━━ kobieta·Frau ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                            ━━━━ pan·Herr ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            pan: master (noun) [masculine], gentleman (noun) [masculine], sir (noun), mister, man, lord, Mr., lordship, Mr, Sir, Mister, gent, you, ruler, baboo, M., owner, Monsieur, between you and me, goodman, lording, monsieur, padrone, signore, the Lord, thou, thy, ye, yer, signor, squire, overlord, proprietor, swayer, possessor, adult male, pan, Senor, teacher, slaveholder, babu, buckra, instructor, man of means, men, mr., rich man, wealthy man
+                            Herr: gentleman (noun) [masculine], Lord (proper) [noun], lord (noun) [masculine], sir, master, mister, man, Mr, Mister, gent, Mr., owner, Sir, you, signor, God, sovereign, male, esquire, shepherd, madam, god, boss, M., lordship, arbiter, baas, partner, ruler, sahib, the Lord, Father, chief, husband, host, leader, lover, mr., father, overlord, landlord, employer, guv, benefactor, saint, uncle, priest, mistress, almsgiver, bwana, slaveholder, almsgiving, alms, hostess, authority, Mrs., counter for people, gentleman (irr.), the main thing, the majority, the primary concern, this lady or gentleman
+                        ''',
+                    ),
+                    IC(
+                        tags={'groupby/lang'},
+                        input='kobieta Frau pan Herr -f pl de -t en es --groupby=lang',
+                        context={
+                            'words': ['kobieta', 'Frau', 'pan', 'Herr'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en', 'es'],
+                        },
+                        output='''
+                            ━━━━ en ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            ──── kobieta·Frau ────────────────────────────
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                            ──── pan·Herr ────────────────────────────────
+                            pan: master (noun) [masculine], gentleman (noun) [masculine], sir (noun), mister, man, lord, Mr., lordship, Mr, Sir, Mister, gent, you, ruler, baboo, M., owner, Monsieur, between you and me, goodman, lording, monsieur, padrone, signore, the Lord, thou, thy, ye, yer, signor, squire, overlord, proprietor, swayer, possessor, adult male, pan, Senor, teacher, slaveholder, babu, buckra, instructor, man of means, men, mr., rich man, wealthy man
+                            Herr: gentleman (noun) [masculine], Lord (proper) [noun], lord (noun) [masculine], sir, master, mister, man, Mr, Mister, gent, Mr., owner, Sir, you, signor, God, sovereign, male, esquire, shepherd, madam, god, boss, M., lordship, arbiter, baas, partner, ruler, sahib, the Lord, Father, chief, husband, host, leader, lover, mr., father, overlord, landlord, employer, guv, benefactor, saint, uncle, priest, mistress, almsgiver, bwana, slaveholder, almsgiving, alms, hostess, authority, Mrs., counter for people, gentleman (irr.), the main thing, the majority, the primary concern, this lady or gentleman
+                            ━━━━ es ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            ──── kobieta·Frau ────────────────────────────
+                            kobieta: mujer (noun) [feminine], hembra (noun) [feminine], mujeres (noun) [feminine], femenino, señor, tía, mina, papel de la mujer, sexo femenino
+                            Frau: mujer (noun) [feminine], esposa (noun) [feminine], señora (noun) [feminine], Señora, doña, marida, hembra, mujeres, Sra, fémina, individua, máquina, pariente, señor, dama, casar, cónyuge, persona, mina, galla, Sra., ella, sexo femenino, señorita, sra., tía, usted
+                            ──── pan·Herr ────────────────────────────────
+                            pan: señor (noun) [masculine], amo (noun) [masculine], caballero (noun) [masculine], hombre, varón, don, maese, Señor, usted, señoría, vosotros, dueño, gobernador, D., cacerola, sr., ustedes, se, te, ti, pan, patrón, propietario, poseedor, dueco, posesor, caballeros, el Señor, hombres, vos
+                            Herr: señor (noun) [masculine], Señor (proper) [masculine], caballero (noun) [masculine], amo, hombre, varón, señores, dueño, Dios, don, usted, Sr, jefe, patrón, soberano, padre, Don, Sr., santo, comandante, general, grande, patrono, líder, anciano, papa, capitán, tío, papá, caudillo, brío, pieza, autoridad
+                        ''',
+                    ),
+                    IC(
+                        tags={'groupby/word'},
+                        input='kobieta Frau pan Herr -f pl de -t en es --groupby=word',
+                        context={
+                            'words': ['kobieta', 'Frau', 'pan', 'Herr'],
+                            'from_langs': ['pl', 'de'],
+                            'to_langs': ['en', 'es'],
+                        },
+                        output='''
+                            ━━━━ kobieta·Frau ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            ──── en ──────────────────────────────────────
+                            kobieta: woman (noun), female (noun), dame (noun), lady, missus, femme, women, she, skirt, old lady, wife, bit of skirt, broad, gal, bitch, mama, fem, baggage, petticoat, cummer, feme, missis, adult female, role of women, status of women
+                            Frau: woman (noun), wife (noun), lady (noun), Mrs, madam, spouse, mistress, female, Ms, girl, Mrs., Lady, women, femme, dame, mrs, signora, Frau, womankind, embellishment, husband, missus, adult female, consort of the emperor, feminine gender, grown woman, woman writer, Goodwife, bride, judy, feminine, mate, broad, daughter, Woman, jane, Female, consort, lover, she, sheila, Miss, eldest daughter, female spouse, huge breasts, womenfolk, excellent, missis, inside, superb, chignon, interior, Mr., Ms., inner part, married woman, wicked woman, woman (irr.), your wife
+                            ──── es ──────────────────────────────────────
+                            kobieta: mujer (noun) [feminine], hembra (noun) [feminine], mujeres (noun) [feminine], femenino, señor, tía, mina, papel de la mujer, sexo femenino
+                            Frau: mujer (noun) [feminine], esposa (noun) [feminine], señora (noun) [feminine], Señora, doña, marida, hembra, mujeres, Sra, fémina, individua, máquina, pariente, señor, dama, casar, cónyuge, persona, mina, galla, Sra., ella, sexo femenino, señorita, sra., tía, usted
+                            ━━━━ pan·Herr ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            ──── en ──────────────────────────────────────
+                            pan: master (noun) [masculine], gentleman (noun) [masculine], sir (noun), mister, man, lord, Mr., lordship, Mr, Sir, Mister, gent, you, ruler, baboo, M., owner, Monsieur, between you and me, goodman, lording, monsieur, padrone, signore, the Lord, thou, thy, ye, yer, signor, squire, overlord, proprietor, swayer, possessor, adult male, pan, Senor, teacher, slaveholder, babu, buckra, instructor, man of means, men, mr., rich man, wealthy man
+                            Herr: gentleman (noun) [masculine], Lord (proper) [noun], lord (noun) [masculine], sir, master, mister, man, Mr, Mister, gent, Mr., owner, Sir, you, signor, God, sovereign, male, esquire, shepherd, madam, god, boss, M., lordship, arbiter, baas, partner, ruler, sahib, the Lord, Father, chief, husband, host, leader, lover, mr., father, overlord, landlord, employer, guv, benefactor, saint, uncle, priest, mistress, almsgiver, bwana, slaveholder, almsgiving, alms, hostess, authority, Mrs., counter for people, gentleman (irr.), the main thing, the majority, the primary concern, this lady or gentleman
+                            ──── es ──────────────────────────────────────
+                            pan: señor (noun) [masculine], amo (noun) [masculine], caballero (noun) [masculine], hombre, varón, don, maese, Señor, usted, señoría, vosotros, dueño, gobernador, D., cacerola, sr., ustedes, se, te, ti, pan, patrón, propietario, poseedor, dueco, posesor, caballeros, el Señor, hombres, vos
+                            Herr: señor (noun) [masculine], Señor (proper) [masculine], caballero (noun) [masculine], amo, hombre, varón, señores, dueño, Dios, don, usted, Sr, jefe, patrón, soberano, padre, Don, Sr., santo, comandante, general, grande, patrono, líder, anciano, papa, capitán, tío, papá, caudillo, brío, pieza, autoridad
+                        ''',
                     ),
                 ],
             ),
