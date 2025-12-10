@@ -256,10 +256,20 @@ class SystemTCG(TCG):
                 conf=base_langs_es_de_pl_en_conf
             ),
             TC(
-                descr='Make duplicates unique',
-                tags={'repeated', 'duplicated', 'unique'},
-                input='Frau Frau de pl',
-                context={'words': ['Frau']},
+                descr='Uniqness',
+                tags={'repeated', 'duplicated', 'uniq'},
+                input=[
+                    IC(
+                        tags={'uniq/word'},
+                        input='Frau Frau de pl',
+                        context={'words': ['Frau']},
+                    ),
+                    IC(
+                        tags={'uniq/to-lang'},
+                        input='Frau de pl pl',
+                        context={'to_langs': ['pl']},
+                    ),
+                ],
                 conf=base_langs_es_de_pl_en_conf,
             ),
             # TODO: extend cutting and modyfy outstemming by introducing another operator working as post-removal wihtout replacement
@@ -815,6 +825,51 @@ class SystemTCG(TCG):
                 ],
                 conf=assume_langs_pl_de_en_es_ru,
             ),
+            TC(
+                descr='Mapping',
+                tags={'mapping'},
+                input=[
+                    IC(
+                        tags={'mapping/simple'},
+                        input='eo sxangxi pl',
+                        context={'words': ['ŝanĝi']},
+                    ),
+                    IC(
+                        tags={'mapping/sequential'},
+                        input='uk żurawel pl',
+                        context={'words': ['журавель']},
+                    ),
+                    IC(
+                        tags={'mapping/sequential'},
+                        input={'uk pl ziłłia', 'uk pl ziłla', 'uk pl ziłlia'},
+                        context={'words': ['зілля']},
+                    ),
+                    IC(
+                        tags={'mapping/sequential'},
+                        input={'uk pl miljard', 'uk pl "mił\'iard"', 'uk pl "mil\'iard"'},
+                        context={'words': ['мільярд']}
+                    ),
+                    IC(
+                        tags={'mapping/multi-lang'},
+                        input='-f uk eo -w zminyty sxangxi -t pl',
+                        context={'words': ['змінити', 'ŝanĝi']}
+                    )
+                ],
+                skip_mocking=True,
+                conf=Box({
+                    'langs': ['pl', 'eo', 'uk'],
+                    'mappings': {
+                        'eo': {'Cx': 'Ĉ', 'Gx': 'Ĝ', 'Hx': 'Ĥ', 'Jx': 'Ĵ', 'Sx': 'Ŝ', 'Ux': 'Ŭ', 'cx': 'ĉ', 'gx': 'ĝ', 'hx': 'ĥ', 'jx': 'ĵ', 'sx': 'ŝ', 'ux': 'ŭ'},
+                        'uk': [
+                            {'([aeouy])i': '\\1ji', 'l([aeuo])': 'łi\\1', 'li': 'łi'},
+                            {'[ji]a': 'я', '[ji]e': 'є', '[ji]u': 'ю', 'ji': 'ї'},
+                            {"[q']": 'ь'},
+                            {'["x]': "'", 'a': 'а', 'b': 'б', 'c': 'ц', 'ch': 'х', 'cz': 'ч', 'd': 'д', 'e': 'е', 'f': 'ф', 'g': 'ґ', 'h': 'г', 'i': 'і', 'j': 'й', 'k': 'к', 'l': 'ль', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 'r': 'р', 's': 'с', 'sz': 'ш', 'szcz': 'щ', 't': 'т', 'u': 'у', 'v': 'в', 'w': 'в', 'x': "'", 'y': 'и', 'z': 'з', 'ć': 'ць', 'ł': 'л', 'ń': 'нь', 'ś': 'сь', 'ż': 'ж'},
+                            {'ьь': 'ь'},
+                        ]
+                    }
+                }),
+            )
     ]
 
     # TODO: fix or inform: 标 zh -o
