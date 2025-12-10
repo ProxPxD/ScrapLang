@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass, field, asdict
 from functools import lru_cache
 from itertools import product, cycle
@@ -161,7 +162,7 @@ class Context:
     from_langs: tuple[str] = tuple()
     to_langs: tuple[str] = tuple()
 
-    mapped: tuple[bool] = tuple()
+    unmapped: tuple[bool] = tuple()
 
     at: str = UNSET
     wiktio: bool = UNSET
@@ -308,3 +309,10 @@ class Context:
     def is_at_to(self) -> bool:
         return self.at.startswith('t')
 
+    @property
+    def is_mappeds(self) -> list[bool]:
+        return [o != w for o, w in zip(self.unmapped, self.words)]
+
+    def is_mapped(self, word: str) -> bool:
+        i = self.words.index(word)
+        return self.is_mappeds[i]

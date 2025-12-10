@@ -25,7 +25,6 @@ class InputMgr:
         self.context = context
         self.cli = CLI(context)
         self.processor = InputProcessor(context, data_processor=data_processor)
-        self.data_gatherer = data_gatherer or DataGatherer(context)
 
 
     def ingest_input(self, args: list[str] | str = None):

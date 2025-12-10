@@ -33,7 +33,7 @@ class InputProcessor:
         parsed = self._reverse_if_needed(parsed)
         origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
-        parsed.mapped = [o != m for o, m in zip(origs, parsed.words)]
+        parsed.unmapped = origs
         logging.debug(f'Processed: {parsed}')
         return parsed
 
