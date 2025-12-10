@@ -3,6 +3,7 @@ import logging
 import re
 from argparse import Namespace
 from functools import reduce
+from itertools import cycle
 
 from box import Box
 
@@ -32,12 +33,12 @@ class InputProcessor:
         parsed = self._reverse_if_needed(parsed)
         origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
-        parsed.mapped = [o != m for o, m in zip(origs, parsed.words)]
+        parsed.unmapped = origs
         logging.debug(f'Processed: {parsed}')
         return parsed
 
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
-        parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)  # TODO: test uniqness of outstemmeds
+        parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
         parsed.words = self.outstemmer.flatmap_outstem(parsed.words)
         return parsed
 
@@ -50,9 +51,15 @@ class InputProcessor:
         if parsed.from_langs:
             logging.debug('There exist "from_lang", not inferring')
             return parsed
+        if parsed.set or parsed.add or parsed.delete:
+            logging.debug('Conf editing is run, not inferring')
+            return parsed
+        if parsed.reanalyze:
+            logging.debug('Just reanalyzing, not inferring')
+            return parsed
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
-            if from_lang := self.detector.detect_simple(parsed.words):
+            if from_lang := self.detector.detect_simple(parsed.words) and self.detector.is_enough_data_gathered_for_simple():
                 logging.debug(f'Inferred {from_lang}')
                 parsed.from_langs = [from_lang]
                 return parsed
@@ -86,23 +93,22 @@ class InputProcessor:
         return parsed
 
     def _uniq_langs(self, parsed: Namespace) -> Namespace:
-        # TODO: test
         parsed.to_langs = _.uniq(parsed.to_langs)
         return parsed
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
-        # todo: test żurawel (regex)
-
-        whole_lang_mapping: Box # TODO: Fix for many from_langs
-        if not (whole_lang_mapping := self.context.mappings.get(parsed.from_langs[0])) or whole_lang_mapping and not whole_lang_mapping[0]:
-            return parsed
-        logging.debug(f'Applying mapping for "{parsed.from_langs[0]}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
-        for single_mapping in whole_lang_mapping:
-            patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
-            whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
-            logging.debug(f'from_lang_map: {whole_lang_mapping}')
-            parsed.words = [
-                reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
-                for word in parsed.words
-            ]
+        whole_lang_mapping: Box
+        mapped_words = []
+        for from_lang, word in zip(cycle(parsed.from_langs), parsed.words):
+            if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
+                mapped_words.append(word)
+                continue
+            logging.debug(f'Applying mapping for "{from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
+            for single_mapping in whole_lang_mapping:
+                patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
+                whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
+                logging.debug(f'from_lang_map: {whole_lang_mapping}')
+                word = reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
+            mapped_words.append(word)
+        parsed.words = mapped_words
         return parsed

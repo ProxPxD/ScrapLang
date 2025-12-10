@@ -47,7 +47,7 @@ class Printer:
                 self.print_definitions(outcome)
             case OutcomeKinds.NEWLINE:
                 self.printer('')
-            case OutcomeKinds.WIKTIO:  # TODO: WIKTIO, redo
+            case OutcomeKinds.WIKTIO:
                 self._print_wktio(outcome)
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')

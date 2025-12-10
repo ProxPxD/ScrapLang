@@ -1,23 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass, field, asdict
-from functools import cached_property, cache, lru_cache
-from itertools import product, repeat, cycle
-from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Collection
+from functools import lru_cache
+from itertools import product, cycle
+from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Sequence
 
 import pydash as _
 from box import Box
-from more_itertools import chunked
-from pydash import chain as c, flow
-from sympy.abc import lamda
+from pydash import chain as c
 
 from src.constants import preinitialized
 from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
     Color, color_names, ReanalyzeOn
-from src.utils import apply
 
 if TYPE_CHECKING:
-    from src.scrapping import Outcome
     from src.resouce_managing.configuration import Conf
 
 @preinitialized
@@ -32,7 +29,7 @@ class Defaults:
     debug: bool = False
     test: bool = False
 
-    assume: str = 'lang'  # TODO: remove
+    assume: str = 'lang'
     groupby: str = 'word'
     infervia: str = 'last'
     reanalyze_on: ReanalyzeOn = 'gather'
@@ -50,12 +47,13 @@ class Defaults:
 
 
 class ScrapIterator:
-    def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str):
+    def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str, prev: ScrapIterator):
         self._context = context
         self.i: int = i
         self.from_lang: str = from_lang
         self.to_lang: str = to_lang
         self.word: str = word
+        self.prev = prev
 
     def __repr__(self) -> str:
         return f'ScrapIt(i={self.i}, from={self.from_lang}, word={self.word}, to={self.to_lang})'
@@ -64,32 +62,76 @@ class ScrapIterator:
     def args(self) -> tuple[str, str, str]:
         return self.from_lang, self.to_lang, self.word
 
-    @lru_cache()
     def _is_first_in_all_main_members(self):
         return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == 0
 
-    @lru_cache()
-    def is_first_in_main_group(self) -> bool:
-        #return self._context.n_main_members == 0 or self.i % self._context.n_main_members == 0
-        return self._context.n_main_groups > 1 and self._context.n_all_main_members > 1 and self._is_first_in_all_main_members()
-
-    @lru_cache()
-    def is_first_in_subgroup(self) -> bool:
-        return self._context.n_sub_members > 1 and self.i % self._context.n_sub_members == 0
+    @property
+    def curr_bundle(self) -> Sequence[str]:
+        return self._context.get_from_lang_word_bundle_by_word(self.word)
 
     @property
-    def main_group(self) -> str:  # TODO: abstract?
+    def prev_bundle(self) -> Sequence[str]:
+        return self._context.get_from_lang_word_bundle_by_word(self.prev.word)
+
+    def is_in_same_word_bundle_as_prev(self) -> bool:
+        return self.prev_bundle != self.curr_bundle
+
+    @lru_cache()
+    def is_in_poly_main_group(self) -> bool:
+        if self._context.n_from_langs == 1:
+            return len(self._context.words) > 1 and len(self._context.to_langs) > 1
+        match self._context.groupby:
+            case 'lang': return len(self._context.to_langs) > 1
+            case 'word': return len(self._context.from_lang_word_bundles) > 1
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    def is_first_in_main_group(self) -> bool:
+        if self.prev is None:
+            return True
+        match self._context.groupby:
+            case 'lang': return self.prev.to_lang != self.to_lang
+            case 'word': return self.is_in_same_word_bundle_as_prev()
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    def is_first_in_poly_main_group(self) -> bool:
+        return self.is_in_poly_main_group() and self.is_first_in_main_group()
+
+    def is_in_poly_subgroup(self) -> bool:
+        if self._context.n_from_langs == 1:
+            return False
+        match self._context.groupby:
+            case 'lang': return len(self._context.from_lang_word_bundles) > 1
+            case 'word': return len(self._context.to_langs) > 1
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    def is_first_in_subgroup(self) -> bool:
+        if self.prev is None:
+            return True
+        match self._context.groupby:
+            case 'lang': return self.is_in_same_word_bundle_as_prev()
+            case 'word': return self.prev.to_lang != self.to_lang
+            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    def is_first_in_poly_subgroup(self) -> bool:
+        return self.is_in_poly_subgroup() and self.is_first_in_subgroup()
+
+    @property
+    def main_group(self) -> str:
         match self._context.groupby:
             case 'lang': return self.to_lang
-            case 'word': return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
+            case 'word': return self.word_group
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
 
     @property
     def subgroup(self) -> str:
         match self._context.groupby:
-            case 'lang': return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
+            case 'lang': return self.word_group
             case 'word': return self.to_lang
             case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+
+    @property
+    def word_group(self) -> str:
+        return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
 
     @lru_cache()
     def is_last_in_main_group(self) -> bool:
@@ -120,7 +162,7 @@ class Context:
     from_langs: tuple[str] = tuple()
     to_langs: tuple[str] = tuple()
 
-    mapped: tuple[bool] = tuple()
+    unmapped: tuple[bool] = tuple()
 
     at: str = UNSET
     wiktio: bool = UNSET
@@ -150,8 +192,12 @@ class Context:
         self.update(**conf.model_dump())
 
     def __getattribute__(self, name: str) -> Any:
-        if (val := _.apply_catch(name, super().__getattribute__, [AttributeError], UNSET)) is not UNSET:
-            return val
+        try:
+            if (val := super().__getattribute__(name)) is not UNSET:
+                return val
+        except AttributeError as ar:
+            if ar.args[0] != f"'{Context.__name__}' object has no attribute '{name}'":
+                raise ar
         if (val := getattr(self._conf, name, UNSET)) is not UNSET:
             return val
         if (val := getattr(Defaults, name, UNSET)) is not UNSET:
@@ -192,7 +238,7 @@ class Context:
         return len(self.from_langs)
 
     @property
-    def from_lang_word_bundles(self) -> Iterable[Iterable[str]]:
+    def from_lang_word_bundles(self) -> Sequence[Sequence[str]]:
         return _.chunk(self.words, self.n_from_langs)
 
     @property
@@ -207,7 +253,6 @@ class Context:
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
     @property
-    # @apply(on_result=[lambda r: print(f'n_main_groups: {r}')])
     def n_main_groups(self) -> int:
         match self.groupby:
             case 'lang': return len(self.to_langs)
@@ -227,10 +272,12 @@ class Context:
         return ((from_lang, *dest) for from_lang, dest in zip(cycle(self.from_langs), self.dest_pairs))
 
     def iterate_args(self) -> Iterable[ScrapIterator]:
+        scrap_it = None
         for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
-            yield ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word)
+            scrap_it = ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word, prev=scrap_it)
+            yield scrap_it
 
-    def get_from_lang_word_bundle_by_word(self, word: str) -> Collection[str]:
+    def get_from_lang_word_bundle_by_word(self, word: str) -> Sequence[str]:
         n: int = len(self.from_langs)
         i: int = self.words.index(word) // n
         return self.words[i*n:(i+1)*n]
@@ -262,3 +309,14 @@ class Context:
     def is_at_to(self) -> bool:
         return self.at.startswith('t')
 
+    @property
+    def is_mappeds(self) -> list[bool]:
+        return [o != w for o, w in zip(self.unmapped, self.words)]
+
+    def is_mapped(self, word: str) -> bool:
+        i = self.words.index(word)
+        return self.is_mappeds[i]
+
+    def get_unmmapped(self, word: str) -> str:
+        i = self.words.index(word)
+        return self.unmapped[i]

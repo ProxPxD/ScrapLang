@@ -53,7 +53,7 @@ class ShortMemMgr:
         self._trim_lengths()
 
     def _filter_by_date(self) -> None:
-        ...  # TODO: anhi implement
+        ...  # TODO: implement filtering by date
 
     def _trim_lengths(self) -> None:
         for key in ShortMem().model_dump().keys():

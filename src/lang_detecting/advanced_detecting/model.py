@@ -9,7 +9,7 @@ from toolz import valmap
 import pydash as _
 from pydash import chain as c
 
-from src.lang_detecting.preprocessing.data import C
+from src.lang_detecting.preprocessing.data import LSC
 
 
 class Router(nn.Module):

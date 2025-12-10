@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging
 from pathlib import Path
@@ -35,9 +36,10 @@ class FileMgr:
     def is_loaded(self) -> bool:
         return bool(self._content)
 
-    def save(self, content = None) -> None:
+    def save(self, content = None) -> FileMgr:
         self.save_file(self.path, content if content is not None else self.content)
         self._content = content
+        return self
 
     @classmethod
     def _get_file_extension(cls, path: str | Path) -> str:
@@ -46,6 +48,7 @@ class FileMgr:
             case '.toml': return 'toml'
             case '.json' | '.jsonl': return 'json'
             case '.csv': return 'csv'
+            case '.txt': return 'txt'
             case _: raise ValueError(f'Unsupported file format: {path}')
 
     @classmethod
@@ -92,6 +95,11 @@ class FileMgr:
             return None
 
     @classmethod
+    def load_txt(cls, path: str | Path) -> str:
+        with open(path, 'r') as f:
+            return '\n'.join(f.readlines())
+
+    @classmethod
     def save_file(cls, path: str | Path = None, content = None) -> None:
         ext = cls._get_file_extension(path)
         save = getattr(cls, f'save_{ext}')
@@ -113,3 +121,8 @@ class FileMgr:
     @classmethod
     def save_csv(cls, path: str | Path, data: DataFrame) -> None:
         data.to_csv(path, index=False)
+
+    @classmethod
+    def save_txt(cls, path: str | Path, text: str) -> None:
+        with open(path, 'w') as f:
+            f.write(text)

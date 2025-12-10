@@ -2,7 +2,7 @@ from typing import Optional
 
 from pandas import DataFrame
 
-from src.lang_detecting.preprocessing.data import Columns as C
+from src.lang_detecting.preprocessing.data import LangScriptColumns as C
 
 
 class SimpleDetector:

@@ -8,13 +8,15 @@ from more_itertools.more import seekable
 from requests import Session
 
 from src.context import Context
-from src.exceptions import InvalidExecution
+from src.exceptions import ScrapLangException
 from src.input_managing import InputMgr
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
+from src.migration_managing import MigrationManager
 from src.printer import Printer
 from src.resouce_managing import ConfMgr
 from src.resouce_managing.data_gathering import DataGatherer
+from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
 
@@ -30,8 +32,11 @@ class AppMgr:
         setup_logging()
         self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
-        self.data_processor = DataProcessor(valid_data_file=valid_data_file, lang_script_file=lang_script_file)
-        self.data_gatherer = DataGatherer(context=self.context, valid_data_file=valid_data_file, short_mem_file=short_mem_file, data_processor=self.data_processor)
+        self.valid_data_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None  # TODO: Rework
+        self.migration_mgr = MigrationManager(self.valid_data_mgr)
+        self.conf_mgr.valid_data_mgr = self.valid_data_mgr
+        self.data_processor = DataProcessor(valid_data_mgr=self.valid_data_mgr , lang_script_file=lang_script_file)
+        self.data_gatherer = DataGatherer(context=self.context, valid_data_mgr=self.valid_data_mgr, short_mem_file=short_mem_file, data_processor=self.data_processor)
         self.input_mgr = InputMgr(context=self.context, data_gatherer=self.data_gatherer, data_processor=self.data_processor)
         self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context, printer=printer)
@@ -50,11 +55,20 @@ class AppMgr:
                 session.close()
 
     def run(self) -> None:
+        if self.migration_mgr.is_migration_needed():
+            self.migration_mgr.migrate()
         self.run_single()
         while self.context.loop:
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:
+        try:
+            self._raw_run_single(args)
+        except ScrapLangException as e:
+            msg = e.args[0]
+            self.printer.printer(msg)
+
+    def _raw_run_single(self, args: list[str] = None) -> None:
         parsed = self.input_mgr.ingest_input(args)
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
@@ -65,13 +79,9 @@ class AppMgr:
         # if self.context.exit and args:
         #     return
 
-        if self.context.words:
-            self.run_scrap()
-        else:
-            raise InvalidExecution()
+        self.run_scrap()
 
     def run_scrap(self) -> None:
-        # TODO: think when to raise if no word
         with self.connect():
             scrap_results = seekable(self.scrap_mgr.scrap(self.context))
             _.for_each(scrap_results, self.printer.print_result)
