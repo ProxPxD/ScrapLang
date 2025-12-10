@@ -69,7 +69,7 @@ class WiktioParser(Parser):
         n_sections = 0
         for batch in section_batches:
             fullname = batch[0].text.removesuffix('[edit]')
-            name = re.search(f'(\D+)(\d+)?', fullname).group(1).strip()
+            name = re.search(fr'(\D+)(\d+)?', fullname).group(1).strip()
             name, is_crucial = next(((surf, True) for surf, equivs in asdict(SurfacingEquivalents()).items() if name in equivs), (name, False))
             if not is_crucial:
                 continue
