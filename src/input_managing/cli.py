@@ -136,7 +136,7 @@ class CLI:
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += _.reject(remaining, '--'.__eq__)  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
-        self.context.update(**{**vars(parsed), 'words': [], 'from_langs': [], 'to_langs': []}); logging.debug('Updating context in CLI')
+        self.context.update(**{**vars(parsed), 'words': UNSET, 'from_langs': UNSET, 'to_langs': UNSET}); logging.debug('Updating context in CLI')
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
         return parsed
