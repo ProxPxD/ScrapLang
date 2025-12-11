@@ -19,7 +19,7 @@ class AdvancedDetector:
     def __init__(self, lang_script: DataFrame):
         model_io = FileMgr(Paths.MODEL_IO_FILE, create_if_not=True)
         old_script_langs = model_io.load()
-        shary_script = self.extract_shary_scripts(lang_script)
+        shary_script = self.extract_scripts_to_any_shared_chars_for_langs(lang_script)
         if old_script_langs != shary_script:
             logging.debug(f'Updating model IO')
             model_io.save(shary_script) # TODO: Uncomment after retraining functionality
@@ -36,7 +36,7 @@ class AdvancedDetector:
         return as_strs.value()
 
     @classmethod
-    def extract_shary_scripts(cls, lang_script: DataFrame) -> dict[str, dict[str, str | list]]:
+    def extract_scripts_to_any_shared_chars_for_langs(cls, lang_script: DataFrame) -> dict[str, dict[str, str | list]]:
         script_lang = lang_script.explode(LSC.SCRIPTS).rename(columns={LSC.SCRIPTS: LSC.SCRIPT})
         sclc = script_common_langs_chars = (script_lang.groupby(LSC.SCRIPT, as_index=False).agg({
             LSC.LANG: flow(sorted, list),
