@@ -1,8 +1,6 @@
 import logging
 import shlex
 import sys
-from argparse import Namespace
-from pathlib import Path
 
 import pydash as _
 from pydash import chain as c
@@ -14,7 +12,6 @@ from src.input_managing.cli import CLI
 from src.input_managing.processing import InputProcessor
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.resouce_managing.data_gathering import DataGatherer
-
 
 
 class InputMgr:

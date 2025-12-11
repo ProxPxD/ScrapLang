@@ -5,15 +5,12 @@ from argparse import Namespace
 from functools import reduce
 from itertools import cycle
 
+import pydash as _
 from box import Box
+from pydash import chain as c
 
 from src.context import Context
 from src.input_managing.outstemming import Outstemmer
-
-
-import pydash as _
-from pydash import chain as c
-
 from src.lang_detecting.detecting import Detector
 from src.lang_detecting.preprocessing.data import DataProcessor
 
@@ -43,7 +40,8 @@ class InputProcessor:
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
-        if parsed.from_langs:
+        # TODO: add test for verifying argument fullfilling if only from_lang is specified
+        if parsed.from_langs and parsed.to_langs:
             logging.debug('There exist "from_lang", not inferring')
             return parsed
         if parsed.set or parsed.add or parsed.delete:

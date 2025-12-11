@@ -16,7 +16,6 @@ from pydash import chain as c
 
 from src.app_managing import AppMgr
 from src.context_domain import assume, indirect, gather_data, infervia, groupby
-from src.exceptions import InvalidExecution
 from testing.core import TCG
 from testing.core.mocking import mocked_scrap, CallCollector, PageNotFound
 from testing.core.utils import remove_color
