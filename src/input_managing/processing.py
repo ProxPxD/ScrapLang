@@ -57,6 +57,9 @@ class InputProcessor:
         if parsed.reanalyze:
             logging.debug('Just reanalyzing, not inferring')
             return parsed
+        if parsed.loop or parsed.exit:
+            logging.debug('Just managing the loop, not inferring')
+            return parsed
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
             if from_lang := self.detector.detect_simple(parsed.words) and self.detector.is_enough_data_gathered_for_simple():

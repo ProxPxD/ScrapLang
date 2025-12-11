@@ -44,6 +44,8 @@ class Defaults:
     mappings: Mappings = field(default_factory=dict)
     langs: list = field(default_factory=list)
 
+    loop: bool = False
+
 
 
 class ScrapIterator:
@@ -181,7 +183,7 @@ class Context:
     infervia: InferVia = UNSET
     reanalyze_on: ReanalyzeOn = UNSET
 
-    loop: bool = False
+    loop: bool = UNSET
 
     mappings: Box | Mappings = UNSET
 
@@ -209,7 +211,8 @@ class Context:
         if wrong_keys := {key for key in kwargs if not hasattr(self, key)}:
             raise ValueError(f'Context has no such keys: {wrong_keys}')
         for key, val in kwargs.items():
-            setattr(self, key, val)
+            if val is not UNSET:
+                setattr(self, key, val)
 
         dict_attrs = _.pick_by(asdict(self), lambda val, key: _.is_dict(val) and not key.startswith('_'))
         for key, val in dict_attrs.items():

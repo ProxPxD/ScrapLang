@@ -26,8 +26,9 @@ class FileMgr:
     def content(self):
         return self._content if self._content is not None else self.load()
 
-    def refresh(self) -> None:
+    def refresh(self) -> FileMgr:
         self._content = None
+        return self
 
     def load(self, func: Callable[[Any], Any] | type = UNSET):
         self._content = self.load_file(self.path, func=func if func is not UNSET else self._func)
@@ -38,8 +39,7 @@ class FileMgr:
 
     def save(self, content = None) -> FileMgr:
         self.save_file(self.path, content if content is not None else self.content)
-        self._content = content
-        return self
+        return self.refresh()
 
     @classmethod
     def _get_file_extension(cls, path: str | Path) -> str:

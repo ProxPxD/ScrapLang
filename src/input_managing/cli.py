@@ -123,8 +123,8 @@ class CLI:
     def _add_loop_control_args(self, parser: ArgumentParser) -> ArgumentParser:
         loop_control_group = parser.add_argument_group(title='Loop Control')
         loop_control_exclusive = loop_control_group.add_mutually_exclusive_group()
-        loop_control_exclusive.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
-        loop_control_exclusive.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
+        loop_control_exclusive.add_argument('--loop', action='store_true', default=UNSET, help='Enter a translation loop')
+        loop_control_exclusive.add_argument('--exit', action='store_false', default=UNSET, dest='loop', help='Exit loop')
         return parser
 
 
