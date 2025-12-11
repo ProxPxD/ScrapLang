@@ -27,7 +27,6 @@ TEST_CONF = TMP_DIR / 'test_conf.yaml'
 TMP_DIR.mkdir(exist_ok=True)
 
 
-
 @dataclass
 class InputCase:
     input: Iterable[str] | str
