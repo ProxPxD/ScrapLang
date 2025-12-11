@@ -12,7 +12,7 @@ from ..core.scrap_adapting import ScrapAdapter
 
 class WiktioScrapAdapter(ScrapAdapter):
     def scrap_wiktio_info(self, word: str, lang: str) -> list[Result] | HTTPError | Exception:
-        url = WiktioUrlBuilder.get_wiktio_url(word)
+        url = WiktioUrlBuilder.get_wiktio_api_url(word)
         results = self.scrap(url, self._wrap_parser(word, lang))
         return results
 
