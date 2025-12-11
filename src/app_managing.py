@@ -61,7 +61,7 @@ class AppMgr:
         while self.context.loop:
             from_langs = ','.join(self.context.from_langs)
             to_langs = ','.join(self.context.to_langs)
-            self.printer.print_main(f'{from_langs}>{to_langs} ❯ ', end='')
+            self.printer.print_main(f'{from_langs}>{to_langs} ❯❯ ', end='')
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:

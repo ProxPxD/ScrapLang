@@ -38,6 +38,8 @@ class InputMgr:
                 logging.debug('No words for scrapping, exiting after analysis')
         elif parsed.set or parsed.add or parsed.delete or isinstance(parsed.loop, bool):
             pass
+        elif self.context.loop is True and parsed.reverse:
+            pass
         elif not parsed.words:
             raise InvalidExecution('No word specified!')
         parsed = self.processor.process(parsed)
