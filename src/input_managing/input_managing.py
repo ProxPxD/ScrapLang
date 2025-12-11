@@ -8,6 +8,7 @@ import pydash as _
 from pydash import chain as c
 
 from src.context import Context
+from src.context_domain import UNSET
 from src.exceptions import InvalidExecution
 from src.input_managing.cli import CLI
 from src.input_managing.processing import InputProcessor
@@ -40,8 +41,11 @@ class InputMgr:
             pass
         elif self.context.loop is True and parsed.reverse:
             pass
-        elif not parsed.words:
+        elif not parsed.words and not isinstance(self.context.loop, bool):
             raise InvalidExecution('No word specified!')
         parsed = self.processor.process(parsed)
+
+        parsed.from_langs = parsed.from_langs or self.context.from_langs
+        parsed.to_langs = parsed.to_langs or self.context.to_langs
         self.context.update(**vars(parsed))
         return parsed

@@ -43,11 +43,6 @@ class InputProcessor:
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
-        parsed = self._detect_lang(parsed)
-        parsed = self._fill_last_used(parsed)
-        return parsed
-
-    def _detect_lang(self, parsed: Namespace) -> Namespace:
         if parsed.from_langs:
             logging.debug('There exist "from_lang", not inferring')
             return parsed
@@ -60,6 +55,11 @@ class InputProcessor:
         if isinstance(parsed.loop, bool) or self.context.loop is True:
             logging.debug('Just managing the loop, not inferring')
             return parsed
+        parsed = self._detect_lang(parsed)
+        parsed = self._fill_last_used(parsed)
+        return parsed
+
+    def _detect_lang(self, parsed: Namespace) -> Namespace:
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
             if from_lang := self.detector.detect_simple(parsed.words) and self.detector.is_enough_data_gathered_for_simple():
@@ -102,7 +102,7 @@ class InputProcessor:
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         whole_lang_mapping: Box
         mapped_words = []
-        for from_lang, word in zip(cycle(parsed.from_langs), parsed.words):
+        for from_lang, word in zip(cycle(self.context.from_langs), parsed.words):
             if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
                 mapped_words.append(word)
                 continue

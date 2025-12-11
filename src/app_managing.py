@@ -19,6 +19,7 @@ from src.resouce_managing.data_gathering import DataGatherer
 from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
+from pydash import chain as c
 
 
 class AppMgr:
@@ -59,9 +60,8 @@ class AppMgr:
             self.migration_mgr.migrate()
         self.run_single()
         while self.context.loop:
-            from_langs = ','.join(self.context.from_langs)
-            to_langs = ','.join(self.context.to_langs)
-            self.printer.print_main(f'{from_langs}>{to_langs} ❯❯ ', end='')
+            from_langs, to_langs = c().at('from_langs', 'to_langs').map(','.join)(self.context)
+            self.printer.print_main(f'{from_langs}>{to_langs}❯❯ ', end='')
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:
@@ -79,10 +79,8 @@ class AppMgr:
             return
 
         setup_logging(self.context)
-        # if self.context.exit and args:
-        #     return
-
-        self.run_scrap()
+        if self.context.words:
+            self.run_scrap()
 
     def run_scrap(self) -> None:
         with self.connect():

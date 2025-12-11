@@ -127,7 +127,6 @@ class CLI:
         loop_control_exclusive.add_argument('--exit', '-exit', action='store_false', default=UNSET, dest='loop', help='Exit loop')
         return parser
 
-
     def parse(self, args: list[str]) -> Namespace:
         if not args:
             self.parser.print_help()
