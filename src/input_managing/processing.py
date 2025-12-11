@@ -54,6 +54,9 @@ class InputProcessor:
             return parsed
         if isinstance(parsed.loop, bool) or self.context.loop is True:
             logging.debug('Just managing the loop, not inferring')
+            # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
+            parsed.from_langs = parsed.from_langs or self.context.from_langs
+            parsed.to_langs = parsed.to_langs or self.context.to_langs
             return parsed
         parsed = self._detect_lang(parsed)
         parsed = self._fill_last_used(parsed)
@@ -102,7 +105,7 @@ class InputProcessor:
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
         whole_lang_mapping: Box
         mapped_words = []
-        for from_lang, word in zip(cycle(self.context.from_langs), parsed.words):
+        for from_lang, word in zip(cycle(self.context.from_langs or parsed.from_langs), parsed.words):
             if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
                 mapped_words.append(word)
                 continue

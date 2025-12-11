@@ -39,6 +39,9 @@ class Printer:
     def print_main(self, *args, **kwargs) -> None:
         self.print(*args, **kwargs, color=self.context.color.main)
 
+    def print_secondary(self, *args, **kwargs) -> None:
+        self.print(*args, **kwargs, color=self.context.color.pronunciation)
+
     def print_result(self, outcome: Outcome) -> None:
         match outcome.kind:
             case OutcomeKinds.MAIN_GROUP_SEPERATOR:
@@ -62,7 +65,7 @@ class Printer:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
     def color(self, to_color, color: str | tuple[int, int, int]) -> str:
-        return colored(to_color, color)
+        return colored(to_color, tuple(color) if color and not isinstance(color, str) else color)
 
     def print_separator(self, group: str, sep: str) -> None:
         bias = len(group)
