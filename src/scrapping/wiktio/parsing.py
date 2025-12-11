@@ -56,7 +56,7 @@ class WiktioParser(Parser):
 
     @classmethod
     def _get_target_section_batches(cls, tag: Tag, lang: str) -> dict[str, list[PageElement]]:
-        main = tag.select_one('main.mw-body div.mw-body-content div.mw-content-ltr.mw-parser-output')
+        main = tag.select_one('div.mw-content-ltr.mw-parser-output')
         lang_batches = cls._split_for_class(main, 'mw-heading2')
         target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki[lang].__eq__))
         section_batches = cls._split_for_class(target_lang_batch, 'mw-heading')
