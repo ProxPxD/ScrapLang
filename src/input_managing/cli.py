@@ -90,7 +90,6 @@ class CLI:
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         # Translation Modes
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
-        permutations('oi ', 3)
 
         translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang side to apply the mode to', choices=at, default='none')
         translation_mode_group.add_argument(*tuple(AtSpecifierAction.side_mode_fusions()), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
