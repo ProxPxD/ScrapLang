@@ -59,7 +59,7 @@ class AppMgr:
             self.migration_mgr.migrate()
         self.run_single()
         while self.context.loop:
-            self.printer.print('❯ ', end='', color=self.context.color.main)
+            self.printer.print_main('❯ ', end='')
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:

@@ -36,6 +36,9 @@ class Printer:
         args = _.map_(args, partial(self.color, color=color))
         self._printer(*args, **kwargs)
 
+    def print_main(self, *args, **kwargs) -> None:
+        self.print(*args, **kwargs, color=self.context.color.main)
+
     def print_result(self, outcome: Outcome) -> None:
         match outcome.kind:
             case OutcomeKinds.MAIN_GROUP_SEPERATOR:
