@@ -175,6 +175,7 @@ class SystemTCG(TCG):
             ),
             TC(
                 descr='Assume rainy resolution',
+                tags={'assume', 'rainy'},
                 input={
                     'es pl de --assume lang'
                 },

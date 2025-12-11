@@ -41,7 +41,7 @@ class InputMgr:
             pass
         elif self.context.loop is True and parsed.reverse:
             pass
-        elif not parsed.words and not isinstance(self.context.loop, bool):
+        elif not parsed.words and self.context.get_only_from_context('loop') is UNSET:
             raise InvalidExecution('No word specified!')
         parsed = self.processor.process(parsed)
 

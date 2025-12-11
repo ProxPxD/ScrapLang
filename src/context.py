@@ -193,6 +193,13 @@ class Context:
         self._conf: Conf = conf
         self.update(**conf.model_dump())
 
+    def get_only_from_context(self, name: str) -> Any:
+        try:
+            return super().__getattribute__(name)
+        except AttributeError as ar:
+            if ar.args[0] != f"'{Context.__name__}' object has no attribute '{name}'":
+                raise ar
+
     def __getattribute__(self, name: str) -> Any:
         try:
             if (val := super().__getattribute__(name)) is not UNSET:
