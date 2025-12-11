@@ -57,7 +57,7 @@ class InputProcessor:
         if parsed.reanalyze:
             logging.debug('Just reanalyzing, not inferring')
             return parsed
-        if parsed.loop or parsed.exit:
+        if isinstance(parsed.loop, bool):
             logging.debug('Just managing the loop, not inferring')
             return parsed
         if self.context.infervia in {'all', 'ai'} and self.detector:
