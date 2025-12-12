@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import re
 from collections import defaultdict
 from dataclasses import dataclass, asdict, field, replace
-from typing import Iterator, Iterable, Callable, Sequence
+from typing import Iterator, Iterable, Callable, Sequence, TYPE_CHECKING
+from urllib.parse import unquote
 
 import pydash as _
 from bs4 import PageElement
 from bs4.element import Tag
 from more_itertools import split_before, last, split_at
-from pandas import DataFrame
 
 from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
 from ...constants import supported_languages
+
+if TYPE_CHECKING:
+    from .scrap_adapting import WiktioScrapAdapter
 
 
 @dataclass(frozen=True)
@@ -57,8 +62,8 @@ class WiktioParser(Parser):
     @classmethod
     def _get_target_section_batches(cls, tag: Tag, lang: str) -> dict[str, list[PageElement]]:
         main = tag.select_one('div.mw-content-ltr.mw-parser-output')
-        lang_batches = cls._split_for_class(main, 'mw-heading2')
-        target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki[lang].__eq__))
+        lang_batches = list(cls._split_for_class(main, 'mw-heading2'))
+        target_lang_batch = next(cls._filter_for_firsts(lang_batches, cls.code_to_wiki.get(lang, lang).__eq__))
         section_batches = cls._split_for_class(target_lang_batch, 'mw-heading')
         section_dict = cls._dictify_section_batches(section_batches)
         return section_dict
@@ -84,7 +89,7 @@ class WiktioParser(Parser):
 
     @classmethod
     @with_ensured_tag
-    def parse(cls, tag: Tag | str, lang: str) -> WiktioResult | ParsingException:
+    def parse(cls, tag: Tag | str, lang: str, adapter: WiktioScrapAdapter) -> WiktioResult | ParsingException:
         # TODO: Norwegian "land" -- "imperative of lande" is not parsed
         # TODO: Norwegian "like" -- etymology problem
         # TODO: es "diapositiva" -- etymology is css features as text
@@ -92,12 +97,12 @@ class WiktioParser(Parser):
             section_dict = cls._get_target_section_batches(tag, lang)
         except StopIteration:
             return ParsingException(f'Lang "{lang}" does not have word')
-        result = cls._major_parse(section_dict)
+        result = cls._major_parse(section_dict, lang, adapter)
         result = cls._postprocess(result)
         return result
 
     @classmethod
-    def _major_parse(cls, section_dict: dict[str, list[PageElement]]) -> WiktioResult:
+    def _major_parse(cls, section_dict: dict[str, list[PageElement]], lang: str, adapter: WiktioScrapAdapter) -> WiktioResult:
         result = WiktioResult()
         under_surf_mapping = asdict(SurfacingEquivalents())
         for surf, section in section_dict.items():
@@ -109,7 +114,7 @@ class WiktioParser(Parser):
                 meanings.append([])
             if len(submeanings := meanings[major - 1]) < minor:
                 submeanings.append(replace(submeanings[minor - 2]) if submeanings else Meaning())
-            submeanings[minor - 1] = cls._parse_section(under, submeanings[minor - 1], section)
+            submeanings[minor - 1] = cls._parse_section(under, submeanings[minor - 1], section, lang, adapter)
         return result
 
     @classmethod
@@ -117,12 +122,12 @@ class WiktioParser(Parser):
         return {key: section for key, section in section_dict.items() if any(key.startswith(form) for form in surf_forms)}
 
     @classmethod
-    def _parse_section(cls, kind: str, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
+    def _parse_section(cls, kind: str, dc: Meaning | WiktioResult, section: list[PageElement], lang: str, adapter: WiktioScrapAdapter) -> Meaning | WiktioResult:
         parse = getattr(cls, f'_parse_{kind}')
-        return parse(dc, section)
+        return parse(dc, section, lang, adapter)
 
     @classmethod
-    def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
+    def _parse_pos(cls, dc: Meaning | WiktioResult, section: list[PageElement], *args, **kwargs) -> Meaning | WiktioResult:
         rel_data_tags = list(next((tag for tag in section if isinstance(tag, Tag) and tag.name == 'p')).next.children)
         outer, *brackets = list(split_before(rel_data_tags, lambda t: t.name == 'i', maxsplit=1))
         if brackets:
@@ -135,7 +140,7 @@ class WiktioParser(Parser):
         return dc
 
     @classmethod
-    def _parse_pronunciation(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
+    def _parse_pronunciation(cls, dc: Meaning | WiktioResult, section: list[PageElement], *args, **kwargs) -> Meaning | WiktioResult:
         pronunciation_tags = [(tag.select_one('span.ib-content.qualifier-content'), tag.select('span.IPA:not(ul ul span.IPA)'))
                           for tag in list(cls.filter_to_tags(section))[1] if 'IPA' in tag.text]
         pronunciations = [Pronunciation(name=name_tag.text if name_tag else None, ipas=[ipa_tag.text for ipa_tag in ipa_tags])
@@ -144,7 +149,7 @@ class WiktioParser(Parser):
         return dc
 
     @classmethod
-    def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement]) -> Meaning | WiktioResult:
+    def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement], lang: str, adapter: WiktioScrapAdapter, *args, **kwargs) -> Meaning | WiktioResult:
         content = next((tag for tag in section if tag.name == 'p' and tag.text), [])  # Cognate is later
         if not content:
             return dc
@@ -155,7 +160,17 @@ class WiktioParser(Parser):
         if first_from := etymology_chain[0].startswith('From'):
             fromables.insert(0, etymology_chain[0].removeprefix('From'))
         frommeds = [f'from {fromable}'.removesuffix('.') for fromable in fromables]
+        language = cls.code_to_wiki.get(lang, lang)
         etymology_chain = frommeds if first_from else [etymology_chain[0]] + frommeds
+        if f'Inherited from Old {language}' in (etymology_chain[-1] if etymology_chain else ''):
+            # TODO: test further scrapping
+            from .scrap_adapting import WiktioScrapAdapter
+            href = next((elem for elem in reversed(list(content.children)) if isinstance(elem, Tag))).next.attrs['href']
+            further_word, further_language = href.removeprefix('/wiki/').split('#')
+            result: WiktioResult = adapter.scrap_wiktio_info(unquote(further_word), further_language.replace('_', ' '))
+            meaninigs: list[Meaning] = result.etymology or result.structed_meanings[0] if len(result.structed_meanings) else []
+            further_etymologies = meaninigs[0].etymology
+            frommeds.extend(further_etymologies)
         dc = replace(dc, etymology=[sent.replace('  ', ' ') for sent in etymology_chain])
         return dc
 

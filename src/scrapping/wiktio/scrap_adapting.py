@@ -21,10 +21,9 @@ class WiktioScrapAdapter(ScrapAdapter):
         results = self.scrap(url, self._wrap_parser(word, lang), params=params)
         return results
 
-    @classmethod
-    def _wrap_parser(cls, word: str, lang: str):
+    def _wrap_parser(self, word: str, lang: str):
         def parse(response: Response) -> WiktioResult | Exception:
-            match result := WiktioParser.parse(Box(response.json()).parse.text['*'], lang):
+            match result := WiktioParser.parse(Box(response.json()).parse.text['*'], lang, self):
                 case WiktioResult(): return replace(result, word=word)
                 case ParsingException(): return ParsingException(result.args[0] + f' "{word}"')
         return parse
