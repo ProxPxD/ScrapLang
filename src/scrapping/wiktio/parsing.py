@@ -5,6 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass, asdict, field, replace
 from typing import Iterator, Iterable, Callable, Sequence, TYPE_CHECKING
 from urllib.parse import unquote
+from pydash import chain as c
 
 import pydash as _
 from bs4 import PageElement
@@ -150,7 +151,10 @@ class WiktioParser(Parser):
 
     @classmethod
     def _parse_etymology(cls, dc: Meaning | WiktioResult, section: list[PageElement], lang: str, adapter: WiktioScrapAdapter, *args, **kwargs) -> Meaning | WiktioResult:
-        content = next((tag for tag in section if tag.name == 'p' and tag.text), [])  # Cognate is later
+        section_it = list(section)  # Has to be "iter"
+        content = next((tag for tag in section_it if tag.name == 'p' and tag.text), None)  # Cognate is later
+        if not content and isinstance(section, Tag):
+            return replace(dc, etymology=[section.text.replace('  ', ' ')])
         if not content:
             return dc
         etymology_chain = _.filter_(content.text.strip().split(', from'))
@@ -160,17 +164,28 @@ class WiktioParser(Parser):
         if first_from := etymology_chain[0].startswith('From'):
             fromables.insert(0, etymology_chain[0].removeprefix('From'))
         frommeds = [f'from {fromable}'.removesuffix('.') for fromable in fromables]
-        language = cls.code_to_wiki.get(lang, lang)
         etymology_chain = frommeds if first_from else [etymology_chain[0]] + frommeds
-        if f'Inherited from Old {language}' in (etymology_chain[-1] if etymology_chain else ''):
+
+        possibilities_section = next((tag for tag in section_it if tag.name == 'ul' and tag.text), None)
+        if possibilities_section:  # TODO: A simplified unordered way
+            li_tags = [tag for tag in possibilities_section.children if tag.name == 'li']
+            pot_etymologies = [cls._parse_etymology(dc, li_tag, lang, adapter) for li_tag in li_tags]
+            etymology_chain.extend(_.flat_map(pot_etymologies, c().get('etymology')))
+
+        if f'Inherited from' in _.get(etymology_chain, -1, ''):
             # TODO: test further scrapping
             from .scrap_adapting import WiktioScrapAdapter
             href = next((elem for elem in reversed(list(content.children)) if isinstance(elem, Tag))).next.attrs['href']
-            further_word, further_language = href.removeprefix('/wiki/').split('#')
-            result: WiktioResult = adapter.scrap_wiktio_info(unquote(further_word), further_language.replace('_', ' '))
-            meaninigs: list[Meaning] = result.etymology or result.structed_meanings[0] if len(result.structed_meanings) else []
-            further_etymologies = meaninigs[0].etymology
-            frommeds.extend(further_etymologies)
+            further_word, further_language = re.split('[#/]', href.removeprefix('/wiki/'))
+            if further_word.startswith(RECONSTRUCTION:='Reconstruction:'):
+                further_word, further_language = further_language, further_word
+                further_word = f'{further_language}/{further_word}'  # It's intuitive, but it's the equivalent of how wiktionary structures it
+                further_language = further_language.removeprefix(RECONSTRUCTION)
+            result: WiktioResult | ParsingException = adapter.scrap_wiktio_info(unquote(further_word), further_language.replace('_', ' '))
+            if isinstance(result, WiktioResult):
+                meaninigs: list[Meaning] = result.etymology or result.structed_meanings[0] if len(result.structed_meanings) else []
+                further_etymologies = meaninigs[0].etymology
+                etymology_chain.extend(further_etymologies)
         dc = replace(dc, etymology=[sent.replace('  ', ' ') for sent in etymology_chain])
         return dc
 
