@@ -81,7 +81,7 @@ class ValidDataMgr:
     def is_arg_set_valid(self, kinds: Collection[str], lang_arg: str) -> Callable[[Outcome], bool]:
         return lambda o: _.over_every([
             c().get('kind').apply(kinds.__contains__),
-            c().get(f'args.{lang_arg}').apply(self.context.all_langs.__contains__),
+            c().get(f'args.{lang_arg}').apply(self.context.langs.__contains__),
             lambda o: isinstance(o.results, Sized) and len(o.results) > 1 or isinstance(o.results, DataFrame)
         ])(o)
 
