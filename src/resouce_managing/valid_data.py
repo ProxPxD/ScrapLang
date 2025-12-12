@@ -121,6 +121,8 @@ class ValidDataMgr:
     @classmethod
     def _merge_matching(cls, df: DataFrame) -> DataFrame:
         def process_group(group: DataFrameGroupBy):
+            if group.shape[0] <= 1:
+                return group
             other_columns_i = group.columns.to_list().index(VDC.DIALECT)
             other_columns = group.columns[other_columns_i:]
             notna = group[other_columns].notna()
