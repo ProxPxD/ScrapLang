@@ -23,7 +23,10 @@ class WiktioScrapAdapter(ScrapAdapter):
 
     def _wrap_parser(self, word: str, lang: str):
         def parse(response: Response) -> WiktioResult | Exception:
-            match result := WiktioParser.parse(Box(response.json()).parse.text['*'], lang, self):
+            page = Box(response.json(), default_box=True)
+            if page.error:
+                return ParsingException(page.error.info + f': "{response.url}"')
+            match result := WiktioParser.parse(page.parse.text['*'], lang, self):
                 case WiktioResult(): return replace(result, word=word)
                 case ParsingException(): return ParsingException(result.args[0] + f' "{word}"')
         return parse
