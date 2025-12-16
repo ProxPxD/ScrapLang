@@ -90,7 +90,7 @@ class ValidDataMgr:
         args = (lang_arg:='lang', 'word')
         for lang, word in c(scrap_results).filter(self.is_arg_set_valid(kinds, lang_arg)).map(c().get('args').at(*args)).value():
             yield lang, word, False
-            if self.context.is_mapped(word):
+            if word in self.context.words and self.context.is_mapped(word):
                 yield lang, self.context.get_unmmapped(word), True
 
     def _gather_for_from_main_translations(self, scrap_results: Iterable[Outcome]) -> Iterable[Sequence[str]]:
