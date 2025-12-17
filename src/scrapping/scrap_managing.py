@@ -46,14 +46,14 @@ class ScrapMgr:
                 yield self.scrap_inflections(from_lang, word)
             if scrap_it.is_at_translation():
                 main = self.scrap_main_translations(from_lang, to_lang, word)
-                if context.is_at_to() and scrap_it.is_at_inflection():
+                if context.is_at_to() and scrap_it.is_at_inflection() and main.is_success():  # TODO: test is_success (ex. lubieć -it instread of lubić)
                     yield self.scrap_inflections(to_lang, main.results[0].word)
                 yield main
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
-                if context.is_at_to() and scrap_it.is_at_wiktio():
+                if context.is_at_to() and scrap_it.is_at_wiktio() and main.is_success():
                     yield self.scrap_wiktio(to_lang, main.results[0].word)
-                if context.is_at_to() and scrap_it.is_at_definition():
+                if context.is_at_to() and scrap_it.is_at_definition() and main.is_success():
                     yield self.scrap_wiktio(to_lang, main.results[0].word)
             if context.is_at_from() and scrap_it.is_at_wiktio():
                 yield self.scrap_wiktio(from_lang, word)
