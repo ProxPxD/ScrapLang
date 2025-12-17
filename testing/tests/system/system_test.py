@@ -114,7 +114,7 @@ class SystemTCG(TCG):
                 },
                 output=(frau_translation := '''
                             Frau: kobieta (noun) [feminine], żona (noun) [feminine], pani (noun) [abbreviation], małżonka, babka, mężatka, lady, Pani, kobièta, dama, WPani, facetka, kobita, kobitka, panna, ona, niewiasta, baba, samica, białogłowa, dupa, babsko, czyściocha, jejmość, p.
-                ''')
+                '''.strip())
             ),
             TC(
                 descr=f'Conf Loading',
@@ -388,7 +388,7 @@ class SystemTCG(TCG):
                 tags={'inflection'},
                 input=[
                     IC(
-                        tags={'inflection', 'nontranslate', 'permutation', 'position'},
+                        tags={'nontranslate', 'permutation', 'position'},
                         input=_.map_(permutations({'Frau', 'de', '-i'}, 3), ' '.join),
                         context=(frau_infl_context := {
                             'from_langs': ('de',),
@@ -403,7 +403,7 @@ class SystemTCG(TCG):
                             │ 2 │ dative     │ einer │ der │ Frau │ den │ Frauen │
                             │ 3 │ accusative │ eine  │ die │ Frau │ die │ Frauen │
                             ╰───┴────────────┴───────┴─────┴──────┴─────┴────────╯
-                        ''')
+                        '''.strip())
                     ),
                     IC(
                         input='Frau de <INFL_FLAG>',
@@ -413,6 +413,34 @@ class SystemTCG(TCG):
                     IC(
                         input='слать ru -i',
                         context={'inflection': True},
+                    ),
+                    IC(
+                        tags={'inflection/double'},
+                        input='Frau Herr de -i --groupby=lang',
+                        context={'inflection': True},
+                        output=f'''
+                            {frau_inflection}
+                            ╭───┬────────────┬───────┬─────┬───────┬─────┬────────╮
+                            │ 0 │ nominative │ ein   │ der │ Herr  │ die │ Herren │
+                            │ 1 │ genitive   │ eines │ des │ Herrn │ der │ Herren │
+                            │ 2 │ dative     │ einem │ dem │ Herrn │ den │ Herren │
+                            │ 3 │ accusative │ einen │ den │ Herrn │ die │ Herren │
+                            ╰───┴────────────┴───────┴─────┴───────┴─────┴────────╯
+                        ''',
+                    ),
+                    IC(
+                        tags={'inflection/double'},
+                        input='Frau Herr de -i --groupby=word',
+                        context={'inflection': True},
+                        output=f'''
+                            {frau_inflection}
+                            ╭───┬────────────┬───────┬─────┬───────┬─────┬────────╮
+                            │ 0 │ nominative │ ein   │ der │ Herr  │ die │ Herren │
+                            │ 1 │ genitive   │ eines │ des │ Herrn │ der │ Herren │
+                            │ 2 │ dative     │ einem │ dem │ Herrn │ den │ Herren │
+                            │ 3 │ accusative │ einen │ den │ Herrn │ die │ Herren │
+                            ╰───┴────────────┴───────┴─────┴───────┴─────┴────────╯
+                        ''',
                     ),
                 ],
                 conf=(assume_langs_pl_de_en_es_ru := Box({
@@ -476,13 +504,41 @@ class SystemTCG(TCG):
                                   - from Proto-West Germanic *frauwjā
                                   - from Proto-Germanic *frawjǭ, a feminine form of *frawjô (“lord”), giving Old English frēa (“lord, king; God, Christ; husband”), frēo (“woman”)
                                   - from Proto-Indo-European *proHwo-, a derivation from *per- (“to go forward”)
-                        '''),
+                        '''.strip()),
                     ),
                     IC(
                         input='Frau <OVERVIEW_FLAG> de',
                         replacement={
-                            'OVERVIEW_FLAG': ['--wiktio', '-wiktio', '--overview', '-overview', '-o',]},
+                            'OVERVIEW_FLAG': ['--wiktio', '-wiktio', '--overview', '-overview', '-o', ]},
                         context=frau_overview_context,
+                    ),
+                    IC(
+                        tags={'wiktio/double', 'overview/double'},
+                        input='Frau Herr de -o --groupby=word',
+                        output=f'''
+                            {frau_overview}
+                            Herr: 
+                            meanings:
+                              • /hɛr/, [hɛʁ], [hɛr], [hɛɐ̯] [PoS: Noun, gender: m, weak, genitive: Herrn or (archaic) Herren, plural: Herren or (archaic) Herrn, diminutive: Herrchen n or Herrlein n, feminine: Herrin]
+                                etymology:
+                                  - from Middle High German hērre, hërre
+                                  - from Old High German hēriro, hērro (“grey, grey-haired”), the comparative form of hēr (“noble, venerable”) (by analogy with Latin senior (“elder”))
+                                  - from Proto-Germanic *hairaz (“grey”)
+                        '''
+                    ),
+                    IC(
+                        tags={'wiktio/double', 'overview/double'},
+                        input='Frau Herr de -o --groupby=lang',
+                        output=f'''
+                            {frau_overview}
+                            Herr: 
+                            meanings:
+                              • /hɛr/, [hɛʁ], [hɛr], [hɛɐ̯] [PoS: Noun, gender: m, weak, genitive: Herrn or (archaic) Herren, plural: Herren or (archaic) Herrn, diminutive: Herrchen n or Herrlein n, feminine: Herrin]
+                                etymology:
+                                  - from Middle High German hērre, hërre
+                                  - from Old High German hēriro, hērro (“grey, grey-haired”), the comparative form of hēr (“noble, venerable”) (by analogy with Latin senior (“elder”))
+                                  - from Proto-Germanic *hairaz (“grey”)
+                        '''
                     ),
                 ],
                 conf=assume_langs_pl_de_en_es_ru,
@@ -757,7 +813,7 @@ class SystemTCG(TCG):
                             'words': {'Frau'},
                             'from_langs': ('de',),
                         },
-                        output=''.join((frau_inflection.rstrip(), frau_overview.rstrip(), frau_definition)),
+                        output=''.join((frau_inflection, frau_overview, frau_definition)),
                     ),
                     IC(
                         tags={'translate', 'side/from', 'at', 'wiktio', 'overview', 'definition', 'inflection'},
@@ -771,8 +827,8 @@ class SystemTCG(TCG):
                             'from_langs': ('de',),
                         },
                         output=''.join((
-                            frau_inflection.rstrip(),
-                            frau_translation.rstrip(),
+                            frau_inflection,
+                            frau_translation,
                             '\n'.join(line for line in frau_overview.split('\n') if 'Frau:' not in line),
                             frau_definition.replace(' of "Frau"', '')
                         )),
