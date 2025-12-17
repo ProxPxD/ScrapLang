@@ -324,7 +324,10 @@ class Context:
         return [o != w for o, w in zip(self.unmapped, self.words)]
 
     def is_mapped(self, word: str) -> bool:
-        i = self.words.index(word)
+        try:
+            i = self.words.index(word)
+        except ValueError:
+            return False
         return self.is_mappeds[i]
 
     def get_unmmapped(self, word: str) -> str:
