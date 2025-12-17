@@ -418,8 +418,7 @@ class SystemTCG(TCG):
                         tags={'inflection/double'},
                         input='Frau Herr de -i --groupby=lang',
                         context={'inflection': True},
-                        output=f'''
-                            {frau_inflection}
+                        output=f'''{frau_inflection}
                             ╭───┬────────────┬───────┬─────┬───────┬─────┬────────╮
                             │ 0 │ nominative │ ein   │ der │ Herr  │ die │ Herren │
                             │ 1 │ genitive   │ eines │ des │ Herrn │ der │ Herren │
@@ -432,8 +431,7 @@ class SystemTCG(TCG):
                         tags={'inflection/double'},
                         input='Frau Herr de -i --groupby=word',
                         context={'inflection': True},
-                        output=f'''
-                            {frau_inflection}
+                        output=f'''{frau_inflection}
                             ╭───┬────────────┬───────┬─────┬───────┬─────┬────────╮
                             │ 0 │ nominative │ ein   │ der │ Herr  │ die │ Herren │
                             │ 1 │ genitive   │ eines │ des │ Herrn │ der │ Herren │
@@ -515,8 +513,7 @@ class SystemTCG(TCG):
                     IC(
                         tags={'wiktio/double', 'overview/double'},
                         input='Frau Herr de -o --groupby=word',
-                        output=f'''
-                            {frau_overview}
+                        output=f'''{frau_overview}
                             Herr: 
                             meanings:
                               • /hɛr/, [hɛʁ], [hɛr], [hɛɐ̯] [PoS: Noun, gender: m, weak, genitive: Herrn or (archaic) Herren, plural: Herren or (archaic) Herrn, diminutive: Herrchen n or Herrlein n, feminine: Herrin]
@@ -529,8 +526,7 @@ class SystemTCG(TCG):
                     IC(
                         tags={'wiktio/double', 'overview/double'},
                         input='Frau Herr de -o --groupby=lang',
-                        output=f'''
-                            {frau_overview}
+                        output=f'''{frau_overview}
                             Herr: 
                             meanings:
                               • /hɛr/, [hɛʁ], [hɛr], [hɛɐ̯] [PoS: Noun, gender: m, weak, genitive: Herrn or (archaic) Herren, plural: Herren or (archaic) Herrn, diminutive: Herrchen n or Herrlein n, feminine: Herrin]
