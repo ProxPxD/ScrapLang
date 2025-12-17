@@ -114,7 +114,7 @@ class SystemTCG(TCG):
                 },
                 output=(frau_translation := '''
                             Frau: kobieta (noun) [feminine], żona (noun) [feminine], pani (noun) [abbreviation], małżonka, babka, mężatka, lady, Pani, kobièta, dama, WPani, facetka, kobita, kobitka, panna, ona, niewiasta, baba, samica, białogłowa, dupa, babsko, czyściocha, jejmość, p.
-                '''.strip())
+                '''.strip('\n'))
             ),
             TC(
                 descr=f'Conf Loading',
@@ -403,7 +403,7 @@ class SystemTCG(TCG):
                             │ 2 │ dative     │ einer │ der │ Frau │ den │ Frauen │
                             │ 3 │ accusative │ eine  │ die │ Frau │ die │ Frauen │
                             ╰───┴────────────┴───────┴─────┴──────┴─────┴────────╯
-                        '''.strip())
+                        '''.strip('\n'))
                     ),
                     IC(
                         input='Frau de <INFL_FLAG>',
@@ -504,7 +504,7 @@ class SystemTCG(TCG):
                                   - from Proto-West Germanic *frauwjā
                                   - from Proto-Germanic *frawjǭ, a feminine form of *frawjô (“lord”), giving Old English frēa (“lord, king; God, Christ; husband”), frēo (“woman”)
                                   - from Proto-Indo-European *proHwo-, a derivation from *per- (“to go forward”)
-                        '''.strip()),
+                        '''.strip('\n')),
                     ),
                     IC(
                         input='Frau <OVERVIEW_FLAG> de',
@@ -813,7 +813,7 @@ class SystemTCG(TCG):
                             'words': {'Frau'},
                             'from_langs': ('de',),
                         },
-                        output=''.join((frau_inflection, frau_overview, frau_definition)),
+                        output='\n'.join((frau_inflection, frau_overview, frau_definition)),
                     ),
                     IC(
                         tags={'translate', 'side/from', 'at', 'wiktio', 'overview', 'definition', 'inflection'},
@@ -826,7 +826,7 @@ class SystemTCG(TCG):
                             'words': {'Frau'},
                             'from_langs': ('de',),
                         },
-                        output=''.join((
+                        output='\n'.join((
                             frau_inflection,
                             frau_translation,
                             '\n'.join(line for line in frau_overview.split('\n') if 'Frau:' not in line),
@@ -996,9 +996,11 @@ class SystemTCG(TCG):
 
     @classmethod
     def regularize_output(cls, output: str) -> str:
-        if not output or len(lines := output.split('\n')) < 3:
+        if not output:
             return output
-        lines = lines[1:-1]
+        lines = output.split('\n')
+        lines = lines[1:] if not lines[0].strip() else lines
+        lines = lines[:-1] if not lines[-1].strip() else lines
         n_spaces = len(lines[0]) - len(lines[0].lstrip(' '))
         refined = c(lines).map(lambda line: line[n_spaces:].rstrip()).join('\n').value()
         return refined
