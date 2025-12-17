@@ -8,7 +8,7 @@ from urllib.parse import unquote
 from pydash import chain as c
 
 import pydash as _
-from bs4 import PageElement
+from bs4 import PageElement, NavigableString
 from bs4.element import Tag
 from more_itertools import split_before, last, split_at
 
@@ -175,13 +175,18 @@ class WiktioParser(Parser):
         if f'Inherited from' in _.get(etymology_chain, -1, ''):
             # TODO: test further scrapping
             from .scrap_adapting import WiktioScrapAdapter
-            href = next((elem for elem in reversed(list(content.children)) if isinstance(elem, Tag))).next.attrs['href']
-            further_word, further_language = re.split('[#/]', href.removeprefix('/wiki/'))
+            last_tag = next((elem for elem in reversed(list(content.children)) if isinstance(elem, Tag) and elem.name != 'span'))
+            href = last_tag.next.attrs['href']
+            further_word, further_lang = re.split('[#/]', href.removeprefix('/wiki/'))
+            if not further_word:
+                further_word = last_tag.text
+            if ':' in further_lang:
+                further_lang = further_lang.split(':')[0].removeprefix('#')
             if further_word.startswith(RECONSTRUCTION:='Reconstruction:'):
-                further_word, further_language = further_language, further_word
-                further_word = f'{further_language}/{further_word}'  # It's intuitive, but it's the equivalent of how wiktionary structures it
-                further_language = further_language.removeprefix(RECONSTRUCTION)
-            result: WiktioResult | ParsingException = adapter.scrap_wiktio_info(unquote(further_word), further_language.replace('_', ' '))
+                further_word, further_lang = further_lang, further_word
+                further_word = f'{further_lang}/{further_word}'  # It's intuitive, but it's the equivalent of how wiktionary structures it
+                further_lang = further_lang.removeprefix(RECONSTRUCTION)
+            result: WiktioResult | ParsingException = adapter.scrap_wiktio_info(unquote(further_word), further_lang.replace('_', ' '))
             if isinstance(result, WiktioResult):
                 meaninigs: list[Meaning] = result.etymology or result.structed_meanings[0] if len(result.structed_meanings) else []
                 further_etymologies = meaninigs[0].etymology
