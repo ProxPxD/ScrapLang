@@ -258,7 +258,7 @@ class Context:
     @property
     def n_all_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
         match self.groupby:
-            case 'lang': return self.n_from_langs * len(list(self.from_lang_word_bundles))
+            case 'lang': return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
             case 'word': return self.n_from_langs * len(self.to_langs)
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
