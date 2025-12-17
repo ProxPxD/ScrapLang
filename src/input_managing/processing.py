@@ -28,6 +28,7 @@ class InputProcessor:
         parsed = self._word_outstemming(parsed)
         parsed = self._fill_args(parsed)
         parsed = self._reverse_if_needed(parsed)
+        parsed = self._uniq_langs(parsed)
         origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
         parsed.unmapped = origs
