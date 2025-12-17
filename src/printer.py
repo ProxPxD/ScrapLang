@@ -65,7 +65,9 @@ class Printer:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
     def color(self, to_color, color: str | tuple[int, int, int]) -> str:
-        return colored(to_color, tuple(color) if color and not isinstance(color, str) else color)
+        if not color:
+            return to_color
+        return colored(to_color, tuple(color) if not isinstance(color, str) else color)
 
     def print_separator(self, group: str, sep: str) -> None:
         bias = len(group)
@@ -87,8 +89,8 @@ class Printer:
 
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
-        translation_row = self.create_translation_row(outcome)
         colored_prefix = self.color(prefix, self.context.color.main)
+        translation_row = self.create_translation_row(outcome)
         self.print(f'{colored_prefix}{translation_row}')
         return outcome.is_success()
 
