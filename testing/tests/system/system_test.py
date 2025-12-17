@@ -114,7 +114,7 @@ class SystemTCG(TCG):
                 },
                 output=(frau_translation := '''
                             Frau: kobieta (noun) [feminine], żona (noun) [feminine], pani (noun) [abbreviation], małżonka, babka, mężatka, lady, Pani, kobièta, dama, WPani, facetka, kobita, kobitka, panna, ona, niewiasta, baba, samica, białogłowa, dupa, babsko, czyściocha, jejmość, p.
-                '''.strip('\n'))
+                '''.strip('\n').rstrip())
             ),
             TC(
                 descr=f'Conf Loading',
@@ -403,7 +403,7 @@ class SystemTCG(TCG):
                             │ 2 │ dative     │ einer │ der │ Frau │ den │ Frauen │
                             │ 3 │ accusative │ eine  │ die │ Frau │ die │ Frauen │
                             ╰───┴────────────┴───────┴─────┴──────┴─────┴────────╯
-                        '''.strip('\n'))
+                        '''.strip('\n').rstrip())
                     ),
                     IC(
                         input='Frau de <INFL_FLAG>',
@@ -502,7 +502,7 @@ class SystemTCG(TCG):
                                   - from Proto-West Germanic *frauwjā
                                   - from Proto-Germanic *frawjǭ, a feminine form of *frawjô (“lord”), giving Old English frēa (“lord, king; God, Christ; husband”), frēo (“woman”)
                                   - from Proto-Indo-European *proHwo-, a derivation from *per- (“to go forward”)
-                        '''.strip('\n')),
+                        '''.strip('\n').rstrip()),
                     ),
                     IC(
                         input='Frau <OVERVIEW_FLAG> de',
