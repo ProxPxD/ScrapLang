@@ -15,7 +15,7 @@ from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
 from src.migration_managing import MigrationManager
 from src.printer import Printer
-from src.resouce_managing.data_gathering import DataGatherer
+from src.input_managing.data_gathering import DataGatherer
 from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
