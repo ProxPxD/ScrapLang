@@ -4,6 +4,7 @@ import re
 from argparse import Namespace
 from functools import reduce
 from itertools import cycle
+from typing import Optional
 
 import pydash as _
 from box import Box
@@ -41,27 +42,36 @@ class InputProcessor:
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
+        if msg := self._is_filling_needless(parsed):
+            logging.debug(msg)
+            return parsed
+        parsed, is_mged = self._mg_loop_args(parsed)
+        if is_mged:
+            return parsed
+        parsed = self._infer_lang(parsed)
+        parsed = self._fill_last_used(parsed)
+        return parsed
+
+    def _is_filling_needless(self, parsed: Namespace) -> Optional[str]:
         # TODO: add test for verifying argument fullfilling if only from_lang is specified
         if parsed.from_langs and parsed.to_langs:
-            logging.debug('There exist "from_lang", not inferring')
-            return parsed
+            return 'There exist from- and to- langs, not inferring'
         if parsed.set or parsed.add or parsed.delete:
-            logging.debug('Conf editing is run, not inferring')
-            return parsed
+            return 'Conf editing is run, not inferring'
         if parsed.reanalyze:
-            logging.debug('Just reanalyzing, not inferring')
-            return parsed
-        if isinstance(parsed.loop, bool) or self.context.loop is True:
+            return 'Just reanalyzing, not inferring'
+        return None
+
+    def _mg_loop_args(self, parsed: Namespace) -> tuple[Namespace, bool]:
+        is_mging = isinstance(parsed.loop, bool) or self.context.loop is True
+        if is_mging:
             logging.debug('Just managing the loop, not inferring')
             # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
             parsed.from_langs = parsed.from_langs or self.context.from_langs
             parsed.to_langs = parsed.to_langs or self.context.to_langs
-            return parsed
-        parsed = self._detect_lang(parsed)
-        parsed = self._fill_last_used(parsed)
-        return parsed
+        return parsed, is_mging
 
-    def _detect_lang(self, parsed: Namespace) -> Namespace:
+    def _infer_lang(self, parsed: Namespace) -> Namespace:
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
             if from_lang := self.detector.detect_simple(parsed.words) and self.detector.is_enough_data_gathered_for_simple():
