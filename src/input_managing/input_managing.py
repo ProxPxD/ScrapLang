@@ -11,13 +11,11 @@ from src.exceptions import InvalidExecution
 from src.input_managing.cli import CLI
 from src.input_managing.processing import InputProcessor
 from src.lang_detecting.preprocessing.data import DataProcessor
-from src.input_managing.data_gathering import DataGatherer
 
 
 class InputMgr:
     def __init__(self,
                  context: Context,
-                 data_gatherer: DataGatherer = None,
                  data_processor: DataProcessor = None,
                  ):
         self.context = context
