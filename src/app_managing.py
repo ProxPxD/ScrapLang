@@ -7,6 +7,7 @@ import pydash as _
 from more_itertools.more import seekable
 from requests import Session
 
+from src.conf import ConfFileMgr
 from src.context import Context
 from src.exceptions import ScrapLangException
 from src.input_managing import InputMgr
@@ -14,7 +15,6 @@ from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
 from src.migration_managing import MigrationManager
 from src.printer import Printer
-from src.resouce_managing import ConfMgr
 from src.resouce_managing.data_gathering import DataGatherer
 from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
@@ -31,7 +31,7 @@ class AppMgr:
                  printer: Callable[[str], Any] = None,
                  ):
         setup_logging()
-        self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
+        self.conf_mgr = ConfFileMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.valid_data_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None  # TODO: Rework
         self.migration_mgr = MigrationManager(self.valid_data_mgr)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Collection
 from dataclasses import dataclass, field, asdict
 from functools import lru_cache
 from itertools import product, cycle
@@ -15,7 +14,7 @@ from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherDat
     Color, color_names, ReanalyzeOn
 
 if TYPE_CHECKING:
-    from src.resouce_managing.configuration import Conf
+    from src.conf import Conf
 
 @preinitialized
 @dataclass(frozen=True)

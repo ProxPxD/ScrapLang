@@ -13,7 +13,7 @@ from more_itertools import flatten
 from ordered_set import OrderedSet
 from pydash import chain as c
 
-from src.conf_domain import indirect, gather_data, infervia, groupby
+from src.conf import indirect, gather_data, infervia, groupby
 from src.context import Context
 from src.context_domain import UNSET, assume, at
 from src.logutils import setup_logging

@@ -28,7 +28,6 @@ class AdvancedDetector:
 
     @classmethod
     def filter_any_shared_chars(cls, chars_group: Collection[str]):
-        # c().apply(lambda cs: combinations(map(set, cs), 2)).map(spread(op.and_)).reduce_(lambda a, b: a | b, set()).to_list().sort().join()
         combineds = c(chars_group).apply(lambda cs: combinations(map(set, cs), 2))
         any_shareds = combineds.map(spread(op.and_))
         all_any_shareds = any_shareds.reduce(lambda a, b: a | b, set())
