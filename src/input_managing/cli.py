@@ -141,6 +141,8 @@ class CLI:
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
+        parsed.orig_from_langs = parsed.from_langs
+        parsed.orig_to_langs = parsed.to_langs
         match self.context.assume:
             case 'lang': return self._distribute_args_by_langs(parsed)
             case 'word':

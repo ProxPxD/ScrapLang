@@ -54,7 +54,7 @@ class InputProcessor:
 
     def _is_filling_needless(self, parsed: Namespace) -> Optional[str]:
         # TODO: add test for verifying argument fullfilling if only from_lang is specified
-        if parsed.from_langs and parsed.to_langs:
+        if parsed.orig_from_langs or parsed.orig_to_langs:
             return 'There exist from- and to- langs, not inferring'
         if parsed.set or parsed.add or parsed.delete:
             return 'Conf editing is run, not inferring'
@@ -72,10 +72,13 @@ class InputProcessor:
         return parsed, is_mging
 
     def _infer_lang(self, parsed: Namespace) -> Namespace:
+        if parsed.orig_from_langs:
+            return parsed
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
-            if from_lang := self.detector.detect_simple(parsed.words) and self.detector.is_enough_data_gathered_for_simple():
+            if from_lang := self.detector.detect_simple(parsed.words):
                 logging.debug(f'Inferred {from_lang}')
+                parsed.to_langs.extend(parsed.from_langs)
                 parsed.from_langs = [from_lang]
                 return parsed
             # log

@@ -187,7 +187,7 @@ class Context:
 
     mappings: Box | Mappings = UNSET
 
-    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_', 'reanalyze'}
+    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_', 'reanalyze', 'orig_from_langs', 'orig_to_langs'}
 
     def __init__(self, conf: Conf):
         self._conf: Conf = conf
