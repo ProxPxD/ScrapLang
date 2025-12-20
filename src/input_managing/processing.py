@@ -38,7 +38,9 @@ class InputProcessor:
 
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
         parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
-        parsed.words = self.outstemmer.flatmap_outstem(parsed.words)
+        # TODO: Add test for veryfying that the same word in outstemming do not appear
+        # TODO: Add test for allowing the same word for different from_langs
+        parsed.words = _.flat_map(parsed.words, self.outstemmer.outstem)
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
