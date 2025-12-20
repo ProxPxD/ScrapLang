@@ -76,7 +76,7 @@ class InputProcessor:
             return parsed
         if self.context.infervia in {'all', 'ai'} and self.detector:
             logging.debug('Inferring thru a simple detector')
-            if from_lang := self.detector.detect_simple(parsed.words):
+            if (from_lang := self.detector.detect_simple(parsed.words)) and from_lang not in parsed.from_langs:  # TODO: test not replacing with the same: t przekaz pl en nośnik
                 logging.debug(f'Inferred {from_lang}')
                 parsed.to_langs.extend(parsed.from_langs)
                 parsed.from_langs = [from_lang]

@@ -177,11 +177,9 @@ class WiktioParser(Parser):
             from .scrap_adapting import WiktioScrapAdapter
             last_tag = next((elem for elem in reversed(list(content.children)) if isinstance(elem, Tag) and elem.name != 'span'))
             href = last_tag.next.attrs['href']
-            further_word, further_lang = re.split('[#/]', href.removeprefix('/wiki/'))
-            if not further_word:
-                further_word = last_tag.text
-            if ':' in further_lang:
-                further_lang = further_lang.split(':')[0].removeprefix('#')
+            further_word, further_lang = re.split('[#/]', href.removeprefix('/wiki/').removeprefix('/w/'))
+            further_word = (further_word or last_tag.text).split('=')[-1]
+            further_lang = further_lang.split(':')[0].removeprefix('#').split('&')[0]
             if further_word.startswith(RECONSTRUCTION:='Reconstruction:'):
                 further_word, further_lang = further_lang, further_word
                 further_word = f'{further_lang}/{further_word}'  # It's intuitive, but it's the equivalent of how wiktionary structures it
