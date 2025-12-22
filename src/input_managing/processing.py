@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from argparse import Namespace
+from collections.abc import Callable
 from functools import reduce
 from itertools import cycle
 from typing import Optional
@@ -29,7 +30,7 @@ class InputProcessor:
         parsed = self._word_outstemming(parsed)
         parsed = self._fill_args(parsed)
         parsed = self._reverse_if_needed(parsed)
-        parsed = self._uniq_langs(parsed)
+        parsed = self._uniq(parsed)
         origs = list(parsed.words)
         parsed = self._apply_mapping(parsed)
         parsed.unmapped = origs
@@ -45,49 +46,54 @@ class InputProcessor:
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
         # TODO: Refactor to have it cleaner which filling is needed - when from, when to-lang? (see all occurencese of: orig_from_langs)
-        if msg := self._is_filling_needless(parsed):
+        msg, func = self._is_filling_needless_and_get_map_parsed(parsed)
+        if msg:
             logging.debug(msg)
-            return parsed
-        parsed, is_mged = self._mg_loop_args(parsed)
-        if is_mged:
-            return parsed
+            return (func or _.identity)(parsed)
         parsed = self._infer_lang(parsed)
         parsed = self._fill_last_used(parsed)
         return parsed
 
-    def _is_filling_needless(self, parsed: Namespace) -> Optional[str]:
+    def _is_filling_needless_and_get_map_parsed(self, parsed: Namespace) -> tuple[Optional[str | bool], Optional[Callable[[Namespace], Namespace]]]:
         # TODO: add test for verifying argument fullfilling if only from_lang is specified
         if parsed.orig_from_langs or parsed.orig_to_langs:
-            return 'There exist from- and to- langs, not inferring'
+            return 'There exist from- and to- langs, not filling', None
         if parsed.set or parsed.add or parsed.delete:
-            return 'Conf editing is run, not inferring'
+            return 'Conf editing is run, not filling', None
         if parsed.reanalyze:
-            return 'Just reanalyzing, not inferring'
-        return None
-
-    def _mg_loop_args(self, parsed: Namespace) -> tuple[Namespace, bool]:
-        is_mging = isinstance(parsed.loop, bool) or self.context.loop is True
-        if is_mging:
-            logging.debug('Just managing the loop, not inferring')
+            return 'Just reanalyzing, not filling', None
+        if isinstance(parsed.loop, bool) or self.context.loop is True:
             # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
-            parsed.from_langs = parsed.from_langs or self.context.from_langs
-            parsed.to_langs = parsed.to_langs or self.context.to_langs
-        return parsed, is_mging
+            retrieve_context_langs = c().assign(dict(
+                from_lang=parsed.from_langs or self.context.from_langs,
+                to_lang=parsed.to_lang or self.context.to_lang,
+            ))
+            return 'Just managing the loop, not filling', retrieve_context_langs
+        return False, None
 
     def _infer_lang(self, parsed: Namespace) -> Namespace:
-        if parsed.orig_from_langs:
-            return parsed
-        if not self.detector or self.context.infervia not in {'all', 'ai'}:
+        if msg := self._is_infer_needed(parsed):
+            logging.debug(msg)
             return parsed
         logging.debug('Inferring thru a simple detector')
-        from_lang = self.detector.detect_simple(parsed.words)
-        if not from_lang or from_lang in parsed.from_langs:  # TODO: test not replacing with the same: t przekaz pl en nośnik
+        inferred_lang = self.detector.detect_simple(parsed.words)
+        if inferred_lang in parsed.from_langs:  # TODO: test not replacing with the same: t przekaz pl en nośnik
+            return parsed
+        if not inferred_lang:
+            #inferred_lang = self.detector.detect_advanced()
             return parsed
 
-        logging.debug(f'Inferred {from_lang}')
+        logging.debug(f'Inferred {inferred_lang}')
         parsed.to_langs.extend(parsed.from_langs)
-        parsed.from_langs = [from_lang]
+        parsed.from_langs = [inferred_lang]
         return parsed
+
+    def _is_infer_needed(self, parsed: Namespace) -> Optional[str]:
+        if parsed.orig_from_langs:
+            return 'From lang explicitly specified, not inferring'
+        if not self.detector or self.context.infervia not in {'all', 'ai'}:
+            return 'AI Inferring disabled, not inferring'
+        return None
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
         used = _.filter_(parsed.from_langs + parsed.to_langs)
@@ -115,8 +121,10 @@ class InputProcessor:
             parsed.to_langs[0] = old_from
         return parsed
 
-    def _uniq_langs(self, parsed: Namespace) -> Namespace:
+    def _uniq(self, parsed: Namespace) -> Namespace:
         parsed.to_langs = _.uniq(parsed.to_langs)
+        if len(parsed.from_langs) == 1:
+            parsed.words = _.uniq(parsed.words)
         return parsed
 
     def _apply_mapping(self, parsed: Namespace) -> Namespace:
