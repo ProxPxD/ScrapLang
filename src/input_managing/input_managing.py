@@ -15,9 +15,9 @@ from src.lang_detecting.preprocessing.data import DataProcessor
 
 class InputMgr:
     def __init__(self,
-                 context: Context,
-                 data_processor: DataProcessor = None,
-                 ):
+            context: Context,
+            data_processor: DataProcessor = None,
+        ):
         self.context = context
         self.cli = CLI(context)
         self.processor = InputProcessor(context, data_processor=data_processor)

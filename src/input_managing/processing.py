@@ -44,6 +44,7 @@ class InputProcessor:
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
+        # TODO: Refactor to have it cleaner which filling is needed - when from, when to-lang?
         if msg := self._is_filling_needless(parsed):
             logging.debug(msg)
             return parsed
