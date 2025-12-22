@@ -77,14 +77,17 @@ class InputProcessor:
     def _infer_lang(self, parsed: Namespace) -> Namespace:
         if parsed.orig_from_langs:
             return parsed
-        if self.context.infervia in {'all', 'ai'} and self.detector:
-            logging.debug('Inferring thru a simple detector')
-            if (from_lang := self.detector.detect_simple(parsed.words)) and from_lang not in parsed.from_langs:  # TODO: test not replacing with the same: t przekaz pl en nośnik
-                logging.debug(f'Inferred {from_lang}')
-                parsed.to_langs.extend(parsed.from_langs)
-                parsed.from_langs = [from_lang]
-                return parsed
-            # log
+        if not self.detector or self.context.infervia not in {'all', 'ai'}:
+            return parsed
+
+        logging.debug('Inferring thru a simple detector')
+        from_lang = self.detector.detect_simple(parsed.words)
+        if not from_lang or from_lang in parsed.from_langs:  # TODO: test not replacing with the same: t przekaz pl en nośnik
+            return parsed
+
+        logging.debug(f'Inferred {from_lang}')
+        parsed.to_langs.extend(parsed.from_langs)
+        parsed.from_langs = [from_lang]
         return parsed
 
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
