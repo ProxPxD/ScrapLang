@@ -8,8 +8,7 @@ from packaging.version import Version
 
 from src.constants import Paths
 from src.resouce_managing.file import FileMgr
-from src.resouce_managing.valid_data import VDC
-
+from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
 migrations: dict[Version, list[Callable]] = {}
 
@@ -20,12 +19,12 @@ def version(vers: str):
     return deco
 
 class MigrationManager:
-    def __init__(self, valid_data_file_mgr: FileMgr = None):
+    def __init__(self, valid_data_mgr: ValidDataMgr = None):
         self.curr_version = Version('3.8.1')
         self.version_file_mgr = FileMgr(Paths.VERSION_FILE, create_if_not=True)
         self.last_version = Version(self.version_file_mgr.load() or '3.7.1')
 
-        self.valid_data_file = valid_data_file_mgr
+        self.valid_data_file = valid_data_mgr.valid_data_file_mgr
 
     @cached_property
     def needed_migrations(self) -> Collection[Callable]:
