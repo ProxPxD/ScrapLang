@@ -1,19 +1,15 @@
 import logging
 from dataclasses import replace, dataclass, asdict
 from pathlib import Path
-from typing import Iterable, Sequence, Callable, Collection
-from unittest.mock import inplace
+from typing import Iterable, Sequence, Callable, Collection, Sized
 
-import pandas
 import pandas as pd
 import pydash as _
-from itertools import chain
 from box import Box
 from pandas import DataFrame
 from pandas.core.groupby import DataFrameGroupBy
 from pydantic import BaseModel, field_validator, ConfigDict
 from pydash import chain as c
-import operator as op
 
 from .file import FileMgr
 from ..constants import supported_languages, preinitialized
@@ -85,7 +81,8 @@ class ValidDataMgr:
     def is_arg_set_valid(self, kinds: Collection[str], lang_arg: str) -> Callable[[Outcome], bool]:
         return lambda o: _.over_every([
             c().get('kind').apply(kinds.__contains__),
-            c().get(f'args.{lang_arg}').apply(self.context.all_langs.__contains__),
+            c().get(f'args.{lang_arg}').apply(self.context.langs.__contains__),
+            lambda o: isinstance(o.results, Sized) and len(o.results) > 1 or isinstance(o.results, DataFrame)
         ])(o)
 
     def _gather_for_lang_data(self, scrap_results: Iterable[Outcome]) -> Iterable[Sequence[str]]:
@@ -93,7 +90,7 @@ class ValidDataMgr:
         args = (lang_arg:='lang', 'word')
         for lang, word in c(scrap_results).filter(self.is_arg_set_valid(kinds, lang_arg)).map(c().get('args').at(*args)).value():
             yield lang, word, False
-            if self.context.is_mapped(word):
+            if word in self.context.words and self.context.is_mapped(word):
                 yield lang, self.context.get_unmmapped(word), True
 
     def _gather_for_from_main_translations(self, scrap_results: Iterable[Outcome]) -> Iterable[Sequence[str]]:
@@ -124,6 +121,8 @@ class ValidDataMgr:
     @classmethod
     def _merge_matching(cls, df: DataFrame) -> DataFrame:
         def process_group(group: DataFrameGroupBy):
+            if group.shape[0] <= 1:
+                return group
             other_columns_i = group.columns.to_list().index(VDC.DIALECT)
             other_columns = group.columns[other_columns_i:]
             notna = group[other_columns].notna()

@@ -7,6 +7,7 @@ import pydash as _
 from more_itertools.more import seekable
 from requests import Session
 
+from src.conf import ConfFileMgr
 from src.context import Context
 from src.exceptions import ScrapLangException
 from src.input_managing import InputMgr
@@ -14,11 +15,11 @@ from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
 from src.migration_managing import MigrationManager
 from src.printer import Printer
-from src.resouce_managing import ConfMgr
-from src.resouce_managing.data_gathering import DataGatherer
+from src.input_managing.data_gathering import DataGatherer
 from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
+from pydash import chain as c
 
 
 class AppMgr:
@@ -28,18 +29,18 @@ class AppMgr:
                  short_mem_file: Path | str = None,
                  lang_script_file: Path | str = None,
                  printer: Callable[[str], Any] = None,
-                 ):
+        ):
         setup_logging()
-        self.conf_mgr = ConfMgr(conf_path)  # TODO: Move paths to context and work from there
+        self.conf_mgr = ConfFileMgr(conf_path)  # TODO: Move paths to context and work from there
         self.context: Context = Context(self.conf_mgr.conf)
         self.valid_data_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None  # TODO: Rework
-        self.migration_mgr = MigrationManager(self.valid_data_mgr)
         self.conf_mgr.valid_data_mgr = self.valid_data_mgr
         self.data_processor = DataProcessor(valid_data_mgr=self.valid_data_mgr , lang_script_file=lang_script_file)
         self.data_gatherer = DataGatherer(context=self.context, valid_data_mgr=self.valid_data_mgr, short_mem_file=short_mem_file, data_processor=self.data_processor)
-        self.input_mgr = InputMgr(context=self.context, data_gatherer=self.data_gatherer, data_processor=self.data_processor)
+        self.input_mgr = InputMgr(context=self.context, data_processor=self.data_processor)
         self.scrap_mgr = ScrapMgr()
         self.printer = Printer(context=self.context, printer=printer)
+        self.migration_mgr = MigrationManager(self.valid_data_mgr)
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -59,6 +60,8 @@ class AppMgr:
             self.migration_mgr.migrate()
         self.run_single()
         while self.context.loop:
+            from_langs, to_langs = c().at('from_langs', 'to_langs').map(','.join)(self.context)
+            self.printer.print_secondary(f'{from_langs}>{to_langs}❯❯ ', end='')
             self.run_single(shlex.split(input()))
 
     def run_single(self, args: list[str] = None) -> None:
@@ -66,7 +69,7 @@ class AppMgr:
             self._raw_run_single(args)
         except ScrapLangException as e:
             msg = e.args[0]
-            self.printer.printer(msg)
+            self.printer.print(msg)
 
     def _raw_run_single(self, args: list[str] = None) -> None:
         parsed = self.input_mgr.ingest_input(args)
@@ -76,10 +79,8 @@ class AppMgr:
             return
 
         setup_logging(self.context)
-        # if self.context.exit and args:
-        #     return
-
-        self.run_scrap()
+        if self.context.words:
+            self.run_scrap()
 
     def run_scrap(self) -> None:
         with self.connect():

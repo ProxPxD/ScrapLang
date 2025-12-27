@@ -1,6 +1,7 @@
-from functools import cache
+import json
 from pathlib import Path
-from typing import Callable
+from types import SimpleNamespace
+from typing import Callable, Any
 
 import pydash as _
 from bs4 import Tag
@@ -11,40 +12,41 @@ from src.scrapping.core.parsing import Result, ParsingException
 
 PAGES = Path(__file__).parent.parent / 'pages'
 
+class PageNotFound(FileNotFoundError):
+    pass
 
-@cache
-def get_filename_from_url(url: str) -> str:
+
+def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException | HTTPError], params=None, header=None) -> list[Result] | HTTPError | ParsingException:
+    filename = get_filename_from_url(url, params)
+    if not (path := PAGES / filename).exists():
+        raise PageNotFound(path)
+    return parse(load_file(path))
+
+
+def get_filename_from_url(url: str, params: dict[str, Any]) -> str:
     site = _.filter_({'glosbe', 'wiktio'}, url.__contains__)[0]
-    params = []
+    arguments = []
     more_info = ''
     match site:
         case 'wiktio':
-            params = [url.split('/wiki/')[1]]
+            arguments = [params['page']]
         case 'glosbe':
-            params = url.split('.com/')[1].split('/')[:3]
+            arguments = url.split('.com/')[1].split('/')[:3]
             more_info = c({'details', 'indirect'}).filter_(url.__contains__).get(0, '').value()
         case _: raise ValueError('Unexpected site!')
 
-    name = f'{site}-{"-".join(params)}'
+    name = f'{site}-{"-".join(arguments)}'
     if more_info:
         name = f'{name}-{more_info}'
     fullname = f'{name}.html'
     return fullname
 
-
-class PageNotFound(FileNotFoundError):
-    pass
-
-
-@cache
-def mocked_scrap(url: str, parse: Callable[[Response | Tag | str], list[Result] | ParsingException | HTTPError]) -> list[Result] | HTTPError | ParsingException:
-    filename = get_filename_from_url(url)
-    if not (path := PAGES / filename).exists():
-        raise PageNotFound(path)
+def load_file(path: Path) -> str | SimpleNamespace:
     with open(path, 'r') as f:
         content = f.read()
-    return parse(content)
-
+    if path.name.startswith('wiktio'):
+        return SimpleNamespace(json=lambda: json.loads(content))
+    return content
 
 class CallCollector:
     def __init__(self, *,

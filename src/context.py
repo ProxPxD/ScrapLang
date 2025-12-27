@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Collection
 from dataclasses import dataclass, field, asdict
 from functools import lru_cache
 from itertools import product, cycle
@@ -15,7 +14,7 @@ from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherDat
     Color, color_names, ReanalyzeOn
 
 if TYPE_CHECKING:
-    from src.resouce_managing.configuration import Conf
+    from src.conf import Conf
 
 @preinitialized
 @dataclass(frozen=True)
@@ -43,6 +42,8 @@ class Defaults:
 
     mappings: Mappings = field(default_factory=dict)
     langs: list = field(default_factory=list)
+
+    loop: bool = False
 
 
 
@@ -181,15 +182,22 @@ class Context:
     infervia: InferVia = UNSET
     reanalyze_on: ReanalyzeOn = UNSET
 
-    loop: bool = False
+    loop: bool = UNSET
 
     mappings: Box | Mappings = UNSET
 
-    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_', 'reanalyze'}
+    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_', 'reanalyze', 'orig_from_langs', 'orig_to_langs'}
 
     def __init__(self, conf: Conf):
         self._conf: Conf = conf
         self.update(**conf.model_dump())
+
+    def get_only_from_context(self, name: str) -> Any:
+        try:
+            return super().__getattribute__(name)
+        except AttributeError as ar:
+            if ar.args[0] != f"'{Context.__name__}' object has no attribute '{name}'":
+                raise ar
 
     def __getattribute__(self, name: str) -> Any:
         try:
@@ -209,7 +217,8 @@ class Context:
         if wrong_keys := {key for key in kwargs if not hasattr(self, key)}:
             raise ValueError(f'Context has no such keys: {wrong_keys}')
         for key, val in kwargs.items():
-            setattr(self, key, val)
+            if val is not UNSET:
+                setattr(self, key, val)
 
         dict_attrs = _.pick_by(asdict(self), lambda val, key: _.is_dict(val) and not key.startswith('_'))
         for key, val in dict_attrs.items():
@@ -248,7 +257,7 @@ class Context:
     @property
     def n_all_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
         match self.groupby:
-            case 'lang': return self.n_from_langs * len(list(self.from_lang_word_bundles))
+            case 'lang': return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
             case 'word': return self.n_from_langs * len(self.to_langs)
             case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
 
@@ -314,7 +323,10 @@ class Context:
         return [o != w for o, w in zip(self.unmapped, self.words)]
 
     def is_mapped(self, word: str) -> bool:
-        i = self.words.index(word)
+        try:
+            i = self.words.index(word)
+        except ValueError:
+            return False
         return self.is_mappeds[i]
 
     def get_unmmapped(self, word: str) -> str:

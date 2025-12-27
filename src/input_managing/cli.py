@@ -13,7 +13,7 @@ from more_itertools import flatten
 from ordered_set import OrderedSet
 from pydash import chain as c
 
-from src.conf_domain import indirect, gather_data, infervia, groupby
+from src.conf import indirect, gather_data, infervia, groupby
 from src.context import Context
 from src.context_domain import UNSET, assume, at
 from src.logutils import setup_logging
@@ -90,7 +90,6 @@ class CLI:
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
         # Translation Modes
         translation_mode_group = parser.add_argument_group(title='Translation Modes')
-        permutations('oi ', 3)
 
         translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang side to apply the mode to', choices=at, default='none')
         translation_mode_group.add_argument(*tuple(AtSpecifierAction.side_mode_fusions()), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
@@ -124,10 +123,9 @@ class CLI:
     def _add_loop_control_args(self, parser: ArgumentParser) -> ArgumentParser:
         loop_control_group = parser.add_argument_group(title='Loop Control')
         loop_control_exclusive = loop_control_group.add_mutually_exclusive_group()
-        loop_control_exclusive.add_argument('--loop', action='store_true', default=None, help='Enter a translation loop')
-        loop_control_exclusive.add_argument('--exit', action='store_false', default=None, dest='loop', help='Exit loop')
+        loop_control_exclusive.add_argument('--loop', '-loop', action='store_true', default=UNSET, help='Enter a translation loop')
+        loop_control_exclusive.add_argument('--exit', '-exit', action='store_false', default=UNSET, dest='loop', help='Exit loop')
         return parser
-
 
     def parse(self, args: list[str]) -> Namespace:
         if not args:
@@ -137,12 +135,14 @@ class CLI:
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += _.reject(remaining, '--'.__eq__)  # make test for this fix: t ksiądz -i pl
         setup_logging(parsed)
-        self.context.update(**{**vars(parsed), 'words': [], 'from_langs': [], 'to_langs': []}); logging.debug('Updating context in CLI')
+        self.context.update(**{**vars(parsed), 'words': UNSET, 'from_langs': UNSET, 'to_langs': UNSET}); logging.debug('Updating context in CLI')
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
+        parsed.orig_from_langs = parsed.from_langs
+        parsed.orig_to_langs = parsed.to_langs
         match self.context.assume:
             case 'lang': return self._distribute_args_by_langs(parsed)
             case 'word':

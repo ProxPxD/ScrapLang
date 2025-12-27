@@ -6,13 +6,15 @@ from typing import Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas.core.interchange.dataframe_protocol import DataFrame
-from pydash import chain as c
+from pydash import chain as c, partial
 from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
 from .scrapping import Outcome, OutcomeKinds
 from .scrapping.wiktio.parsing import WiktioResult, Meaning, Pronunciation
+import pydash as _
+from pydash import chain as c
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -27,8 +29,18 @@ class Printer:
     def __init__(self, context: Context, printer: Callable[[Any], None] = None, interval: int = 0):
         self.interval = interval
         self.scheduler = BlockingScheduler()
-        self.printer = printer or print
+        self._printer = printer or print
         self.context = context
+
+    def print(self, *args, color=None, **kwargs) -> None:
+        args = _.map_(args, partial(self.color, color=color))
+        self._printer(*args, **kwargs)
+
+    def print_main(self, *args, **kwargs) -> None:
+        self.print(*args, **kwargs, color=self.context.color.main)
+
+    def print_secondary(self, *args, **kwargs) -> None:
+        self.print(*args, **kwargs, color=self.context.color.pronunciation)
 
     def print_result(self, outcome: Outcome) -> None:
         match outcome.kind:
@@ -46,38 +58,40 @@ class Printer:
             case OutcomeKinds.DEFINITION:
                 self.print_definitions(outcome)
             case OutcomeKinds.NEWLINE:
-                self.printer('')
+                self.print('')
             case OutcomeKinds.WIKTIO:
                 self._print_wktio(outcome)
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
 
     def color(self, to_color, color: str | tuple[int, int, int]) -> str:
-        return colored(to_color, color)
+        if not color:
+            return to_color
+        return colored(to_color, tuple(color) if not isinstance(color, str) else color)
 
     def print_separator(self, group: str, sep: str) -> None:
         bias = len(group)
         colored_group = self.color(group, self.context.color.main)
-        self.printer(f'{sep*4} {colored_group} {sep*(36-bias)}{sep*4}')
+        self.print(f'{sep*4} {colored_group} {sep*(36-bias)}{sep*4}')
 
     def print_inflection(self, outcome: Outcome) -> None:
         if outcome.is_fail():
-            self.printer(outcome.results.args[0])
+            self.print(outcome.results.args[0])
             return
         table: DataFrame = outcome.results
         table_str = tabulate(table, tablefmt='rounded_outline')
         if (olen := len(table_str.split('\n', 1)[0])) > 128:
             table = table.map(lambda x: "\n".join(wrap(x, width=16)))
             table_str = tabulate(table, tablefmt='rounded_grid')
-        self.printer(table_str)
+        self.print(table_str)
         if not any((self.context.definition, self.context.inflection)):
-            self.printer('')
+            self.print('')
 
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
-        translation_row = self.create_translation_row(outcome)
         colored_prefix = self.color(prefix, self.context.color.main)
-        self.printer(f'{colored_prefix}{translation_row}')
+        translation_row = self.create_translation_row(outcome)
+        self.print(f'{colored_prefix}{translation_row}')
         return outcome.is_success()
 
     def get_translation_prefix(self, outcome: Outcome) -> str:
@@ -104,15 +118,15 @@ class Printer:
 
     def _print_wktio(self, outcome: Outcome) -> bool:
         if outcome.is_fail():
-            self.printer(outcome.results.args[0])
+            self.print(outcome.results.args[0])
             return False
         wiktio: WiktioResult = outcome.results
         front = f'{self.color(wiktio.word, self.context.color.main)}: ' if not self.context.to_langs else ''
         wide_front = f'{front}{self._create_wiktio_meaning(wiktio)}'
         if len(wide_front) > 1:  # Not only a newline
-            self.printer(wide_front)
+            self.print(wide_front)
         more = self._create_wiktio_meanings(wiktio.meanings)
-        self.printer(more)
+        self.print(more)
         return True
 
     def _create_wiktio_meaning(self, meaning: Meaning) -> str:
@@ -150,13 +164,13 @@ class Printer:
 
     def print_definitions(self, outcome: Outcome) -> None:
         if outcome.is_fail():
-            self.printer(outcome.results.args[0])
+            self.print(outcome.results.args[0])
             return
         pot_newline = ('', '\n')[bool(self.context.to_langs)]
         ending = f' of "{outcome.args.word}"' if not self.context.to_langs else ''
-        self.printer(f'{pot_newline}Definitions{ending}:')
+        self.print(f'{pot_newline}Definitions{ending}:')
         for defi in outcome.results:
             defi_row = f'- {defi.text}{":" if defi.examples else ""}'
-            self.printer(defi_row)
+            self.print(defi_row)
             for example in defi.examples:
-                self.printer(f'   - {example}')
+                self.print(f'   - {example}')

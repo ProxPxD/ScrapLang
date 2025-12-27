@@ -1,7 +1,6 @@
 from dataclasses import replace
-from doctest import UnexpectedException
 
-from bs4 import Tag
+from box import Box
 from requests import HTTPError, Response
 
 from .parsing import WiktioParser, WiktioResult
@@ -12,15 +11,22 @@ from ..core.scrap_adapting import ScrapAdapter
 
 class WiktioScrapAdapter(ScrapAdapter):
     def scrap_wiktio_info(self, word: str, lang: str) -> list[Result] | HTTPError | Exception:
-        url = WiktioUrlBuilder.get_wiktio_url(word)
-        results = self.scrap(url, self._wrap_parser(word, lang))
+        params = {
+            'action': 'parse',
+            'page': word.replace(' ', '_'),
+            'format': 'json',
+            'prop': 'text',
+        }
+        url = WiktioUrlBuilder.API_URL
+        results = self.scrap(url, self._wrap_parser(word, lang), params=params)
         return results
 
-    @classmethod
-    def _wrap_parser(cls, word: str, lang: str):
-        def parse(tag: Response | Tag) -> WiktioResult | Exception:
-            match result := WiktioParser.parse(tag, lang):
+    def _wrap_parser(self, word: str, lang: str):
+        def parse(response: Response) -> WiktioResult | Exception:
+            page = Box(response.json(), default_box=True)
+            if page.error:
+                return ParsingException(page.error.info + f': "{response.url}"')
+            match result := WiktioParser.parse(page.parse.text['*'], lang, self):
                 case WiktioResult(): return replace(result, word=word)
                 case ParsingException(): return ParsingException(result.args[0] + f' "{word}"')
-                case _: return UnexpectedException(f'Unexpected return type "{type(result)}" of "{result}"')
         return parse

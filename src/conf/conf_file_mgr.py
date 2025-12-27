@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pydash as _
 
-from .file import FileMgr
-from .valid_data import ValidDataMgr
-from .. import context_domain
-from ..conf_domain import Conf
+from src.resouce_managing.file import FileMgr
+from src.resouce_managing.valid_data import ValidDataMgr
+from src import context_domain
+from src.conf import Conf
 
 
-class ConfMgr:
+class ConfFileMgr:
     def __init__(self, conf_file: Path | str, valid_data_mgr: ValidDataMgr = None):
         self.valid_data_mgr = valid_data_mgr
         self._file_mgr = FileMgr(conf_file, func=lambda conf: Conf(**(conf or {})))

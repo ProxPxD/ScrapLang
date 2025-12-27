@@ -70,7 +70,7 @@ supported_languages = {
     'ku': "kurdyjski Kurdish Kurmanji, Zimanê kurdî",
     'lo': "laotański Lao, Eastern Thai, Lào, Lao Kao, Lao Wiang, Lao-Lum, Lao-Noi, Lao-Tai, Laotian, Laotian Tai, Lum Lao, Phou Lao, Rong Kong, Tai Lao, ລາວ",
     'lt': "litewski Lithuanian, Lietuvi, Lietuviskai, Litauische, Litewski, Litovskiy, lietuvių",
-    'la': "łaciński Latina, Latin",
+    'la': "łaciński Latin, Latina",
     'lv': "łotewski Latvian, latviešu",
     'mk': "macedoński Macedonian, Macedonian Slavic, Makedonski, Slavic, македонски",
     'ml': "malajalam Malayalam, Alealum, Malayalani, Malayali, Malean, Maliyad, Mallealle, Mopla, മലയാളം",

@@ -20,7 +20,7 @@ def version(vers: str):
     return deco
 
 class MigrationManager:
-    def __init__(self, valid_data_file_mgr: FileMgr):
+    def __init__(self, valid_data_file_mgr: FileMgr = None):
         self.curr_version = Version('3.8.1')
         self.version_file_mgr = FileMgr(Paths.VERSION_FILE, create_if_not=True)
         self.last_version = Version(self.version_file_mgr.load() or '3.7.1')
