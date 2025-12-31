@@ -24,7 +24,7 @@ class MigrationManager:
         self.version_file_mgr = FileMgr(Paths.VERSION_FILE, create_if_not=True)
         self.last_version = Version(self.version_file_mgr.load() or '3.7.1')
 
-        self.valid_data_file = valid_data_mgr.valid_data_file_mgr
+        self.valid_data_file = valid_data_mgr.valid_data_file_mgr if valid_data_mgr else None
 
     @cached_property
     def needed_migrations(self) -> Collection[Callable]:
