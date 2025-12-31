@@ -91,6 +91,8 @@ class InputProcessor:
     def _is_infer_needed(self, parsed: Namespace) -> Optional[str]:
         if parsed.orig_from_langs:
             return 'From lang explicitly specified, not inferring'
+        if parsed.reverse:  # TODO: add test for reversing!
+            return 'Last used langs should be reversed, not inferring'
         if not self.detector or self.context.infervia not in {'all', 'ai'}:
             return 'AI Inferring disabled, not inferring'
         return None
