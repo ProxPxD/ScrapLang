@@ -10,6 +10,7 @@ from typing import Optional
 import pydash as _
 from box import Box
 from pydash import chain as c
+from toolz import itemmap
 
 from src.context import Context
 from src.input_managing.outstemming import Outstemmer
@@ -64,10 +65,11 @@ class InputProcessor:
             return 'Just reanalyzing, not filling', None
         if isinstance(parsed.loop, bool) or self.context.loop is True:
             # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
-            retrieve_context_langs = c().assign(dict(
-                from_lang=parsed.from_langs or self.context.from_langs,
-                to_lang=parsed.to_lang or self.context.to_lang,
-            ))
+            # TODO: test loop
+            retrieve_context_langs = lambda parsed: c(dict(
+                from_langs=parsed.from_langs or self.context.from_langs,
+                to_langs=parsed.to_langs or self.context.to_langs,
+            ).items()).map(lambda name_langs: setattr(parsed, name_langs[0], name_langs[1])).value() and parsed
             return 'Just managing the loop, not filling', retrieve_context_langs
         return False, None
 
