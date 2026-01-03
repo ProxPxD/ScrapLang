@@ -18,7 +18,7 @@ class Paths:
     DETECTION_DIR = RESOURCES_DIR / 'detection'
     SHORT_MEM_FILE = DETECTION_DIR / 'short_mem.yaml'
     VALID_DATA_FILE = DETECTION_DIR / 'valid_data.csv'
-    LANG_SCRIPT_FILE = DETECTION_DIR / 'lang_scripts.csv'
+    LANG_SCRIPT_FILE = DETECTION_DIR / 'lang_script.csv'
     MODEL_IO_FILE = DETECTION_DIR / 'model_io.yaml'
 
 

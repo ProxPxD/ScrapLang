@@ -8,23 +8,21 @@ from torchgen.utils import OrderedSet
 
 from src.constants import Paths
 from src.lang_detecting.advanced_detecting.model import Moe
+from src.lang_detecting.advanced_detecting.tokenizer import MultiTokenizer
 from src.lang_detecting.preprocessing.data import LSC
 import pydash as _
 from src.resouce_managing.file import FileMgr
 import operator as op
 from pydash import chain as c
 
+KindToTokens = dict[str, str]
+KindToClasses = dict[str, list[str]]
+KindToTokensClasses = dict[str, KindToTokens | KindToClasses]
 
-class AdvancedDetector:
-    def __init__(self, lang_script: DataFrame):
-        model_io = FileMgr(Paths.MODEL_IO_FILE, create_if_not=True)
-        old_script_langs = model_io.load()
-        shary_script = self.extract_scripts_to_any_shared_chars_for_langs(lang_script)
-        if old_script_langs != shary_script:
-            logging.debug(f'Updating model IO')
-            model_io.save(shary_script) # TODO: Uncomment after retraining functionality
-            # raise ValueError("Model requires retraining and that's unsupported and unhandled for now")
-        self.moe = Moe(shary_script)
+
+class ModelIOMgr:
+    def __init__(self):
+        self.model_io = FileMgr(Paths.MODEL_IO_FILE, create_if_not=True)
 
     @classmethod
     def filter_any_shared_chars(cls, chars_group: Collection[str]):
@@ -34,13 +32,39 @@ class AdvancedDetector:
         as_strs = all_any_shareds.to_list().sort().join()
         return as_strs.value()
 
-    @classmethod
-    def extract_scripts_to_any_shared_chars_for_langs(cls, lang_script: DataFrame) -> dict[str, dict[str, str | list]]:
+    def extract_kinds_to_tokens_classes(self, lang_script) -> KindToTokensClasses:
         script_lang = lang_script.explode(LSC.SCRIPTS).rename(columns={LSC.SCRIPTS: LSC.SCRIPT})
         sclc = script_common_langs_chars = (script_lang.groupby(LSC.SCRIPT, as_index=False).agg({
             LSC.LANG: flow(sorted, list),
-            LSC.CHARS: cls.filter_any_shared_chars
+            LSC.CHARS: self.filter_any_shared_chars
         }).rename(columns={LSC.LANG: LSC.LANGS}))
         sclc = sclc[(sclc[LSC.LANGS].map(len) > 1) & (sclc[LSC.CHARS].map(len) > 0)].reset_index(drop=True)
-        shary_script = {row[LSC.SCRIPT]: {LSC.LANGS: row[LSC.LANGS], LSC.CHARS: ''.join(row[LSC.CHARS])} for idx, row in sclc.iterrows()}
+        shary_script = {row[LSC.SCRIPT]: {LSC.LANGS: row[LSC.LANGS], LSC.CHARS: ''.join(row[LSC.CHARS])} for idx, row in
+                        sclc.iterrows()}
         return shary_script
+
+    def update_model_io_if_needed(self, kinds_to_tokens_classes: KindToTokensClasses) -> None:
+        old_script_langs = self.model_io.load()
+        if old_script_langs != kinds_to_tokens_classes:
+            logging.debug(f'Updating model IO')
+            self.model_io.save(kinds_to_tokens_classes) # TODO: Uncomment after retraining functionality
+            # raise ValueError("Model requires retraining and that's unsupported and unhandled for now")
+
+    @classmethod
+    def separate_kinds_tos(cls, kinds_to_tokens_classes: KindToTokensClasses) -> tuple[KindToTokens, KindToClasses]:
+        kinds_to_tokens = _.map_values(kinds_to_tokens_classes, c().get(LSC.CHARS))
+        kinds_to_classes = _.map_values(kinds_to_tokens_classes, c().get(LSC.LANGS))
+        return kinds_to_tokens, kinds_to_classes
+
+
+class AdvancedDetector:
+    def __init__(self, lang_script: DataFrame):
+        self.model_io_mgr = ModelIOMgr()
+
+        kinds_to_tokens_classes = self.model_io_mgr.extract_kinds_to_tokens_classes(lang_script)
+        self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_classes)
+        kinds_to_tokens, kinds_to_classes = self.model_io_mgr.separate_kinds_tos(kinds_to_tokens_classes)
+
+        self.tokenizer = MultiTokenizer(kinds_to_tokens)
+        self.moe = Moe(kinds_to_classes)
+

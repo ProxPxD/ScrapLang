@@ -25,7 +25,11 @@ class Combiner(nn.Module):
 
 
 class Moe(nn.Module):
-    def __init__(self, model_kinds_to_classes):
+    def __init__(self, kinds_to_classes, emb_dim=32):
         super().__init__()
-        # self.kind_model = nn.ModuleDict(valmap(flow(len, ScriptExpert), model_kinds_to_classes))
-        # self.kind_model = nn.ModuleDict({kindfor kind, classes in model_kinds_to_classes.items()}))
+        self.emb_dim = emb_dim
+        # self.kind_model = nn.ModuleDict(valmap(flow(len, ScriptExpert), kinds_to_tokens_and_classes))
+        # self.kind_model = nn.ModuleDict({kindfor kind, classes in kinds_to_tokens_and_classes.items()}))
+
+    # def forward(self, words) -> torch.Tensor:
+    #     return self.net(x)

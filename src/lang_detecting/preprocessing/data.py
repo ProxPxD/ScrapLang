@@ -36,7 +36,8 @@ class DataProcessor:
 
     @property
     def lang_script(self) -> DataFrame:
-        return self.lang_script_mgr.content
+        lang_script = self.lang_script_mgr.content
+        return lang_script if lang_script is not None else self.generate_script_summary()
 
     def _generate_script_summary(self, data: DataFrame) -> DataFrame:
         """

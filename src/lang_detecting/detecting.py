@@ -26,6 +26,8 @@ class Detector:
         self.advanced_detector = AdvancedDetector(self.lang_script) if has_torch and lang_script is not None else None
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
+        if not self.simple_detector:
+            return None
         scripts = set(sp(''.join(words))[-1]['details'].keys())
         if lang := self.simple_detector.detect_by_script(scripts):
             return lang
