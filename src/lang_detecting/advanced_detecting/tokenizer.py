@@ -14,6 +14,10 @@ class SingleTokenizer:
 class MultiTokenizer:
     def __init__(self, kinds_to_vocabs: dict[str, str]):
         self.subtokenizers: dict[str, SingleTokenizer] = valmap(SingleTokenizer, kinds_to_vocabs)
+        self.kind2id = {k: i for i, k in enumerate(kinds_to_vocabs)}
 
-    def tokenize(self, word: str, kind: str) -> list[int]:
+    def tokenize_word(self, word: str, kind: str) -> list[int]:
         return self.subtokenizers[kind].tokenize(word)
+
+    def tokenize_kind(self, kind: str) -> int:
+        return self.kind2id[kind]
