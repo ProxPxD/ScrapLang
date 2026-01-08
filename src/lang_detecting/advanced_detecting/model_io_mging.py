@@ -10,13 +10,14 @@ from pydash import flow, spread
 from src.constants import Paths
 from src.lang_detecting.preprocessing.data import LSC
 from src.resouce_managing.file import FileMgr
+from collections import OrderedDict
 
 Kind = Vocab = Class = str
-KindToVocab = dict[Kind, Vocab]
-KindToClasses = dict[Kind, list[Class]]
-KindToVocabClasses = dict[Kind, KindToVocab | KindToClasses]
-GroupedVocab = dict[str, Vocab]  # Default
-KindToGroupedVocab = dict[Kind, GroupedVocab]
+KindToVocab = OrderedDict[Kind, Vocab]
+KindToClasses = OrderedDict[Kind, list[Class]]
+KindToVocabClasses = OrderedDict[Kind, KindToVocab | KindToClasses]
+GroupedVocab = OrderedDict[str, Vocab]  # Default
+KindToGroupedVocab = OrderedDict[Kind, GroupedVocab]
 
 ALL = 'all'
 
@@ -40,8 +41,12 @@ class ModelIOMgr:
             LSC.CHARS: self.filter_any_shared_chars
         }).rename(columns={LSC.LANG: LSC.LANGS}))
         sclc = sclc[(sclc[LSC.LANGS].map(len) > 1) & (sclc[LSC.CHARS].map(len) > 0)].reset_index(drop=True)
-        shary_script = {row[LSC.SCRIPT]: {LSC.LANGS: row[LSC.LANGS], LSC.CHARS: ''.join(row[LSC.CHARS])} for idx, row in
-                        sclc.iterrows()}
+        shary_script = OrderedDict([
+            (row[LSC.SCRIPT], OrderedDict([
+                (LSC.LANGS, row[LSC.LANGS]),
+                (LSC.CHARS, ''.join(row[LSC.CHARS]))
+            ])) for idx, row in sclc.iterrows()
+        ])
         return shary_script
 
     def update_model_io_if_needed(self, kinds_to_vocab_classes: KindToVocabClasses) -> None:
@@ -53,15 +58,17 @@ class ModelIOMgr:
 
     @classmethod
     def separate_kinds_tos(cls, kinds_to_vocab_classes: KindToVocabClasses) -> tuple[KindToVocab, KindToClasses]:
-        kinds_to_vocab = _.map_values(kinds_to_vocab_classes, c().get(LSC.CHARS))
-        kinds_to_classes = _.map_values(kinds_to_vocab_classes, c().get(LSC.LANGS))
+        kinds_to_vocab, kinds_to_classes = OrderedDict(), OrderedDict()
+        for kind, vc in kinds_to_vocab_classes.items():
+            kinds_to_vocab[kind] = vc[LSC.CHARS]
+            kinds_to_classes[kind] = vc[LSC.LANGS]
         return kinds_to_vocab, kinds_to_classes
 
     @classmethod
     def group_up_kinds_to_vocab(cls, kinds_to_vocab: KindToVocab) -> KindToGroupedVocab:
-        kind_grouped = {}
+        kind_grouped = OrderedDict()
         for kind, vocab in kinds_to_vocab.items():
-            group_up_kind_vocab = getattr(cls, f'group_up_{kind.lower()}_vocab', lambda ts: {})
+            group_up_kind_vocab = getattr(cls, f'group_up_{kind.lower()}_vocab', lambda ts: OrderedDict())
             kind_grouped[kind] = grouped = group_up_kind_vocab(vocab)
             grouped[ALL] = vocab
         return kind_grouped
@@ -69,22 +76,22 @@ class ModelIOMgr:
     @classmethod
     def group_up_latn_vocab(cls, vocab: str) -> GroupedVocab:
         enhance_with_upper = lambda l: [l, l.upper()]
-        grouped = {
-            'letter': c(vocab).filter(str.isalpha).join().value(),
-            'upper': c(vocab).filter(str.isupper).join().value(),
-            'vowels': c(vocab).intersection(list('aeiouy')).flat_map(enhance_with_upper).join().value(),
-            'consonants': c(vocab).intersection(list('bcdfghjklmnpqrstvwxyz')).flat_map(enhance_with_upper).join().value(),
-        }
+        grouped = OrderedDict([
+            ('letter', c(vocab).filter(str.isalpha).join().value()),
+            ('upper', c(vocab).filter(str.isupper).join().value()),
+            ('vowels', c(vocab).intersection(list('aeiouy')).flat_map(enhance_with_upper).join().value()),
+            ('consonants', c(vocab).intersection(list('bcdfghjklmnpqrstvwxyz')).flat_map(enhance_with_upper).join().value()),
+        ])
         return grouped
 
     @classmethod
     def group_up_cyrl_vocab(cls, vocab: str) -> GroupedVocab:
         enhance_with_upper = lambda l: [l, l.upper()]
-        grouped = {
-            'letter': c(vocab).filter(str.isalpha).join().value(),
-            'upper': c(vocab).filter(str.isupper).join().value(),
-            'vowels': c(vocab).intersection(list('аоуэыиеёєяюї')).flat_map(enhance_with_upper).join().value(),
-            'consonants': c(vocab).intersection(list('бвгґджзйклмнпрстфхцчшщ')).flat_map(enhance_with_upper).join().value(),
-            'function': c(vocab).intersection(list('ьъ')).flat_map(enhance_with_upper).join().value(),
-        }
+        grouped = OrderedDict([
+            ('letter', c(vocab).filter(str.isalpha).join().value()),
+            ('upper', c(vocab).filter(str.isupper).join().value()),
+            ('vowels', c(vocab).intersection(list('аоуэыиеёєяюї')).flat_map(enhance_with_upper).join().value()),
+            ('consonants', c(vocab).intersection(list('бвгґджзйклмнпрстфхцчшщ')).flat_map(enhance_with_upper).join().value()),
+            ('function', c(vocab).intersection(list('ьъ')).flat_map(enhance_with_upper).join().value()),
+        ])
         return grouped
