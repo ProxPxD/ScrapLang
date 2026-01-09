@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import pydash as _
 from pydash import map_values
@@ -35,6 +36,7 @@ class GroupTokenizer(ITokenizer):
 
 class SingleKindTokenizer(ITokenizer):
     def __init__(self, grouped_vocab: GroupedVocab):
+        grouped_vocab = OrderedDict(grouped_vocab)
         self.vocab_tokenizer = Tokenizer(grouped_vocab.pop(ALL))
         self.group_tokenizers: dict[str, GroupTokenizer] = valmap(GroupTokenizer, grouped_vocab)
 
