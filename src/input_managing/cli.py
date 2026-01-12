@@ -104,7 +104,7 @@ class CLI:
         cli_reasoning_group.add_argument('--assume', choices=assume, default=UNSET, help='What to assume for a positional args in doubt of')
         cli_reasoning_group.add_argument('--gather-data', '--gd', '-gd', choices=gather_data, default=UNSET, help='What to gather user input for')
         cli_reasoning_group.add_argument('--infervia', '--iv', '-iv', choices=infervia, default=UNSET, help='How to infer the lang(s)')
-        cli_reasoning_group.add_argument('--retrain' '--train', action='store_true', default=False, help='Retrain the AI first')
+        cli_reasoning_group.add_argument('--retrain', '--train', action='store_true', default=False, help='Retrain the AI first')
         # Display Modes
         display_group = parser.add_argument_group(title='Display Modes')
         display_group.add_argument('--groupby', '-by', choices=groupby, default=UNSET, help='What to group the result translations by')
