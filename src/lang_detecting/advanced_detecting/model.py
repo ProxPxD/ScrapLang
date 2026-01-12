@@ -30,6 +30,8 @@ class Expert(nn.Module):
         n_classes, n_tokens, n_layers = len(all_classes), len(grouped_vocab[ALL]), len(conf.paddings)
         self.register_buffer('s_chunk', torch.tensor(conf.s_chunk))
         self.register_buffer('s_chunk_step', torch.tensor(conf.s_chunk_step))
+        output_mask = c(all_classes).map(classes.__contains__).map(float).value()
+        self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float))
         self.act = nn.LeakyReLU(negative_slope=0.01)
         self.norm = nn.Softmax()
 
@@ -66,7 +68,10 @@ class Expert(nn.Module):
         # B x ch x o x 1
         x: Tensor = x @ self.norm(self.positional)
         # B x o
-        x = self.norm(x.mean(dim=-3).squeeze())
+        x = x.mean(dim=-3).squeeze()
+        # Mask non-expert outputs
+        x = x * self.output_mask
+        x = self.norm(x)
         return x
 
     def chunk(self, x: Tensor) -> Tensor:
