@@ -84,7 +84,8 @@ class CLI:
         base_group.add_argument('args', nargs='*', help='Words to translate, language to translate from and languages to translate to')
         base_group.add_argument('--words', '-words', '-words', '-word', '-w', nargs='+', default=[], help='Words to translate')
         base_group.add_argument('--from-langs', '--from-lang', '--from', '-from', '-f', dest='from_langs', nargs='+', default=[], help=(lang_help := 'Languages supported by glosbe.com'))
-        base_group.add_argument('--to-langs', '--to-lang', '--to', '-to', '-t', '-l', dest='to_langs', nargs='+', default=[], help=lang_help)
+        base_group.add_argument('--to-langs', '--to-lang', '--to', '-to', '-t', dest='to_langs', nargs='+', default=[], help=lang_help)
+        base_group.add_argument('--langs', '--lang', '-langs', '-lang', '-l', dest='langs', nargs='+', default=[], help=lang_help)
         return parser
 
     def _add_execution_mode_args(self, parser: ArgumentParser) -> ArgumentParser:
@@ -141,6 +142,11 @@ class CLI:
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:
+        if parsed.langs and not parsed.from_langs:  # TODO: test both the following ifs
+            parsed.from_langs = [parsed.langs.pop(0)]
+        if parsed.langs:
+            parsed.to_langs.extend(parsed.langs)
+
         parsed.orig_from_langs = parsed.from_langs
         parsed.orig_to_langs = parsed.to_langs
         match self.context.assume:
