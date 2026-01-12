@@ -61,7 +61,7 @@ class InputProcessor:
             return 'There exist from- and to- langs, not filling', None
         if parsed.set or parsed.add or parsed.delete:
             return 'Conf editing is run, not filling', None
-        if parsed.reanalyze:
+        if parsed.retrain:
             return 'Just reanalyzing, not filling', None
         if isinstance(parsed.loop, bool) or self.context.loop is True:
             # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
