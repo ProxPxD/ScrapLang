@@ -180,7 +180,7 @@ class Context:
     color: Box | Color = UNSET
     gather_data: GatherData = UNSET
     infervia: InferVia = UNSET
-    retrian_on: RetrainOn = UNSET
+    retrain_on: RetrainOn = UNSET
 
     loop: bool = UNSET
 
