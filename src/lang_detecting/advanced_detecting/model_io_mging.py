@@ -8,6 +8,7 @@ from pydash import chain as c
 from pydash import flow, spread
 
 from src.constants import Paths
+from src.lang_detecting.advanced_detecting import colutils
 from src.lang_detecting.preprocessing.data import LSC
 from src.resouce_managing.file import FileMgr
 from collections import OrderedDict
@@ -50,6 +51,7 @@ class ModelIOMgr:
         return shary_script
 
     def update_model_io_if_needed(self, kinds_to_vocab_classes: KindToVocabClasses) -> None:
+        kinds_to_vocab_classes = colutils.order_dict_to_dict(kinds_to_vocab_classes)
         old_script_langs = self.model_io.load()
         if old_script_langs != kinds_to_vocab_classes:
             logging.debug(f'Updating model IO')

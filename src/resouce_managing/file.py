@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -6,6 +7,7 @@ from typing import Optional, Any, Callable
 
 import pandas as pd
 import pydash as _
+import yaml
 from box import Box
 from pandas import DataFrame
 from pandas.errors import EmptyDataError
@@ -71,7 +73,6 @@ class FileMgr:
 
     @classmethod
     def load_yaml(cls, path: str | Path) -> dict | list | str:
-        import yaml
         with open(path, 'r') as f:
             return yaml.safe_load(f)
 
