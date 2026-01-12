@@ -1,4 +1,3 @@
-from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Sequence
 
@@ -16,3 +15,5 @@ class ExpertConf:
 @dataclass
 class Conf:
     expert: ExpertConf = field(default_factory=ExpertConf)
+    lr: float = 1e-4
+    weight_decay = 1e-4

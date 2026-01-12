@@ -9,6 +9,7 @@ from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 class AdvancedDetector:
     def __init__(self, lang_script: DataFrame, conf: Conf):
         self.model_io_mgr = ModelIOMgr()
+        self.conf = conf
 
         kinds_to_tokens_classes = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
         self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_classes)
@@ -16,5 +17,8 @@ class AdvancedDetector:
         kinds_to_grouped_vocab: KindToGroupedVocab = self.model_io_mgr.group_up_kinds_to_vocab(kinds_to_vocab)
 
         self.tokenizer = MultiKindTokenizer(kinds_to_grouped_vocab, )
-        self.moe = Moe(kinds_to_grouped_vocab, kinds_to_classes, conf=conf)
+        self.moe = Moe(kinds_to_grouped_vocab, kinds_to_classes, conf=self.conf)
 
+    def train_model(self):
+        import torch
+        optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)

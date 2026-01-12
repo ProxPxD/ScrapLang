@@ -21,9 +21,6 @@ from src.lang_detecting.advanced_detecting.model_io_mging import KindToClasses, 
 from src.lang_detecting.preprocessing.data import LSC
 
 
-class Router(nn.Module):
-    ...
-
 class Expert(nn.Module):
     def __init__(self,
             grouped_vocab: GroupedVocab, classes: list[Class], all_classes: list[Class],
@@ -33,6 +30,8 @@ class Expert(nn.Module):
         n_classes, n_tokens, n_layers = len(all_classes), len(grouped_vocab[ALL]), len(conf.paddings)
         self.register_buffer('s_chunk', torch.tensor(conf.s_chunk))
         self.register_buffer('s_chunk_step', torch.tensor(conf.s_chunk_step))
+        self.act = nn.LeakyReLU(negative_slope=0.01)
+        self.norm = nn.Softmax()
 
         self.embed = nn.Embedding(n_tokens, conf.emb_dim)
         channels = (conf.emb_dim, *conf.hidden_channels, n_classes)
@@ -46,7 +45,6 @@ class Expert(nn.Module):
         ])
         l_last_layer: int = conf.s_chunk + sum(2*p - k + 1 for k, p in zip(conf.kernels, conf.paddings))
         self.positional = nn.Parameter(torch.full((l_last_layer, 1), 1.0 / l_last_layer))
-        # self.full = nn.Linear()
 
     def forward(self, word: Tensor):
         """
@@ -64,14 +62,17 @@ class Expert(nn.Module):
         x = self.chunk(x)
         for conv in self.convs:
             # B x ch x c_k x l_k
-            x = conv[x]
+            x = self.act(conv[x])
         # B x ch x o x 1
-        x: Tensor = x @ self.positional
+        x: Tensor = x @ self.norm(self.positional)
         # B x o
-        x = x.mean(dim=-3).squeeze()
+        x = self.norm(x.mean(dim=-3).squeeze())
         return x
 
     def chunk(self, x: Tensor) -> Tensor:
+        """
+        #TODO
+        """
         n = x.size(-1)
         s_chunk, step = self.s_chunk.item(), self.s_chunk_step.item()
         n_full = (n - s_chunk) // step + 1
@@ -88,10 +89,6 @@ class Expert(nn.Module):
         return x_out.transpose(-2, -1)
 
 
-class Combiner(nn.Module):
-    ...
-
-
 class Moe(nn.Module):
     def __init__(self,
             kinds_to_grouped_vocab: KindToGroupedVocab, kinds_to_classes: KindToClasses,
@@ -100,12 +97,16 @@ class Moe(nn.Module):
         super().__init__()
         assert kinds_to_grouped_vocab.keys() == kinds_to_classes.keys()
         all_classes = c(kinds_to_classes.values()).flatten().apply(flow(set, sorted)).value()
+        self.register_buffer('n_classes', torch.tensor(len(all_classes)))
         self.experts = nn.ModuleList([
             Expert(grouped_vocab, classes, all_classes,conf=conf.expert)
             for grouped_vocab, classes in zip(kinds_to_grouped_vocab.values(), kinds_to_classes.values())
         ])
-        # self.kind_model = nn.ModuleDict(valmap(flow(len, Expert), kinds_to_tokens_and_classes))
-        # self.kind_model = nn.ModuleDict({kindfor kind, classes in kinds_to_tokens_and_classes.items()}))
 
     def forward(self, words: Tensor, scripts: Tensor) -> Tensor:
-        ...
+        out = torch.zeros(words.size(0), self.n_classes.item(), device=words.device)
+        for expert_idx, expert in enumerate(self.experts):
+            mask = scripts == expert_idx
+            if mask.any():
+                out[mask] = expert(words[mask])
+        return out
