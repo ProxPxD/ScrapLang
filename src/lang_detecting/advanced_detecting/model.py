@@ -59,17 +59,12 @@ class Expert(nn.Module):
         c_k - k-th number of channels  [c_0 = e]
         """
         # word: B x L
-        # B x e x L
-        x = self.embed(word)
-        # B x ch x e x l_0
-        x = self.chunk(x)
+        x = self.embed(word)  # B x e x L
+        x = self.chunk(x)  # B x ch x e x l_0
         for conv in self.convs:
-            # B x ch x c_k x l_k
-            x = self.act(conv[x])
-        # B x ch x o x 1
-        x: Tensor = x @ self.norm(self.positional)
-        # B x o
-        x = x.mean(dim=-3).squeeze()
+            x = self.act(conv[x])  # B x ch x c_k x l_k
+        x: Tensor = x @ self.norm(self.positional)  # B x ch x o x 1
+        x = x.mean(dim=-3).squeeze()  # B x o
         # Mask non-expert outputs
         x = x * self.output_mask
         x = self.norm(x)
@@ -85,28 +80,22 @@ class Expert(nn.Module):
         if shift_space < 0:
             return self._pad_both_sides(x, -shift_space)
         n_full = shift_space // step + 1
-        # B x e x (l_0') x ch
-        x_front = x.unfold(dimension=-1, size=s_chunk, step=step)
+        x_front = x.unfold(dimension=-1, size=s_chunk, step=step)  # B x e x (l_0') x ch
         front_end_idx = s_chunk + step * (n_full - 1) - 1
         if front_end_idx < n - 1:
-            # B x e x 1 x ch
-            x_end = x[..., -s_chunk:].unsqueeze(-2)
-            # B x e x l_0 x ch
-            x_out = torch.cat([x_front, x_end], dim=-2)
+            x_end = x[..., -s_chunk:].unsqueeze(-2)  # B x e x 1 x ch
+            x_out = torch.cat([x_front, x_end], dim=-2)  # B x e x l_0 x ch
         else:
             x_out = x_front
-        # B x ch x e x l_0
-        return x_out.transpose(-2, -1)
+        return x_out.transpose(-2, -1)  # B x ch x e x l_0
 
     @classmethod
     def _pad_both_sides(cls, x: Tensor, missing: int) -> Tensor:
-        # B x e x l_0 x ch(=2)
-        x_out = torch.stack([
+        x_out = torch.stack([   # B x e x l_0 x ch(=2)
             F.pad(x, (missing, 0)),
             F.pad(x, (0, missing)),
         ])
-        # B x ch(=2) x e x l_0
-        return x_out.transpose(-2, -1)
+        return x_out.transpose(-2, -1)  # B x ch(=2) x e x l_0
 
 
 class Moe(nn.Module):
