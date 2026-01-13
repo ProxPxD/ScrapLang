@@ -79,6 +79,8 @@ class AppMgr:
             return
 
         setup_logging(self.context)
+        if self.context.retrain:
+            self.input_mgr.processor.retrain_detector()
         if self.context.words:
             self.run_scrap()
 
@@ -89,4 +91,4 @@ class AppMgr:
 
         self.conf_mgr.update_lang_order(self.context.all_langs)
         scrap_results.seek(0)
-        self.data_gatherer.gather_valid_data(scrap_results)
+        self.data_gatherer.gather_valid_data(scrap_results, self.input_mgr.processor)

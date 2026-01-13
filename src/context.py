@@ -32,6 +32,7 @@ class Defaults:
     groupby: str = 'word'
     infervia: str = 'last'
     retrain_on: RetrainOn = 'gather'
+    retrain: bool = False
     gather_data: str = 'all'
     indirect: bool = 'fail'
 
@@ -181,12 +182,13 @@ class Context:
     gather_data: GatherData = UNSET
     infervia: InferVia = UNSET
     retrain_on: RetrainOn = UNSET
+    retrain: bool = UNSET
 
     loop: bool = UNSET
 
     mappings: Box | Mappings = UNSET
 
-    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_', 'retrain', 'orig_from_langs', 'orig_to_langs', 'langs'}
+    _to_filter: ClassVar[set[str]] = {'args', 'reverse', 'add', 'delete', 'set', '_', 'orig_from_langs', 'orig_to_langs', 'langs'}
 
     def __init__(self, conf: Conf):
         self._conf: Conf = conf
@@ -219,8 +221,11 @@ class Context:
         for key, val in kwargs.items():
             if val is not UNSET:
                 setattr(self, key, val)
-
-        dict_attrs = _.pick_by(asdict(self), lambda val, key: _.is_dict(val) and not key.startswith('_'))
+        try:
+            dict_attrs = _.pick_by(asdict(self), lambda val, key: _.is_dict(val) and not key.startswith('_'))
+        except AttributeError as e:
+            attribute = e.args[0].removeprefix('Attribute "').removesuffix('" not found')
+            raise RuntimeError(f'Default not set for "{attribute}"')
         for key, val in dict_attrs.items():
             unsets = set(_.get(Defaults, key).keys()) - set(val.keys())
             for subkey in unsets:

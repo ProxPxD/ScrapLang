@@ -61,7 +61,7 @@ class InputProcessor:
             return 'There exist from- and to- langs, not filling', None
         if parsed.set or parsed.add or parsed.delete:
             return 'Conf editing is run, not filling', None
-        if parsed.retrain:
+        if parsed.retrain is True:
             return 'Just retraining, not filling', None
         if isinstance(parsed.loop, bool) or self.context.loop is True:
             # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
@@ -118,7 +118,7 @@ class InputProcessor:
         return parsed
 
     def _reverse_if_needed(self, parsed: Namespace) -> Namespace:
-        if parsed.reverse:
+        if parsed.reverse is True:
             old_from, old_first_to = parsed.from_langs[0], parsed.to_langs[0]
             logging.debug(f'Reversing: {old_from, old_first_to} => {old_first_to, old_from}')
             parsed.from_langs[0] = old_first_to
@@ -147,3 +147,8 @@ class InputProcessor:
             mapped_words.append(word)
         parsed.words = mapped_words
         return parsed
+
+    def retrain_detector(self) -> None:
+        if self.detector and self.detector.advanced_detector:
+            logging.debug('Retraining model')
+            self.detector.advanced_detector.retrain_model()

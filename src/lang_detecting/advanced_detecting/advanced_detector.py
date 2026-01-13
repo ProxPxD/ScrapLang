@@ -19,6 +19,6 @@ class AdvancedDetector:
         self.tokenizer = MultiKindTokenizer(kinds_to_grouped_vocab, )
         self.moe = Moe(kinds_to_grouped_vocab, kinds_to_classes, conf=self.conf)
 
-    def train_model(self):
+    def retrain_model(self):
         import torch
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
