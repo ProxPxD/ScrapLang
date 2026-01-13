@@ -15,11 +15,10 @@ from src.scrapping import Outcome
 
 class DataGatherer:
     def __init__(self,
-                 context: Context,
-                 valid_data_mgr: ValidDataMgr = None,
-                 short_mem_file: str | Path = None,
-                 data_processor: DataProcessor = None,
-
+            context: Context,
+            valid_data_mgr: ValidDataMgr = None,
+            short_mem_file: str | Path = None,
+            data_processor: DataProcessor = None,
         ):
         self.context: Context = context
         self.data_processor = data_processor
