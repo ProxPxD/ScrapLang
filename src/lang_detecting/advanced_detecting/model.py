@@ -14,6 +14,7 @@ from toolz import valmap
 import pydash as _
 from pydash import chain as c
 from torch import Tensor, floor
+import torch.nn.functional as F
 
 from src.lang_detecting.advanced_detecting.conf import Conf, ExpertConf
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToClasses, KindToGroupedVocab, Class, GroupedVocab, \
@@ -80,7 +81,10 @@ class Expert(nn.Module):
         """
         n = x.size(-1)
         s_chunk, step = self.s_chunk.item(), self.s_chunk_step.item()
-        n_full = (n - s_chunk) // step + 1
+        shift_space = n - s_chunk
+        if shift_space < 0:
+            return self._pad_both_sides(x, -shift_space)
+        n_full = shift_space // step + 1
         # B x e x (l_0') x ch
         x_front = x.unfold(dimension=-1, size=s_chunk, step=step)
         front_end_idx = s_chunk + step * (n_full - 1) - 1
@@ -91,6 +95,17 @@ class Expert(nn.Module):
             x_out = torch.cat([x_front, x_end], dim=-2)
         else:
             x_out = x_front
+        # B x ch x e x l_0
+        return x_out.transpose(-2, -1)
+
+    @classmethod
+    def _pad_both_sides(cls, x: Tensor, missing: int) -> Tensor:
+        # B x e x l_0 x ch(=2)
+        x_out = torch.stack([
+            F.pad(x, (missing, 0)),
+            F.pad(x, (0, missing)),
+        ])
+        # B x ch(=2) x e x l_0
         return x_out.transpose(-2, -1)
 
 
