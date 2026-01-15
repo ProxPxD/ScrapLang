@@ -111,7 +111,8 @@ class Expert(nn.Module):
 
 class Moe(nn.Module):
     def __init__(self,
-            kinds_to_grouped_vocab: KindToGroupedVocab, kinds_to_classes: KindToClasses,
+            kinds_to_grouped_vocab: KindToGroupedVocab,
+            kinds_to_classes: KindToClasses,
             conf: Conf,
         ):
         super().__init__()

@@ -28,8 +28,7 @@ class InputMgr:
         args = _.flat_map(args, c().split('\xa0'))
         parsed = self.cli.parse(args)
         if parsed.retrain is True:  # TODO: test flag with(out) exiting
-            logging.debug('Retraining')
-            self.processor.data_processor.generate_script_summary()
+            self.processor.retrain_detector()
             if not parsed.words:
                 logging.debug('No words for scrapping, exiting after analysis')
         elif parsed.set or parsed.add or parsed.delete or isinstance(parsed.loop, bool):

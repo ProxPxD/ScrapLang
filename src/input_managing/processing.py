@@ -149,6 +149,7 @@ class InputProcessor:
         return parsed
 
     def retrain_detector(self) -> None:
+        self.data_processor.generate_script_summary()
         if self.detector and self.detector.advanced_detector:
             logging.debug('Retraining model')
             self.detector.advanced_detector.retrain_model()

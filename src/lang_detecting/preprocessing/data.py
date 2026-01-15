@@ -1,4 +1,5 @@
 import ast
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,6 +51,7 @@ class DataProcessor:
         return lang_script
 
     def generate_script_summary(self) -> DataFrame:
+        logging.debug('Generating script summary')
         valid_data = self.valid_data_mgr.valid_data_file_mgr.load()
         lang_script = self._generate_script_summary(valid_data)
         self.lang_script_mgr.save(lang_script)
