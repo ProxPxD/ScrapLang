@@ -47,7 +47,7 @@ class Expert(nn.Module):
             ) for (ci, co), p, k in zip(windowed(channels, 2), conf.kernels, conf.paddings)
         ])
         l_last_layer: int = conf.s_chunk + sum(2*p - k + 1 for k, p in zip(conf.kernels, conf.paddings))
-        self.positional = nn.Parameter(torch.full((l_last_layer, 1), 1.0 / l_last_layer))
+        self.positional = nn.Parameter(Tensor([0.4, 0.2, 0.4]))  # Beg, Mid, End
 
     def forward(self, word: Tensor):
         """
@@ -63,11 +63,10 @@ class Expert(nn.Module):
         x = self.chunk(x)  # B x ch x e x l_0
         for conv in self.convs:
             x = self.act(conv[x])  # B x ch x c_k x l_k
-        x: Tensor = x @ self.norm(self.positional)  # B x ch x o x 1
-        x = x.mean(dim=-3).squeeze()  # B x o
+        # merge '(ch)unks' and '(l_k)ength'
+        x = self._weight_positional(x)  # B x o
         # Mask non-expert outputs
-        x = x * self.output_mask
-        x = self.norm(x)
+        x = self.norm(x * self.output_mask)
         return x
 
     def chunk(self, x: Tensor) -> Tensor:
@@ -96,6 +95,18 @@ class Expert(nn.Module):
             F.pad(x, (0, missing)),
         ])
         return x_out.transpose(-2, -1)  # B x ch(=2) x e x l_0
+
+    def _weight_positional(self, x: Tensor) -> Tensor:
+        x = x.permute(0, 2, 1, 3)  # B x c_k x ch x l_k
+        x = x.reshape(*x.shape[:-2], -1)  # B x c_k x (ch*l_k)
+        chunk_o_length = x.shape[-1]
+        s_step = self.s_chunk_step.item()
+        n_edge_vals = min(s_step, chunk_o_length // 2)
+        n_mid_vals = chunk_o_length - 2*n_edge_vals
+        pos = F.softplus(self.positional)
+        weights = torch.cat([pos[i].expand(n)/n for i, n in enumerate((n_edge_vals, n_mid_vals, n_edge_vals))]).to(dtype=x.dtype)
+        x = (x * weights).sum(dim=-1)  # B x o
+        return x
 
 
 class Moe(nn.Module):
