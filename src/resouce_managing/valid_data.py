@@ -56,6 +56,10 @@ class ValidDataMgr:
         self.valid_data_file_mgr = FileMgr(conf_file)
         self._n_parsed: int = n_parsed
 
+    @property
+    def data(self) -> DataFrame:
+        return self.valid_data_file_mgr.content
+
     def gather(self, scrap_results: Iterable[Outcome]) -> bool:
         logging.debug('Searching something not-yet-gathered')
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]

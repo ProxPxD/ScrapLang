@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Sequence, Optional
 
 
 @dataclass
@@ -17,3 +17,5 @@ class Conf:
     expert: ExpertConf = field(default_factory=ExpertConf)
     lr: float = 1e-4
     weight_decay = 1e-4
+    max_batch_size: Optional[int] = None
+    accum_grad_bs: int = 10

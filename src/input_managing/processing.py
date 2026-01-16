@@ -25,7 +25,7 @@ class InputProcessor:
         self.context = context
         self.outstemmer = Outstemmer()
         self.data_processor = data_processor
-        self.detector = Detector(self.data_processor.lang_script) if self.data_processor.lang_script_mgr else None
+        self.detector = Detector(self.data_processor.lang_script, valid_data_mgr=self.data_processor.valid_data_mgr) if self.data_processor.lang_script_mgr else None
 
     def process(self, parsed: Namespace) -> Namespace:
         parsed = self._word_outstemming(parsed)

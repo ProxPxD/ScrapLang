@@ -9,22 +9,23 @@ from pandas import DataFrame
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.preprocessing.data import LSC
 from src.lang_detecting.simple_detecting import SimpleDetector
+from src.resouce_managing.valid_data import ValidDataMgr
 
 try:
     import torch
-    has_torch = True
+    HAS_LIB_TORCH = True
 except ImportError:
-    has_torch = False
+    HAS_LIB_TORCH = False
 
-if has_torch:
+if HAS_LIB_TORCH:
     from src.lang_detecting.advanced_detecting import AdvancedDetector
 
 
 class Detector:
-    def __init__(self, lang_script: DataFrame):
+    def __init__(self, lang_script: DataFrame, valid_data_mgr: ValidDataMgr):
         self.lang_script = lang_script
         self.simple_detector = SimpleDetector(self.lang_script) if lang_script is not None else None
-        self.advanced_detector = AdvancedDetector(self.lang_script, conf=Conf()) if has_torch and lang_script is not None else None
+        self.advanced_detector = AdvancedDetector(self.lang_script, valid_data_mgr=valid_data_mgr, conf=Conf()) if HAS_LIB_TORCH and lang_script is not None else None
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         if not self.simple_detector:
