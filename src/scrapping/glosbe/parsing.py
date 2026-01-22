@@ -2,6 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
+from functools import reduce
 from io import StringIO
 
 import pandas as pd
@@ -95,15 +96,26 @@ class TranslationParser(Parser):
 class InflectionParser(Parser):
     @classmethod
     @with_ensured_tag
-    def parse(cls, tag: Tag) -> DataFrame | ParsingException:
-        logging.debug('Parsing inflection table')
-        if not (table_tags := tag.select('div #grammar_0_0 table')):
-            return ParsingException('No inflection table!')
+    def parse(cls, tag: Tag) -> DataFrame | str | ParsingException:
+        logging.debug('Parsing inflection')
+        if table_tags := tag.select('div #grammar_0_0 table'):
+            return cls.parse_table(table_tags)
+        logging.debug('No inflection table!')
+        if table_grammar_list := tag.select('div #grammar_0_0 ul'):  # TODO: test
+            return cls.parse_grammar_list(table_grammar_list[0])
+        return ParsingException('No inflection table nor grammar info!')
+
+    @classmethod
+    def parse_table(cls, table_tags: ResultSet[Tag]) -> DataFrame:
         to_table = flow(str, StringIO, partial(pd.read_html, keep_default_na=False, header=None))
         to_table_or_none = c().apply_catch(to_table, {ValueError}, None)
         table = c(table_tags).flat_map(to_table_or_none).reject(_.is_none).head().value()
         return table
 
+    @classmethod
+    def parse_grammar_list(cls, grammar_list: Tag) -> str:
+        shortest = sorted(grammar_list.select('li'), key=lambda li: len(li.text))[0]
+        return shortest.text
 
 @dataclass(frozen=True)
 class DefResult(Result):

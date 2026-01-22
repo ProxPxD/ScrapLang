@@ -5,7 +5,7 @@ from textwrap import wrap, indent
 from typing import Any, Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-from pandas.core.interchange.dataframe_protocol import DataFrame
+from pandas import DataFrame
 from pydash import chain as c, partial
 from tabulate import tabulate
 from termcolor import colored
@@ -78,7 +78,12 @@ class Printer:
         if outcome.is_fail():
             self.print(outcome.results.args[0])
             return
-        table: DataFrame = outcome.results
+        match outcome.results:
+            case DataFrame() as table: self.print_inflection_table(table)
+            case str() as text: self.print_grammar_data(text)
+            case _: raise ValueError(f'Unexpected result type for inflection: {type(outcome.results)}')
+
+    def print_inflection_table(self, table: DataFrame) -> None:
         table_str = tabulate(table, tablefmt='rounded_outline')
         if (olen := len(table_str.split('\n', 1)[0])) > 128:
             table = table.map(lambda x: "\n".join(wrap(x, width=16)))
@@ -86,6 +91,9 @@ class Printer:
         self.print(table_str)
         if not any((self.context.definition, self.context.inflection)):
             self.print('')
+
+    def print_grammar_data(self, text: str) -> None:
+        self.print(text)
 
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
