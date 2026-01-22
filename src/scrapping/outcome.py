@@ -25,6 +25,7 @@ class MainOutcomeKinds(BaseDC):
     MAIN_TRANSLATION: str = 'translation'
     INDIRECT_TRANSLATION: str = 'indirect'
     INFLECTION: str = 'inflection'
+    GRAMAMR: str = 'grammar'
     DEFINITION: str = 'definition'
     WIKTIO: str = 'wiktio'
 

@@ -1,9 +1,10 @@
 import os
 import traceback
 from dataclasses import dataclass
-from textwrap import wrap, indent
+from textwrap import indent, wrap
 from typing import Any, Callable
 
+import pydash as _
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas import DataFrame
 from pydash import chain as c, partial
@@ -11,10 +12,8 @@ from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
-from .scrapping import Outcome, OutcomeKinds
-from .scrapping.wiktio.parsing import WiktioResult, Meaning, Pronunciation
-import pydash as _
-from pydash import chain as c
+from .scrapping import Outcome, OutcomeKinds as OK
+from .scrapping.wiktio.parsing import Meaning, Pronunciation, WiktioResult
 
 os.environ['TZ'] = 'Europe/Warsaw'
 
@@ -44,22 +43,22 @@ class Printer:
 
     def print_result(self, outcome: Outcome) -> None:
         match outcome.kind:
-            case OutcomeKinds.MAIN_GROUP_SEPERATOR:
+            case OK.MAIN_GROUP_SEPERATOR:
                 self.print_separator(outcome.results, '━')  # TODO: add as configurable together with numbers
-            case OutcomeKinds.SUBGROUP_SEPERATOR:
+            case OK.SUBGROUP_SEPERATOR:
                 self.print_separator(outcome.results, '─')  # TODO: add as configurable together with numbers
-            case OutcomeKinds.INFLECTION:
+            case OK.INFLECTION | OK.GRAMAMR:
                 self.print_inflection(outcome)
-            case OutcomeKinds.MAIN_TRANSLATION:
+            case OK.MAIN_TRANSLATION:
                 self.print_translation(outcome)
-            case OutcomeKinds.INDIRECT_TRANSLATION:
+            case OK.INDIRECT_TRANSLATION:
                 if outcome.is_success():
                     self.print_translation(outcome)
-            case OutcomeKinds.DEFINITION:
+            case OK.DEFINITION:
                 self.print_definitions(outcome)
-            case OutcomeKinds.NEWLINE:
+            case OK.NEWLINE:
                 self.print('')
-            case OutcomeKinds.WIKTIO:
+            case OK.WIKTIO:
                 self._print_wktio(outcome)
             case _:
                 raise ValueError(f'Unknown scrap kind: {outcome.kind}')
@@ -80,7 +79,7 @@ class Printer:
             return
         match outcome.results:
             case DataFrame() as table: self.print_inflection_table(table)
-            case str() as text: self.print_grammar_data(text)
+            case str() as text: self.print_grammar(outcome)
             case _: raise ValueError(f'Unexpected result type for inflection: {type(outcome.results)}')
 
     def print_inflection_table(self, table: DataFrame) -> None:
@@ -92,8 +91,9 @@ class Printer:
         if not any((self.context.definition, self.context.inflection)):
             self.print('')
 
-    def print_grammar_data(self, text: str) -> None:
-        self.print(text)
+    def print_grammar(self, outcome: Outcome) -> None:
+        colored_prefix = self.color(f'{outcome.args.word}: ', self.context.color.main)
+        self.print(f'{colored_prefix}{outcome.results}')
 
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
@@ -104,12 +104,14 @@ class Printer:
 
     def get_translation_prefix(self, outcome: Outcome) -> str:
         match outcome.kind:
-            case OutcomeKinds.MAIN_TRANSLATION:
-                match len(self.context.from_langs):
-                    case 1: return f'{outcome.args[self.context.member_prefix_arg]}: '
-                    case _: return f'{outcome.args.word}: '
-            case OutcomeKinds.INDIRECT_TRANSLATION: return ' ' * 4 if outcome.is_success() else ''
+            case OK.MAIN_TRANSLATION: return self.get_member_prefix(outcome)
+            case OK.INDIRECT_TRANSLATION: return ' ' * 4 if outcome.is_success() else ''
             case _: raise ValueError(f'Unexpected transltation type: {outcome.kind}')
+
+    def get_member_prefix(self, outcome: Outcome):
+        match len(self.context.from_langs):
+            case 1: return f'{outcome.args[self.context.member_prefix_arg]}: '
+            case _: return f'{outcome.args.word}: '
 
     def create_translation_row(self, outcome: Outcome) -> str:
         match outcome.is_success():

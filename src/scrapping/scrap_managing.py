@@ -42,12 +42,18 @@ class ScrapMgr:
                 yield Outcome(OutcomeKinds.get_main_separator(context), results=scrap_it.main_group)
             if scrap_it.is_first_in_poly_subgroup():
                 yield Outcome(OutcomeKinds.SUBGROUP_SEPERATOR, results=scrap_it.subgroup)
-            if context.is_at_from() and scrap_it.is_at_inflection():
-                yield self.scrap_inflections(from_lang, word)
+            if context.is_at_from():
+                if scrap_it.is_at_inflection():
+                    yield self.scrap_inflections(from_lang, word)
+                if scrap_it.is_at_grammar():
+                    yield self.scrap_grammar(from_lang, word)
             if scrap_it.is_at_translation():
                 main = self.scrap_main_translations(from_lang, to_lang, word)
-                if context.is_at_to() and scrap_it.is_at_inflection() and main.is_success():  # TODO: test is_success (ex. lubieć -it instread of lubić)
-                    yield self.scrap_inflections(to_lang, main.results[0].word)
+                if context.is_at_to() and main.is_success():
+                    if scrap_it.is_at_inflection():   # TODO: test is_success (ex. lubieć -it instread of lubić)
+                        yield self.scrap_inflections(to_lang, main.results[0].word)
+                    if scrap_it.is_at_grammar():
+                        yield self.scrap_grammar(to_lang, main.results[0].word)
                 yield main
                 if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
@@ -66,6 +72,13 @@ class ScrapMgr:
             kind=OutcomeKinds.INFLECTION,
             args=(args := Box(lang=lang, word=word, frozen_box=True)),
             results=self.glosbe_scrapper.scrap_inflection(**args)
+        )
+
+    def scrap_grammar(self, lang: str, word: str) -> Outcome:
+        return Outcome(
+            kind=OutcomeKinds.GRAMAMR,
+            args=(args := Box(lang=lang, word=word, frozen_box=True)),
+            results=self.glosbe_scrapper.scrap_grammar(**args)
         )
 
     def scrap_main_translations(self, from_lang: str, to_lang: str, word: str) -> Outcome:

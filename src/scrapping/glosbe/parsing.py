@@ -2,16 +2,17 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
-from functools import reduce
 from io import StringIO
+from typing import Optional
 
 import pandas as pd
 import pydash as _
-from bs4.element import Tag, ResultSet
+from bs4.element import ResultSet, Tag
+from more_itertools import bucket
 from pandas import DataFrame
-from pydash import chain as c, partial, flow
+from pydash import chain as c, flow, partial
 
-from ..core.parsing import Result, Parser, with_ensured_tag, ParsingException
+from ..core.parsing import Parser, ParsingException, Result, with_ensured_tag
 
 
 class TransResultKind(Enum):
@@ -98,24 +99,32 @@ class InflectionParser(Parser):
     @with_ensured_tag
     def parse(cls, tag: Tag) -> DataFrame | str | ParsingException:
         logging.debug('Parsing inflection')
-        if table_tags := tag.select('div #grammar_0_0 table'):
-            return cls.parse_table(table_tags)
-        logging.debug('No inflection table!')
-        if table_grammar_list := tag.select('div #grammar_0_0 ul'):  # TODO: test
-            return cls.parse_grammar_list(table_grammar_list[0])
+        if not isinstance(table := cls.parse_table(tag), Exception):
+            return table
+        logging.debug(table.args[0])
+        if not isinstance(grammar := cls.parse_grammar(tag), Exception):
+            return grammar
         return ParsingException('No inflection table nor grammar info!')
 
     @classmethod
-    def parse_table(cls, table_tags: ResultSet[Tag]) -> DataFrame:
+    def parse_table(cls, tag: Tag) -> Optional[DataFrame]:
+        if not (table_tags := tag.select('div #grammar_0_0 table')):
+            return ParsingException('No inflection table!')
         to_table = flow(str, StringIO, partial(pd.read_html, keep_default_na=False, header=None))
         to_table_or_none = c().apply_catch(to_table, {ValueError}, None)
         table = c(table_tags).flat_map(to_table_or_none).reject(_.is_none).head().value()
         return table
 
     @classmethod
-    def parse_grammar_list(cls, grammar_list: Tag) -> str:
-        shortest = sorted(grammar_list.select('li'), key=lambda li: len(li.text))[0]
-        return shortest.text
+    @with_ensured_tag
+    def parse_grammar(cls, tag: Tag) -> Optional[str] | ParsingException:
+        if not (table_grammar_items := tag.select('div #grammar_0_0 ul li')):  # TODO: test
+            return ParsingException('No grammar info!')
+        grammar_bucket = bucket(table_grammar_items, key=c().get('text').count_substr(','))
+        max_n_comma = max(grammar_bucket)
+        max_grammars = grammar_bucket[max_n_comma]
+        max_bold = max(max_grammars, key=lambda t: len(t.select('b')))
+        return c(max_bold.select('b')).map(c().get('text')).join(', ').value()
 
 @dataclass(frozen=True)
 class DefResult(Result):

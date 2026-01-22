@@ -21,7 +21,7 @@ from src.logutils import setup_logging
 
 class AtSpecifierAction(Action):
     sides = 'ft'
-    modes = 'oid'
+    modes = 'oigd'
 
     @classmethod
     def mode_permutations(cls) -> Iterable[str]:
@@ -32,7 +32,7 @@ class AtSpecifierAction(Action):
 
     @classmethod
     def side_mode_fusions(cls) -> Iterable[str]:
-        conflicting_like = {'to'}  #{f'{s}{m}' for m in cls.modes for s in cls.sides}
+        conflicting_like = {'to',}  #{f'{s}{m}' for m in cls.modes for s in cls.sides}
         perms = chain(
             cls.mode_permutations(),
             flatten((map(''.join, circular_shifts(side+perm)) for side, perm in product(cls.sides, cls.mode_permutations())))
@@ -58,6 +58,7 @@ class AtSpecifierAction(Action):
             match o:
                 case 'o': dest = 'wiktio'
                 case 'i': dest = 'inflection'
+                case 'g': dest = 'grammar'
                 case 'd': dest = 'definition'
                 case _: raise ValueError(f'Unexpected option: {o}')
             setattr(namespace, dest, True)
@@ -95,14 +96,15 @@ class CLI:
         translation_mode_group.add_argument('--at', '-at', help='Specify the from/to lang side to apply the mode to', choices=at, default='none')
         translation_mode_group.add_argument(*tuple(AtSpecifierAction.side_mode_fusions()), help='Side mode fusion', action=AtSpecifierAction, nargs=0, dest='_')
         translation_mode_group.add_argument('--wiktio', '-wiktio', '--overview', '-overview', '-o', action='store_true', default=False, help='Show morphological and etymological data')
-        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='Show inflection table')
+        translation_mode_group.add_argument('--inflection', '--infl', '-infl', '-i', action='store_true', default=False, help='Show inflection')
+        translation_mode_group.add_argument('--grammar', '-grammar', '-g', action='store_true', default=False, help='Show grammar info')
         translation_mode_group.add_argument('--definition', '--definitions', '-definition', '-definitions', '--def', '-def', '-d', action='store_true', default=False, help='Show word definitions')
         translation_mode_group.add_argument('--indirect', choices=indirect, default=UNSET, help='Turn on indirect translation')
         # CLI Reasoning Modes
         cli_reasoning_group = parser.add_argument_group(title='CLI Reasoning Modes')
         cli_reasoning_group.add_argument('--reverse', '--reversed', '-r', action='store_true', help='Reverse the from_lang(s) with the first to_lang')
         cli_reasoning_group.add_argument('--assume', choices=assume, default=UNSET, help='What to assume for a positional args in doubt of')
-        cli_reasoning_group.add_argument('--gather-data', '--gd', '-gd', choices=gather_data, default=UNSET, help='What to gather user input for')
+        cli_reasoning_group.add_argument('--gather-data', choices=gather_data, default=UNSET, help='What to gather user input for')
         cli_reasoning_group.add_argument('--infervia', '--iv', '-iv', choices=infervia, default=UNSET, help='How to infer the lang(s)')
         cli_reasoning_group.add_argument('--retrain', '--train', action='store_true', default=UNSET, help='Retrain the AI first')
         # Display Modes

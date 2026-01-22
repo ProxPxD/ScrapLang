@@ -22,6 +22,7 @@ class Defaults:
     at: str = 'from'
     wiktio: bool = False
     inflection: bool = False
+    grammar: bool = False
     definition: bool = False
     pronunciation: bool = False
 
@@ -144,6 +145,10 @@ class ScrapIterator:
         return self._context.inflection and self._is_first_in_all_main_members()
 
     @lru_cache()
+    def is_at_grammar(self) -> bool:
+        return self._context.grammar and self._is_first_in_all_main_members()
+
+    @lru_cache()
     def is_at_translation(self) -> bool:
         return bool(self.to_lang)
 
@@ -169,6 +174,7 @@ class Context:
     at: str = UNSET
     wiktio: bool = UNSET
     inflection: bool = UNSET
+    grammar: bool = UNSET
     definition: bool = UNSET
     pronunciation: bool = UNSET
 

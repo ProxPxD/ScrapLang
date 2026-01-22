@@ -74,7 +74,7 @@ class InputProcessor:
         return False, None
 
     def _infer_lang(self, parsed: Namespace) -> Namespace:
-        if msg := self._is_infer_needed(parsed):
+        if msg := self._is_infer_needless(parsed):
             logging.debug(msg)
             return parsed
         logging.debug('Inferring thru a simple detector')
@@ -90,7 +90,7 @@ class InputProcessor:
         parsed.from_langs = [inferred_lang]
         return parsed
 
-    def _is_infer_needed(self, parsed: Namespace) -> Optional[str]:
+    def _is_infer_needless(self, parsed: Namespace) -> Optional[str]:
         if parsed.orig_from_langs:
             return 'From lang explicitly specified, not inferring'
         if parsed.reverse:  # TODO: add test for reversing!
@@ -105,7 +105,7 @@ class InputProcessor:
         if len(self.context.langs) < (n_needed := int(not parsed.from_langs) + int(not parsed.to_langs)):
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
-        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio):
+        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio or parsed.grammar):
             if parsed.at.startswith('n'):
                 n_needed -= 1
         to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')

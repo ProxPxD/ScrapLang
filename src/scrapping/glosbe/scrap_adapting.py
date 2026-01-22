@@ -21,6 +21,10 @@ class GlosbeScrapAdapter(ScrapAdapter):
         url = GlosbeUrlBuilder.get_details_url(lang, word)
         return self.scrap(url, InflectionParser.parse)
 
+    def scrap_grammar(self, lang: str, word: str) -> Any | HTTPError | ParsingException:
+        url = GlosbeUrlBuilder.get_details_url(lang, word)
+        return self.scrap(url, InflectionParser.parse_grammar)
+
     def scrap_definition(self, lang: str, word: str) -> list[Result] | HTTPError | ParsingException:
         url = GlosbeUrlBuilder.get_word_trans_url(lang, lang, word)
         return self.scrap(url, DefinitionParser.parse)
