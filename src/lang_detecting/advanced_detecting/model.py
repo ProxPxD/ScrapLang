@@ -2,6 +2,7 @@ import ast
 import math
 from collections import OrderedDict
 from dataclasses import asdict
+from typing import Sequence, Callable
 
 import more_itertools
 import toolz
@@ -17,21 +18,24 @@ from torch import Tensor, floor
 import torch.nn.functional as F
 
 from src.lang_detecting.advanced_detecting.conf import Conf, ExpertConf
-from src.lang_detecting.advanced_detecting.model_io_mging import KindToClasses, KindToGroupedVocab, Class, GroupedVocab, \
-    ALL
+from src.lang_detecting.advanced_detecting.model_io_mging import KindToOutputs, KindToSpecialGroup, Class, SpecialGroup, \
+    ALL, TokenizedKindToGroupedVocab, KindToVocab, Vocab
 from src.lang_detecting.preprocessing.data import LSC
 
 
 class Expert(nn.Module):
     def __init__(self,
-            grouped_vocab: GroupedVocab, classes: list[Class], all_classes: list[Class],
-            conf: ExpertConf
+            vocab: Vocab,
+            outputs: list[Class],
+            all_classes: list[Class],
+            conf: ExpertConf,
+            n_specs: int = 0,
         ):
         super().__init__()
-        n_classes, n_tokens, n_layers = len(all_classes), len(grouped_vocab[ALL]), len(conf.paddings)
+        n_tokens, n_classes, n_layers = len(vocab), len(all_classes), len(conf.paddings)
         self.register_buffer('s_chunk', torch.tensor(conf.s_chunk))
         self.register_buffer('s_chunk_step', torch.tensor(conf.s_chunk_step))
-        output_mask = c(all_classes).map(classes.__contains__).map(float).value()
+        output_mask = c(all_classes).map(outputs.__contains__).map(float).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float))
         self.act = nn.LeakyReLU(negative_slope=0.01)
         self.norm = nn.Softmax()
@@ -110,20 +114,21 @@ class Expert(nn.Module):
 
 
 class Moe(nn.Module):
+
     def __init__(self,
-            kinds_to_grouped_vocab: KindToGroupedVocab,
-            kinds_to_classes: KindToClasses,
+            kinds_to_vocabs: KindToVocab,
+            kinds_to_outputs: KindToOutputs,
+            kind_to_specs: dict[str, Sequence[Callable]],
             conf: Conf,
         ):
+        assert  kinds_to_vocabs.keys() == kind_to_specs.keys()
         super().__init__()
-        assert kinds_to_grouped_vocab.keys() == kinds_to_classes.keys()
-        all_classes = c(kinds_to_classes.values()).flatten().apply(flow(set, sorted)).value()
-        self.register_buffer('n_classes', torch.tensor(len(all_classes)))
+        all_outputs = c(kinds_to_outputs.values()).flatten().apply(flow(set, sorted)).value()
+        self.register_buffer('n_classes', torch.tensor(len(all_outputs)))
         self.experts = nn.ModuleList([
-            Expert(grouped_vocab, classes, all_classes,conf=conf.expert)
-            for grouped_vocab, classes in zip(kinds_to_grouped_vocab.values(), kinds_to_classes.values())
+            Expert(vocabs, outputs, all_outputs, conf=conf.expert, n_specs=len(kind_to_specs.get(kind, [])))
+            for (kind, vocabs), outputs in zip(kinds_to_vocabs.items(), kinds_to_outputs.values())
         ])
-
     def forward(self, words: Tensor, scripts: Tensor) -> Tensor:
         out = torch.zeros(words.size(0), self.n_classes.item(), device=words.device)
         for expert_idx, expert in enumerate(self.experts):

@@ -1,24 +1,26 @@
 import logging
 import operator as op
+from abc import ABC
+from collections import OrderedDict
 from itertools import combinations
-from typing import Collection
+from typing import Collection, Callable
 
-import pydash as _
 from pydash import chain as c
+import pydash as _
 from pydash import flow, spread
 
 from src.constants import Paths
 from src.lang_detecting.advanced_detecting import colutils
 from src.lang_detecting.preprocessing.data import LSC
 from src.resouce_managing.file import FileMgr
-from collections import OrderedDict
 
 Kind = Vocab = Class = str
 KindToVocab = OrderedDict[Kind, Vocab]
-KindToClasses = OrderedDict[Kind, list[Class]]
-KindToVocabClasses = OrderedDict[Kind, KindToVocab | KindToClasses]
-GroupedVocab = OrderedDict[str, Vocab]  # Default
-KindToGroupedVocab = OrderedDict[Kind, GroupedVocab]
+KindToOutputs = OrderedDict[Kind, list[Class]]
+KindToVocabOutputs = OrderedDict[Kind, KindToVocab | KindToOutputs]
+SpecialGroup = OrderedDict[str, Vocab]  # Default
+KindToSpecialGroup = OrderedDict[Kind, SpecialGroup]
+TokenizedKindToGroupedVocab = OrderedDict[Kind, OrderedDict[str, list[int]]]
 
 ALL = 'all'
 
@@ -35,7 +37,7 @@ class ModelIOMgr:
         as_strs = all_any_shareds.to_list().sort().join()
         return as_strs.value()
 
-    def extract_kinds_to_vocab_classes(self, lang_script) -> KindToVocabClasses:
+    def extract_kinds_to_vocab_classes(self, lang_script) -> KindToVocabOutputs:
         script_lang = lang_script.explode(LSC.SCRIPTS).rename(columns={LSC.SCRIPTS: LSC.SCRIPT})
         sclc = script_common_langs_chars = (script_lang.groupby(LSC.SCRIPT, as_index=False).agg({
             LSC.LANG: flow(sorted, list),
@@ -50,7 +52,7 @@ class ModelIOMgr:
         ])
         return shary_script
 
-    def update_model_io_if_needed(self, kinds_to_vocab_classes: KindToVocabClasses) -> None:
+    def update_model_io_if_needed(self, kinds_to_vocab_classes: KindToVocabOutputs) -> None:
         kinds_to_vocab_classes = colutils.order_dict_to_dict(kinds_to_vocab_classes)
         old_script_langs = self.model_io.load()
         if old_script_langs != kinds_to_vocab_classes:
@@ -58,42 +60,12 @@ class ModelIOMgr:
             self.model_io.save(kinds_to_vocab_classes) # TODO: Uncomment after retraining functionality
             # raise ValueError("Model requires retraining and that's unsupported and unhandled for now")
 
+
+class KindToTokenMgr:
     @classmethod
-    def separate_kinds_tos(cls, kinds_to_vocab_classes: KindToVocabClasses) -> tuple[KindToVocab, KindToClasses]:
+    def separate_kinds_tos(cls, kinds_to_vocab_outputs: KindToVocabOutputs) -> tuple[KindToVocab, KindToOutputs]:
         kinds_to_vocab, kinds_to_classes = OrderedDict(), OrderedDict()
-        for kind, vc in kinds_to_vocab_classes.items():
+        for kind, vc in kinds_to_vocab_outputs.items():
             kinds_to_vocab[kind] = vc[LSC.CHARS]
             kinds_to_classes[kind] = vc[LSC.LANGS]
         return kinds_to_vocab, kinds_to_classes
-
-    @classmethod
-    def group_up_kinds_to_vocab(cls, kinds_to_vocab: KindToVocab) -> KindToGroupedVocab:
-        kind_grouped = OrderedDict()
-        for kind, vocab in kinds_to_vocab.items():
-            group_up_kind_vocab = getattr(cls, f'group_up_{kind.lower()}_vocab', lambda ts: OrderedDict())
-            kind_grouped[kind] = grouped = group_up_kind_vocab(vocab)
-            grouped[ALL] = vocab
-        return kind_grouped
-
-    @classmethod
-    def group_up_latn_vocab(cls, vocab: str) -> GroupedVocab:
-        enhance_with_upper = lambda l: [l, l.upper()]
-        grouped = OrderedDict([
-            ('letter', c(vocab).filter(str.isalpha).join().value()),
-            ('upper', c(vocab).filter(str.isupper).join().value()),
-            ('vowels', c(vocab).intersection(list('aeiouy')).flat_map(enhance_with_upper).join().value()),
-            ('consonants', c(vocab).intersection(list('bcdfghjklmnpqrstvwxyz')).flat_map(enhance_with_upper).join().value()),
-        ])
-        return grouped
-
-    @classmethod
-    def group_up_cyrl_vocab(cls, vocab: str) -> GroupedVocab:
-        enhance_with_upper = lambda l: [l, l.upper()]
-        grouped = OrderedDict([
-            ('letter', c(vocab).filter(str.isalpha).join().value()),
-            ('upper', c(vocab).filter(str.isupper).join().value()),
-            ('vowels', c(vocab).intersection(list('аоуэыиеёєяюї')).flat_map(enhance_with_upper).join().value()),
-            ('consonants', c(vocab).intersection(list('бвгґджзйклмнпрстфхцчшщ')).flat_map(enhance_with_upper).join().value()),
-            ('function', c(vocab).intersection(list('ьъ')).flat_map(enhance_with_upper).join().value()),
-        ])
-        return grouped
