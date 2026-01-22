@@ -123,7 +123,7 @@ class InflectionParser(Parser):
     @classmethod
     @with_ensured_tag
     def parse_grammar(cls, tag: Tag) -> Optional[list[list[str]]] | ParsingException:
-        if not (grammar_items := tag.select('div #grammar_0_0 ul li')):  # TODO: test: (en) man; (sv) mus, sida
+        if not (grammar_items := tag.select('div #grammar_0_0 ul li')):  # TODO: test: (en) man; (sv) mus, sida; (pl) łuk, chcieć; (de) Frau, gehen
             return ParsingException('No grammar info!')
         examples = c(grammar_items).filter(cls.is_grammar_item_valid).map(cls.extract_grammar_examples).filter(cls.discard_examples).value()
         uniques = cls.uniq_grammar_example_batches(examples)
