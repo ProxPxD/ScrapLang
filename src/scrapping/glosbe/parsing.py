@@ -3,12 +3,15 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
+from itertools import product
+from tkinter.scrolledtext import example
 from typing import Optional
 
 import pandas as pd
 import pydash as _
 from bs4.element import ResultSet, Tag
 from more_itertools import bucket
+from numpy.lib.recfunctions import join_by
 from pandas import DataFrame
 from pydash import chain as c, flow, partial
 
@@ -95,6 +98,8 @@ class TranslationParser(Parser):
 
 
 class InflectionParser(Parser):
+    _bold_selector = ':not(table b)'
+
     @classmethod
     @with_ensured_tag
     def parse(cls, tag: Tag) -> DataFrame | str | ParsingException:
@@ -117,14 +122,43 @@ class InflectionParser(Parser):
 
     @classmethod
     @with_ensured_tag
-    def parse_grammar(cls, tag: Tag) -> Optional[str] | ParsingException:
-        if not (table_grammar_items := tag.select('div #grammar_0_0 ul li')):  # TODO: test
+    def parse_grammar(cls, tag: Tag) -> Optional[list[list[str]]] | ParsingException:
+        if not (grammar_items := tag.select('div #grammar_0_0 ul li')):  # TODO: test: (en) man; (sv) mus, sida
             return ParsingException('No grammar info!')
-        grammar_bucket = bucket(table_grammar_items, key=c().get('text').count_substr(','))
-        max_n_comma = max(grammar_bucket)
-        max_grammars = grammar_bucket[max_n_comma]
-        max_bold = max(max_grammars, key=lambda t: len(t.select('b')))
-        return c(max_bold.select('b')).map(c().get('text')).join(', ').value()
+        examples = c(grammar_items).filter(cls.is_grammar_item_valid).map(cls.extract_grammar_examples).filter(cls.discard_examples).value()
+        uniques = cls.uniq_grammar_example_batches(examples)
+        return uniques
+
+    @classmethod
+    def is_grammar_item_valid(cls, item: Tag) -> bool:
+        bolds = cls.get_bolds(item)
+        return bolds or not item.select('table') and ',' in item.text
+
+    @classmethod
+    def get_bolds(cls, tag: Tag) -> list[Tag]:
+        return [b for b in tag.find_all('b') if not b.find_parent('table')]
+
+    @classmethod
+    def extract_grammar_examples(cls, item: Tag) -> list[str]:
+        examples = _.map_(cls.get_bolds(item), c().get('text')) or item.text.split(',')
+        return c(examples).map(c().trim()).value()
+
+    @classmethod
+    def discard_examples(cls, examples: list[str]) -> bool:
+        text = ''.join(examples)
+        return '\xa0' not in text and 'Note:' not in text and len(examples) > 1
+
+    @classmethod
+    def uniq_grammar_example_batches(cls, example_batch: list[list[str]]) -> list[list[str]]:
+        set_to_examples = {}
+        for examples in example_batch:
+            set_to_examples.setdefault(frozenset(examples), examples)
+
+        for a, b in product(list(set_to_examples.keys()), repeat=2):
+            if a < b and a in set_to_examples:
+                del set_to_examples[a]
+
+        return list(set_to_examples.values())
 
 @dataclass(frozen=True)
 class DefResult(Result):

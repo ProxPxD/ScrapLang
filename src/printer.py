@@ -79,7 +79,7 @@ class Printer:
             return
         match outcome.results:
             case DataFrame() as table: self.print_inflection_table(table)
-            case str() as text: self.print_grammar(outcome)
+            case list(): self.print_grammar(outcome)
             case _: raise ValueError(f'Unexpected result type for inflection: {type(outcome.results)}')
 
     def print_inflection_table(self, table: DataFrame) -> None:
@@ -93,7 +93,13 @@ class Printer:
 
     def print_grammar(self, outcome: Outcome) -> None:
         colored_prefix = self.color(f'{outcome.args.word}: ', self.context.color.main)
-        self.print(f'{colored_prefix}{outcome.results}')
+        example_string = self.get_grammar_string(outcome.results)
+        self.print(f'{colored_prefix}{example_string}')
+
+    def get_grammar_string(self, example_batch: list[list[str]]) -> str:
+        match len(example_batch):
+            case 1: return ", ".join(example_batch[0])
+            case _: return '\n' + '\n'.join(f'  - {", ".join(example_batch)}' for example_batch in example_batch)
 
     def print_translation(self, outcome: Outcome) -> bool:
         prefix: str = self.get_translation_prefix(outcome)
