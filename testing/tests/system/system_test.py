@@ -17,8 +17,8 @@ from pydash import chain as c
 from src.app_managing import AppMgr
 from src.context_domain import assume, indirect, gather_data, infervia, groupby
 from testing.core import TCG
-from testing.core.mocking import mocked_scrap, CallCollector, PageNotFound
-from testing.core.utils import remove_color
+from testing.proj.mocking import mocked_scrap, CallCollector, PageNotFound
+from testing.proj.utils import remove_color
 
 SYSTEM_PATH = Path(__file__).parent
 TMP_DIR = SYSTEM_PATH / 'tmp'
