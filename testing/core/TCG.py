@@ -6,7 +6,7 @@ from _pytest.mark import ParameterSet, Mark
 from pydash import chain as c
 from toolz import unique
 
-from utils import apply
+from .utils import apply
 
 warnings.filterwarnings("ignore", category=pytest.PytestUnknownMarkWarning)
 
