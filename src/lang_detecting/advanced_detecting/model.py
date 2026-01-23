@@ -102,11 +102,11 @@ class Expert(nn.Module):
 
     @classmethod
     def _pad_both_sides(cls, x: Tensor, missing: int) -> Tensor:
-        x_out = torch.stack([   # B x e x l_0 x ch(=2)
-            F.pad(x, (missing, 0)),
-            F.pad(x, (0, missing)),
-        ])
-        return x_out.transpose(-2, -1)  # B x ch(=2) x e x l_0
+        x_out = torch.stack([   # B x ch(=2) x l_0 x e
+            F.pad(x, (0, 0, missing, 0)),
+            F.pad(x, (0, 0, 0, missing)),
+        ], dim=1)
+        return x_out
 
     def _weight_positional(self, x: Tensor) -> Tensor:
         x = x.permute(0, 2, 1, 3)  # B x c_k x ch x l_k

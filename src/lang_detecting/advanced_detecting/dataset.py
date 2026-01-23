@@ -40,13 +40,14 @@ class BucketChunkDataset(Dataset[list[int]]):
                 batch = list(bucket.iloc[i: i + batch_size][[KIND, VDC.WORD, VDC.LANG]].itertuples(index=False, name=None))
                 kinds, words, outputs = tuple(zip(*batch))
                 tokenized_kinds = Tensor(_.map_(kinds, tokenizer.tokenize_kind)).int()
-                tokenized_words = Tensor([tokenizer.tokenize_input(word, kind) for word, kind in zip(words, kinds)])
+                tokenized_words = Tensor([tokenizer.tokenize_input(word, kind) for word, kind in zip(words, kinds)]).int()
                 tokenized_spec_groups = [Tensor(tokenizer.tokenize_spec_groups(word, kind)) for word, kind in zip(words, kinds)]
-                tokenized_spec_groups = pad_sequence(tokenized_spec_groups, batch_first=True, padding_value=0)
+                tokenized_spec_groups = pad_sequence(tokenized_spec_groups, batch_first=True, padding_value=0).int()
                 tokenized_outputs = _.map_(outputs, c().map(tokenizer.tokenize_output))
                 one_hot_encoded_outputs = torch.zeros(len(tokenized_outputs), tokenizer.n_outputs, dtype=torch.int32)
                 for j, outputs in enumerate(tokenized_outputs):
                     one_hot_encoded_outputs[j, outputs] = 1
+                self.batches.append((tokenized_kinds, tokenized_words, tokenized_spec_groups, one_hot_encoded_outputs))
                 self.batches.append((tokenized_kinds, tokenized_words, tokenized_spec_groups, one_hot_encoded_outputs))
 
     def __iter__(self):

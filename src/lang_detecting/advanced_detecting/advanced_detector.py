@@ -37,11 +37,25 @@ class AdvancedDetector:
     def retrain_model(self):
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
-        # for batch in dataset:
-        #     kinds, words, specs, outputs = batch
-        #     preds = self.moe(kinds, words, specs)
-        #     loss = (preds - outputs).abs().sum()
-        #     loss.backward()
+        for epoch in range(self.conf.epochs):
+            total_loss = 0.0
+            n_records = 0
+            for batch in dataset:
+                kinds, words, specs, outputs = [t.to(self.device) for t in batch]
+                n_records += words.size(0)
+                preds = self.moe(kinds, words, specs)
+                loss = (preds - outputs).abs().sum()
+                print(loss)
+                loss.backward()
+                total_loss += loss.item()
+
+                if n_records >= self.conf.accum_grad_bs:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    n_records = 0
+            if n_records:
+                optimizer.step()
+            print(f'Epoch {epoch + 1}/{self.conf.epochs}, Loss: {total_loss:.4f}')
         b = 4
         while True:
             B = 2 ** b

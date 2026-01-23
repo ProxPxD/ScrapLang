@@ -16,8 +16,7 @@ class ExpertConf:
 @dataclass
 class Conf:
     expert: ExpertConf = field(default_factory=ExpertConf)
-    s_chunk: int = 7  # Suits well with the paddings to yield 3 in the last layer
-    s_chunk_step: int = s_chunk // 2 + 1
+    epochs: int = 5
     lr: float = 1e-4
     weight_decay = 1e-4
     max_batch_size: Optional[int] = 2**12
