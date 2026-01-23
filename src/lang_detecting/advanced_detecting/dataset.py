@@ -32,7 +32,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         data = data.groupby(VDC.WORD, sort=False).agg({VDC.LANG: flow(set, sorted, list)}).reset_index()
         data[LEN:='len'] = data[VDC.WORD].str.len()
         # TODO: make it work with multikind langs like japanese
-        data[KIND:='kind'] = data[VDC.WORD].apply(lambda w: print(sp(w)) or next(iter(sp(w)[-1]['details'].keys())))
+        data[KIND:='kind'] = data[VDC.WORD].apply(lambda w: print(w, sp(w)) or next(iter(sp(w)[-1]['details'].keys())))
         len_bucketed = data.sort_values(LEN, ascending=False).groupby(LEN, sort=False)
         for length, bucket in len_bucketed:
             batch_size = conf.max_batch_size or len(bucket)
