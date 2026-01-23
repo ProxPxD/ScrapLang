@@ -32,7 +32,6 @@ class AdvancedDetector:
         }
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, outputs, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print('Using device:', self.device)
         self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
 
     def retrain_model(self):
