@@ -128,7 +128,7 @@ class Moe(nn.Module):
             kind_to_specs: dict[str, Sequence[Callable]],
             conf: Conf,
         ):
-        assert  kinds_to_vocabs.keys() == kind_to_specs.keys()
+        assert  kinds_to_vocabs.keys() == kinds_to_outputs.keys()
         super().__init__()
         all_outputs = c(kinds_to_outputs.values()).flatten().apply(flow(set, sorted)).value()
         self.register_buffer('n_classes', torch.tensor(len(all_outputs)))
