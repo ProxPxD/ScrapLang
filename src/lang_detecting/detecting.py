@@ -30,7 +30,9 @@ class Detector:
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         if not self.simple_detector:
             return None
-        scripts = set(sp(''.join(words))[-1]['details'].keys())
+        if not (pot_scripts := sp(''.join(words))[-1]['details']):
+            return None
+        scripts = set(pot_scripts)
         if lang := self.simple_detector.detect_by_script(scripts):
             return lang
         chars = reduce(op.or_, map(set, words))

@@ -5,6 +5,7 @@ from typing import Iterable, Sequence, Callable, Collection, Sized
 
 import pandas as pd
 import pydash as _
+from GlotScript import sp
 from box import Box
 from pandas import DataFrame
 from pandas.core.groupby import DataFrameGroupBy
@@ -68,7 +69,7 @@ class ValidDataMgr:
                 self._gather_for_from_main_translations,
                 self._gather_for_lang_data,
                 self._gather_for_wiktio,
-            ])).map(list).flatten().map(c().concat([None]*len(cols)).take(len(cols))).value(),
+            ])).map(list).filter(lambda vs: vs and sp(vs[1])[-1]['details']).flatten().map(c().concat([None]*len(cols)).take(len(cols))).value(),
             columns=cols,
         )
         if not success_data.empty:
