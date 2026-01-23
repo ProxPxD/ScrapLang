@@ -79,8 +79,6 @@ class AppMgr:
             return
 
         setup_logging(self.context)
-        if self.context.retrain:
-            self.input_mgr.processor.retrain_detector()
         if self.context.words:
             self.run_scrap()
 

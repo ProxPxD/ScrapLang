@@ -35,12 +35,13 @@ class Expert(nn.Module):
         n_tokens, n_classes, n_layers = len(vocab), len(all_classes), len(conf.paddings)
         self.register_buffer('s_chunk', torch.tensor(conf.s_chunk))
         self.register_buffer('s_chunk_step', torch.tensor(conf.s_chunk_step))
-        output_mask = c(all_classes).map(outputs.__contains__).map(float).value()
-        self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float))
+        output_mask = c(all_classes).map(outputs.__contains__).map(int).value()
+        self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.int32))
         self.act = nn.LeakyReLU(negative_slope=0.01)
         self.norm = nn.Softmax()
 
-        self.embed = nn.Embedding(n_tokens, conf.emb_dim)
+        self.register_buffer('n_specs', torch.tensor(n_specs, dtype=torch.int32))
+        self.embed = nn.Embedding(n_tokens, conf.emb_dim-n_specs)
         channels = (conf.emb_dim, *conf.hidden_channels, n_classes)
         self.convs = nn.ModuleList([
             nn.Conv1d(
@@ -48,12 +49,12 @@ class Expert(nn.Module):
                 out_channels=co,
                 kernel_size=k,
                 padding=p,
-            ) for (ci, co), p, k in zip(windowed(channels, 2), conf.kernels, conf.paddings)
+            ) for (ci, co), k, p in zip(windowed(channels, 2), conf.kernels, conf.paddings)
         ])
         l_last_layer: int = conf.s_chunk + sum(2*p - k + 1 for k, p in zip(conf.kernels, conf.paddings))
         self.positional = nn.Parameter(Tensor([0.4, 0.2, 0.4]))  # Beg, Mid, End
 
-    def forward(self, word: Tensor):
+    def forward(self, words: Tensor, specs: Tensor):
         """
         B - Batch size
         L - Length of the word with boundary padding
@@ -62,11 +63,17 @@ class Expert(nn.Module):
         l_k - Tensor length after k-th convolution [l_0 - Tensor length after chunking]
         c_k - k-th number of channels  [c_0 = e]
         """
-        # word: B x L
-        x = self.embed(word)  # B x e x L
-        x = self.chunk(x)  # B x ch x e x l_0
+        # words: B x L
+        # specs: B x L x n_spec
+        x = self.embed(words)  # B x L x e0
+        x = torch.cat([x, specs[..., :self.n_specs]], dim=-1)  # B x L x e1
+        x = self.chunk(x)  # B x ch x e1 x l_0
+        B, ch, C, L = x.shape
+        x = x.reshape(B*ch, C, L)
         for conv in self.convs:
-            x = self.act(conv[x])  # B x ch x c_k x l_k
+            x = self.act(conv(x))  # B*ch x c_k x l_k
+
+        x = x.reshape(B, ch, *x.shape[-2:])   # B x ch x c_k x l_k
         # merge '(ch)unks' and '(l_k)ength'
         x = self._weight_positional(x)  # B x o
         # Mask non-expert outputs
@@ -77,20 +84,21 @@ class Expert(nn.Module):
         """
         #TODO
         """
-        n = x.size(-1)
+        length_dim = -2
+        n = x.size(length_dim)
         s_chunk, step = self.s_chunk.item(), self.s_chunk_step.item()
         shift_space = n - s_chunk
         if shift_space < 0:
             return self._pad_both_sides(x, -shift_space)
-        n_full = shift_space // step + 1
-        x_front = x.unfold(dimension=-1, size=s_chunk, step=step)  # B x e x (l_0') x ch
-        front_end_idx = s_chunk + step * (n_full - 1) - 1
+        n_fitting = shift_space // step + 1
+        x_front = x.unfold(dimension=length_dim, size=s_chunk, step=step)  # B x ch x e x (l_0')
+        front_end_idx = s_chunk + step * (n_fitting - 1) - 1
         if front_end_idx < n - 1:
-            x_end = x[..., -s_chunk:].unsqueeze(-2)  # B x e x 1 x ch
-            x_out = torch.cat([x_front, x_end], dim=-2)  # B x e x l_0 x ch
+            x_end = x[..., -s_chunk:, :].unsqueeze(-3).transpose(-2, -1)  # B x 1 x e x (l_0')
+            x_out = torch.cat([x_front, x_end], dim=length_dim-1)  # B x 1 x e x l_0
         else:
             x_out = x_front
-        return x_out.transpose(-2, -1)  # B x ch x e x l_0
+        return x_out  # B x ch x e x l_0
 
     @classmethod
     def _pad_both_sides(cls, x: Tensor, missing: int) -> Tensor:
@@ -102,7 +110,7 @@ class Expert(nn.Module):
 
     def _weight_positional(self, x: Tensor) -> Tensor:
         x = x.permute(0, 2, 1, 3)  # B x c_k x ch x l_k
-        x = x.reshape(*x.shape[:-2], -1)  # B x c_k x (ch*l_k)
+        x = x.flatten(-2)  # B x c_k x (ch*l_k)
         chunk_o_length = x.shape[-1]
         s_step = self.s_chunk_step.item()
         n_edge_vals = min(s_step, chunk_o_length // 2)
@@ -114,7 +122,6 @@ class Expert(nn.Module):
 
 
 class Moe(nn.Module):
-
     def __init__(self,
             kinds_to_vocabs: KindToVocab,
             kinds_to_outputs: KindToOutputs,
@@ -126,13 +133,17 @@ class Moe(nn.Module):
         all_outputs = c(kinds_to_outputs.values()).flatten().apply(flow(set, sorted)).value()
         self.register_buffer('n_classes', torch.tensor(len(all_outputs)))
         self.experts = nn.ModuleList([
-            Expert(vocabs, outputs, all_outputs, conf=conf.expert, n_specs=len(kind_to_specs.get(kind, [])))
+            Expert(vocabs, outputs, all_outputs, conf=conf.expert, n_specs=kind_to_specs.get(kind, 0))
             for (kind, vocabs), outputs in zip(kinds_to_vocabs.items(), kinds_to_outputs.values())
         ])
-    def forward(self, words: Tensor, scripts: Tensor) -> Tensor:
+
+    def forward(self, kinds: Tensor, words: Tensor, specs: Tensor) -> Tensor:
         out = torch.zeros(words.size(0), self.n_classes.item(), device=words.device)
         for expert_idx, expert in enumerate(self.experts):
-            mask = scripts == expert_idx
+            mask = kinds == expert_idx
             if mask.any():
-                out[mask] = expert(words[mask])
+                # masked_words = words[mask].clone().contiguous()
+                # masked_specs = specs[mask].clone().contiguous()
+                # out[mask] = expert(masked_words, masked_specs)
+                out[mask] = expert(words[mask], specs[mask])
         return out

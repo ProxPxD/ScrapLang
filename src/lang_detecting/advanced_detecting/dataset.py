@@ -9,6 +9,7 @@ from pandas import DataFrame
 from pydash import chain as c
 from pydash import flow
 from torch import Tensor
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 
 from src.conf import Conf
@@ -26,7 +27,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         super().__init__()
         self.conf = conf
         self.shuffle = shuffle
-        self.batches: list[tuple[Tensor, Tensor, Tensor]] = []
+        self.batches: list[tuple[Tensor, Tensor, Tensor, Tensor]] = []
         data = data[~data[VDC.IS_MAPPED]][[VDC.LANG, VDC.WORD]].drop_duplicates()
         data = data.groupby(VDC.WORD, sort=False).agg({VDC.LANG: flow(set, sorted, list)}).reset_index()
         data[LEN:='len'] = data[VDC.WORD].str.len()
@@ -36,22 +37,24 @@ class BucketChunkDataset(Dataset[list[int]]):
         for length, bucket in len_bucketed:
             batch_size = conf.max_batch_size or len(bucket)
             for i in range(0, len(bucket), batch_size):
-                batch = list(bucket.iloc[i: i + batch_size][[VDC.WORD, KIND, VDC.LANG]].itertuples(index=False, name=None))
-                words, kinds, outputs = tuple(zip(*batch))
-                tokenized_words = Tensor([tokenizer.tokenize_input(word, kind) for word, kind in zip(words, kinds)])
+                batch = list(bucket.iloc[i: i + batch_size][[KIND, VDC.WORD, VDC.LANG]].itertuples(index=False, name=None))
+                kinds, words, outputs = tuple(zip(*batch))
                 tokenized_kinds = Tensor(_.map_(kinds, tokenizer.tokenize_kind)).int()
+                tokenized_words = Tensor([tokenizer.tokenize_input(word, kind) for word, kind in zip(words, kinds)])
+                tokenized_spec_groups = [Tensor(tokenizer.tokenize_spec_groups(word, kind)) for word, kind in zip(words, kinds)]
+                tokenized_spec_groups = pad_sequence(tokenized_spec_groups, batch_first=True, padding_value=0)
                 tokenized_outputs = _.map_(outputs, c().map(tokenizer.tokenize_output))
-                tokenized_spec_groups = Tensor([tokenizer.tokenize_spec_groups(word, kind) for word, kind in zip(words, kinds)])
                 one_hot_encoded_outputs = torch.zeros(len(tokenized_outputs), tokenizer.n_outputs, dtype=torch.int32)
                 for j, outputs in enumerate(tokenized_outputs):
                     one_hot_encoded_outputs[j, outputs] = 1
-                self.batches.append((tokenized_words, tokenized_kinds, one_hot_encoded_outputs))
+                self.batches.append((tokenized_kinds, tokenized_words, tokenized_spec_groups, one_hot_encoded_outputs))
 
     def __iter__(self):
         if self.shuffle:
             random.shuffle(self.batches)
         for batch in self.batches:
-            words, kinds, output = batch
+            kinds, words, specs, outputs = batch
+            yield kinds, words, specs, outputs
 
     def __len__(self) -> int:
         return len(self.batches)

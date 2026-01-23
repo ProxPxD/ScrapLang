@@ -1,18 +1,19 @@
-from collections import OrderedDict
-from collections.abc import Collection
-from typing import Sequence, Callable
+from typing import Callable, Sequence
 
 import torch
 from pandas import DataFrame
 from pydash import chain as c
+from toolz import valmap
 
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
-from src.lang_detecting.advanced_detecting.model_io_mging import ModelIOMgr, KindToSpecialGroup, \
-    TokenizedKindToGroupedVocab, KindToTokenMgr
-from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer, SpecGroup
+from src.lang_detecting.advanced_detecting.model_io_mging import KindToTokenMgr, ModelIOMgr
+from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import ValidDataMgr
+
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 class AdvancedDetector:
@@ -30,22 +31,32 @@ class AdvancedDetector:
             'Cyrl': [str.isupper],
         }
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, outputs, kind_to_specs=kind_to_specs)
-        self.moe = Moe(kinds_to_vocab, kinds_to_outputs, kind_to_specs, conf=self.conf).cuda()
+        self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).cuda()
 
     def retrain_model(self):
-        sampler = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
-        for x in sampler:
-            ...
-        B = 1
+        # for batch in dataset:
+        #     kinds, words, specs, outputs = batch
+        #     preds = self.moe(kinds, words, specs)
+        #     loss = (preds - outputs).abs().sum()
+        #     loss.backward()
+        b = 4
         while True:
+            B = 2 ** b
             try:
-                dummy_words = torch.randint(0, 10, (B, 7, 10)).cuda()
-                dummy_scripts = torch.randint(0, 1, (B, )).cuda()
-                out = self.moe(dummy_words, dummy_scripts)
+                L = 32
+                print(f'Testing batch size = 2^{b} = {B:<7} on length = {L}')
+                dummy_kinds = torch.randint(0, 2, (B, )).cuda()
+                dummy_words = torch.randint(0, 10, (B, L,)).cuda()
+                dummy_specs = torch.randint(0, 2,  (B, L, 1)).cuda()
+                out = self.moe(dummy_kinds, dummy_words, dummy_specs)
                 loss = out.sum()
                 loss.backward()
-                B *= 2
+                b += 1
             except RuntimeError as e:
                 if 'out of memory' in str(e):
+                    print(e, '\n', f'  for B = 2^{b} = {B}')
                     break
+                else:
+                    raise e

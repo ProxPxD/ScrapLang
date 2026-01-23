@@ -12,16 +12,6 @@ from src.lang_detecting.advanced_detecting.model_io_mging import KindToSpecialGr
     KindToVocab, Vocab
 
 
-class SpecGroup:
-    def __init__(self, kind_cond: Callable[[str], bool] | str | Collection[str], token_cond: Callable[[str], bool]):
-        match kind_cond:
-            case None: kind_cond = lambda _: True
-            case str(): kind_cond = (kind_cond,).__contains__
-            case _ if isinstance(kind_cond, Collection): kind_cond = kind_cond.__contains__
-            case _: pass
-        self.kind_cond = kind_cond
-        self.token_cond = token_cond
-
 class ITokenizer(ABC):
     @abstractmethod
     def tokenize(self, word: str | list[str]):
@@ -38,14 +28,14 @@ class Tokenizer(ITokenizer):
     def __init__(self, tokens: list[str] | str, allow_unrecognized: bool = False):
         tokens = list(tokens or [])
         self.allow_unrecognized: bool = allow_unrecognized
-        self.token2id = {k: i for i, k in enumerate(tokens)}
+        self.token2id = {k: i for i, k in enumerate(tokens, start=int(self.allow_unrecognized))}
 
     @property
     def n_tokens(self) -> int:
         return len(self.token2id) + int(self.allow_unrecognized)
 
     def tokenize(self, tokens: list[str]) -> list[int]:
-        return [self.token2id.get(t, self.n_tokens) if self.allow_unrecognized else self.token2id[t] for t in tokens]
+        return [self.token2id.get(t, 0) if self.allow_unrecognized else self.token2id[t] for t in tokens]
 
 
 class GroupTokenizer(ITokenizer):
@@ -58,11 +48,11 @@ class GroupTokenizer(ITokenizer):
 
 class MultiKindTokenizer:
     def __init__(self,
-                 kinds_to_vocabs: KindToVocab,
-                 outputs: list[Class] = None,
-                 allow_unrecognized: bool = True,
-                 kind_to_specs: dict[str, Sequence[Callable]] = None,
-                 ):
+            kinds_to_vocabs: KindToVocab,
+            outputs: list[Class] = None,
+            allow_unrecognized: bool = True,
+            kind_to_specs: dict[str, Sequence[Callable]] = None,
+        ):
         self.kind2id = {k: i for i, k in enumerate(kinds_to_vocabs.keys())}
         self.kind_tokenizers: dict[str, Tokenizer] = valmap(lambda v: Tokenizer(v, allow_unrecognized=allow_unrecognized), kinds_to_vocabs)
         self.output_tokenizer = Tokenizer(outputs)
