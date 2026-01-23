@@ -55,6 +55,8 @@ class AdvancedDetector:
                 loss = out.sum()
                 loss.backward()
                 b += 1
+                if b > 17:
+                    break
             except RuntimeError as e:
                 if 'out of memory' in str(e):
                     print(e, '\n', f'  for B = 2^{b} = {B}')
