@@ -6,7 +6,6 @@ from typing import Iterable
 from src.constants import ResourceConstants
 from src.context import Context
 from src.input_managing.processing import InputProcessor
-from src.lang_detecting.advanced_detecting import AdvancedDetector
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.resouce_managing.short_mem import ShortMemMgr
 from src.resouce_managing.valid_data import ValidDataMgr

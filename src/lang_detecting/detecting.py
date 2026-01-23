@@ -18,7 +18,7 @@ except ImportError:
     HAS_LIB_TORCH = False
 
 if HAS_LIB_TORCH:
-    from src.lang_detecting.advanced_detecting import AdvancedDetector
+    from src.lang_detecting.advanced_detecting.advanced_detector import AdvancedDetector
 
 
 class Detector:
