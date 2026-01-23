@@ -20,5 +20,5 @@ class Conf:
     s_chunk_step: int = s_chunk // 2 + 1
     lr: float = 1e-4
     weight_decay = 1e-4
-    max_batch_size: Optional[int] = None
-    accum_grad_bs: int = 10
+    max_batch_size: Optional[int] = 2**12
+    accum_grad_bs: int = 2**5
