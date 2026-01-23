@@ -12,8 +12,8 @@ from src.lang_detecting.advanced_detecting.model_io_mging import KindToTokenMgr,
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import ValidDataMgr
 
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
 
 
 class AdvancedDetector:
@@ -31,7 +31,8 @@ class AdvancedDetector:
             'Cyrl': [str.isupper],
         }
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, outputs, kind_to_specs=kind_to_specs)
-        self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).cuda()
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
 
     def retrain_model(self):
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf)
@@ -46,10 +47,10 @@ class AdvancedDetector:
             B = 2 ** b
             try:
                 L = 32
-                print(f'Testing batch size = 2^{b} = {B:<7} on length = {L}')
-                dummy_kinds = torch.randint(0, 2, (B, )).cuda()
-                dummy_words = torch.randint(0, 10, (B, L,)).cuda()
-                dummy_specs = torch.randint(0, 2,  (B, L, 1)).cuda()
+                print(f'Testing batch size = 2^{b:<2} = {B:<7} on length = {L}')
+                dummy_kinds = torch.randint(0, 2, (B, )).to(self.device)
+                dummy_words = torch.randint(0, 10, (B, L,)).to(self.device)
+                dummy_specs = torch.randint(0, 2,  (B, L, 1)).to(self.device)
                 out = self.moe(dummy_kinds, dummy_words, dummy_specs)
                 loss = out.sum()
                 loss.backward()
