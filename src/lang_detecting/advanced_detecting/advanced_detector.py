@@ -35,17 +35,19 @@ class AdvancedDetector:
         self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
 
     def retrain_model(self):
-        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         for epoch in range(self.conf.epochs):
             total_loss = 0.0
             n_records = 0
             for batch in dataset:
                 kinds, words, specs, outputs = [t.to(self.device) for t in batch]
-                n_records += words.size(0)
+                n_records += (bs:=words.size(0))
                 preds = self.moe(kinds, words, specs)
                 loss = (preds - outputs).abs().sum()
-                print(loss)
+                # print(f'Preds: {preds[0].tolist()}')
+                # print(f'Outputs: {outputs[0].tolist()}')
+                # print(f'Relative Loss: {loss/bs}\n')
                 loss.backward()
                 total_loss += loss.item()
 
@@ -56,24 +58,4 @@ class AdvancedDetector:
             if n_records:
                 optimizer.step()
             print(f'Epoch {epoch + 1}/{self.conf.epochs}, Loss: {total_loss:.4f}')
-        b = 4
-        while True:
-            B = 2 ** b
-            try:
-                L = 32
-                print(f'Testing batch size = 2^{b:<2} = {B:<7} on length = {L}')
-                dummy_kinds = torch.randint(0, 2, (B, )).to(self.device)
-                dummy_words = torch.randint(0, 10, (B, L,)).to(self.device)
-                dummy_specs = torch.randint(0, 2,  (B, L, 1)).to(self.device)
-                out = self.moe(dummy_kinds, dummy_words, dummy_specs)
-                loss = out.sum()
-                loss.backward()
-                b += 1
-                if b > 17:
-                    break
-            except RuntimeError as e:
-                if 'out of memory' in str(e):
-                    print(e, '\n', f'  for B = 2^{b} = {B}')
-                    break
-                else:
-                    raise e
+
