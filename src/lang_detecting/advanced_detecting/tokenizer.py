@@ -83,8 +83,11 @@ class MultiKindTokenizer:
     def detokenize_kind(self, id: int) -> str:
         return self.id2kind.get(id, '<?>')
 
-    def tokenize_output(self, output: str | list[str]) -> list[int]:
+    def tokenize_output(self, output: str) -> list[int]:
         return self.output_tokenizer([output])
+
+    def detokenize_output(self, output: int) -> list[str]:
+        return self.output_tokenizer.detokenize([output])
 
     def tokenize_spec_groups(self, word: str | list[str], kind: str) -> list[list[int]]:
         return [[int(spec(c)) for spec in self.kind_to_spec[kind]] for c in word]
