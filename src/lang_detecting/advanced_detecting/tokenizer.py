@@ -57,19 +57,19 @@ class GroupTokenizer(ITokenizer):
 class MultiKindTokenizer:
     def __init__(self,
             kinds_to_vocabs: KindToVocab,
-            outputs: list[Class] = None,
+            targets: list[Class] = None,
             allow_unrecognized: bool = True,
             kind_to_specs: dict[str, Sequence[Callable]] = None,
         ):
         self.kind2id = {k: i for i, k in enumerate(kinds_to_vocabs.keys())}
         self.id2kind: dict[int, str] = dict(map(reversed, self.kind2id.items()))
         self.kind_tokenizers: dict[str, Tokenizer] = valmap(lambda v: Tokenizer(v, allow_unrecognized=allow_unrecognized), kinds_to_vocabs)
-        self.output_tokenizer = Tokenizer(outputs)
+        self.target_tokenizer = Tokenizer(targets)
         self.kind_to_spec: dict[str, Sequence[Callable]] = kind_to_specs or {}
 
     @property
-    def n_output_tokens(self) -> int:
-        return self.output_tokenizer.n_tokens
+    def n_target_tokens(self) -> int:
+        return self.target_tokenizer.n_tokens
 
     def tokenize_input(self, input: str, kind: str) -> list[int]:
         return self.kind_tokenizers[kind](input)
@@ -83,14 +83,14 @@ class MultiKindTokenizer:
     def detokenize_kind(self, id: int) -> str:
         return self.id2kind.get(id, '<?>')
 
-    def tokenize_output(self, output: str) -> list[int]:
-        return self.output_tokenizer([output])
+    def tokenize_target(self, target: str) -> list[int]:
+        return self.target_tokenizer([target])
 
-    def detokenize_output(self, output: int) -> list[str]:
-        return self.output_tokenizer.detokenize([output])
+    def detokenize_target(self, target: int) -> list[str]:
+        return self.target_tokenizer.detokenize([target])
 
     def tokenize_spec_groups(self, word: str | list[str], kind: str) -> list[list[int]]:
         return [[int(spec(c)) for spec in self.kind_to_spec[kind]] for c in word]
 
-    def tokenize(self, word: str | list[str], kind: str, outputs: list[str]):
-        return self.tokenize_input(word, kind), self.tokenize_kind(kind), self.tokenize_output(outputs), self.tokenize_spec_groups(word, kind)
+    def tokenize(self, word: str | list[str], kind: str, targets: list[str]):
+        return self.tokenize_input(word, kind), self.tokenize_kind(kind), self.tokenize_target(targets), self.tokenize_spec_groups(word, kind)

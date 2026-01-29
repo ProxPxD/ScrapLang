@@ -8,13 +8,13 @@ from pydash import chain as c, flow
 from torch import Tensor
 
 from src.lang_detecting.advanced_detecting.conf import Conf, ExpertConf
-from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToOutputs, KindToVocab, Vocab
+from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToTargets, KindToVocab, Vocab
 
 
 class Expert(nn.Module):
     def __init__(self,
             vocab: Vocab,
-            outputs: list[Class],
+            targets: list[Class],
             all_classes: list[Class],
             conf: ExpertConf,
             n_specs: int = 0,
@@ -39,7 +39,7 @@ class Expert(nn.Module):
         ])
         l_last_layer: int = conf.s_chunk + sum(2*p - k + 1 for k, p in zip(conf.kernels, conf.paddings))
         self.positional = nn.Parameter(torch.tensor([0.4, 0.2, 0.4]))  # Beg, Mid, End
-        output_mask = c(all_classes).map(outputs.__contains__).map(int).value()
+        output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
 
     def forward(self, words: Tensor, specs: Tensor):
@@ -112,17 +112,17 @@ class Expert(nn.Module):
 class Moe(nn.Module):
     def __init__(self,
             kinds_to_vocabs: KindToVocab,
-            kinds_to_outputs: KindToOutputs,
+            kinds_to_targets: KindToTargets,
             kind_to_specs: dict[str, Sequence[Callable]],
             conf: Conf,
         ):
-        assert  kinds_to_vocabs.keys() == kinds_to_outputs.keys()
+        assert kinds_to_vocabs.keys() == kinds_to_targets.keys()
         super().__init__()
-        all_outputs = c(kinds_to_outputs.values()).flatten().apply(flow(set, sorted)).value()
-        self.n_classes = len(all_outputs)
+        all_targets = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
+        self.n_classes = len(all_targets)
         self.experts = nn.ModuleList([
-            Expert(vocabs, outputs, all_outputs, conf=conf.expert, n_specs=kind_to_specs.get(kind, 0))
-            for (kind, vocabs), outputs in zip(kinds_to_vocabs.items(), kinds_to_outputs.values())
+            Expert(vocabs, targets, all_targets, conf=conf.expert, n_specs=kind_to_specs.get(kind, 0))
+            for (kind, vocabs), targets in zip(kinds_to_vocabs.items(), kinds_to_targets.values())
         ])
 
     def forward(self, kinds: Tensor, words: Tensor, specs: Tensor) -> Tensor:

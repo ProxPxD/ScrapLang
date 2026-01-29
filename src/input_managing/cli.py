@@ -111,8 +111,9 @@ class CLI:
         display_group = parser.add_argument_group(title='Display Modes')
         display_group.add_argument('--groupby', '-by', choices=groupby, default=UNSET, help='What to group the result translations by')
         # Developer Modes (groupless)
-        parser.add_argument('--debug', action='store_true', help=SUPPRESS)
-        parser.add_argument('--test', action='store_true', help=SUPPRESS)
+        parser.add_argument('--debug', action='store_true', default=UNSET, help=SUPPRESS)
+        parser.add_argument('--test', action='store_true', default=UNSET, help=SUPPRESS)
+        parser.add_argument('--dev', action='store_true', default=UNSET, help=SUPPRESS)
         return parser
 
     # TODO: add and think through the settings displayal mode
@@ -137,8 +138,8 @@ class CLI:
 
         parsed, remaining = self.parser.parse_known_args(args)
         parsed.args += _.reject(remaining, '--'.__eq__)  # make test for this fix: t ksiądz -i pl
-        setup_logging(parsed)
         self.context.update(**{**vars(parsed), 'words': UNSET, 'from_langs': UNSET, 'to_langs': UNSET}); logging.debug('Updating context in CLI')
+        setup_logging(parsed)
         parsed = self._distribute_args(parsed)
         logging.debug(f'base Parsed: {parsed}')
         return parsed

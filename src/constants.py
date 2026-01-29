@@ -12,9 +12,14 @@ def preinitialized(cls: Type[T]) -> T:
 class Paths:
     WORKING_DIR = Path(__file__).parent.parent
     RESOURCES_DIR = WORKING_DIR / 'resources'
-    LOG_DIR = RESOURCES_DIR / 'logs.log'
+
+    LOG_DIR = RESOURCES_DIR / 'logs'
+    LOG_FILE = LOG_DIR / 'debug.log'
+    DETECTION_LOG_DIR = LOG_DIR / 'detection'
+
     CONF_FILE = RESOURCES_DIR / 'conf.yaml'
     VERSION_FILE = RESOURCES_DIR / 'version.txt'
+
     DETECTION_DIR = RESOURCES_DIR / 'detection'
     SHORT_MEM_FILE = DETECTION_DIR / 'short_mem.yaml'
     VALID_DATA_FILE = DETECTION_DIR / 'valid_data.csv'

@@ -24,11 +24,11 @@ from pydash import chain as c
 
 class AppMgr:
     def __init__(self, *,
-                 conf_path: Path | str,
-                 valid_data_file: Path | str = None,
-                 short_mem_file: Path | str = None,
-                 lang_script_file: Path | str = None,
-                 printer: Callable[[str], Any] = None,
+            conf_path: Path | str,
+            valid_data_file: Path | str = None,
+            short_mem_file: Path | str = None,
+            lang_script_file: Path | str = None,
+            printer: Callable[[str], Any] = None,
         ):
         setup_logging()
         self.conf_mgr = ConfFileMgr(conf_path)  # TODO: Move paths to context and work from there

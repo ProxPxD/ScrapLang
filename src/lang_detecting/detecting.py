@@ -6,6 +6,7 @@ from typing import Sequence, Optional
 from GlotScript import sp
 from pandas import DataFrame
 
+from src.context import Context
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.preprocessing.data import LSC
 from src.lang_detecting.simple_detecting import SimpleDetector
@@ -14,7 +15,7 @@ from src.resouce_managing.valid_data import ValidDataMgr
 try:
     import torch
     HAS_LIB_TORCH = True
-except ImportError:
+except ImportError as e:
     HAS_LIB_TORCH = False
 
 if HAS_LIB_TORCH:
@@ -22,10 +23,11 @@ if HAS_LIB_TORCH:
 
 
 class Detector:
-    def __init__(self, lang_script: DataFrame, valid_data_mgr: ValidDataMgr):
+    def __init__(self, context: Context, lang_script: DataFrame, valid_data_mgr: ValidDataMgr):
+        self.context = context
         self.lang_script = lang_script
         self.simple_detector = SimpleDetector(self.lang_script) if lang_script is not None else None
-        self.advanced_detector = AdvancedDetector(self.lang_script, valid_data_mgr=valid_data_mgr, conf=Conf()) if HAS_LIB_TORCH and lang_script is not None else None
+        self.advanced_detector = AdvancedDetector(context, self.lang_script, valid_data_mgr=valid_data_mgr, conf=Conf()) if HAS_LIB_TORCH and lang_script is not None else None
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         if not self.simple_detector:

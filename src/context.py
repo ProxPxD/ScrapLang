@@ -28,6 +28,7 @@ class Defaults:
 
     debug: bool = False
     test: bool = False
+    dev: bool = False
 
     assume: str = 'lang'
     groupby: str = 'word'
@@ -180,6 +181,7 @@ class Context:
 
     debug: bool = UNSET
     test: bool = UNSET
+    dev: bool = UNSET
 
     assume: Assume = UNSET  # TODO: remove
     groupby: GroupBy = UNSET

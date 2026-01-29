@@ -29,11 +29,13 @@ def setup_logging(context: Context | Namespace = None) -> None:
         root_logger.removeHandler(handler)
     # 2. Set fresh handlers
     handlers = [logging.StreamHandler(sys.stdout)]
-    if context.debug:
-        handlers.append(logging.FileHandler(Paths.LOG_DIR, encoding='utf-8'))
+    if context.debug is True:
+        if not Paths.LOG_FILE.parent.exists():
+            Paths.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(Paths.LOG_FILE, encoding='utf-8'))
     # 3. Configure with current debug state
     logging.basicConfig(
-        level=logging.DEBUG if context.debug else logging.INFO,
+        level=logging.DEBUG if context.debug is True else logging.INFO,
         format='%(levelname)s: %(message)s',
         handlers=handlers,
         force=True  # Critical: Overrides any existing config
