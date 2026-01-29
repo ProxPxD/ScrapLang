@@ -16,7 +16,7 @@ class ExpertConf:
 @dataclass
 class Conf:
     expert: ExpertConf = field(default_factory=ExpertConf)
-    epochs: int = 16
+    epochs: int = 1_000
     lr: float = 1e-3
     weight_decay = 1e-4
     max_batch_size: Optional[int] = 2**12

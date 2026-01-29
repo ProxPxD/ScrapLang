@@ -17,7 +17,7 @@ from src.resouce_managing.file import FileMgr
 Kind = Vocab = Class = str
 KindToVocab = OrderedDict[Kind, Vocab]
 KindToTargets = OrderedDict[Kind, list[Class]]
-KindToVocabTargets = OrderedDict[Kind, KindToVocab | KindToTargets]
+KindToTokensTargets = OrderedDict[Kind, KindToVocab | KindToTargets]
 SpecialGroup = OrderedDict[str, Vocab]  # Default
 KindToSpecialGroup = OrderedDict[Kind, SpecialGroup]
 TokenizedKindToGroupedVocab = OrderedDict[Kind, OrderedDict[str, list[int]]]
@@ -37,7 +37,7 @@ class ModelIOMgr:
         as_strs = all_any_shareds.to_list().sort().join()
         return as_strs.value()
 
-    def extract_kinds_to_vocab_classes(self, lang_script) -> KindToVocabTargets:
+    def extract_kinds_to_vocab_classes(self, lang_script) -> KindToTokensTargets:
         script_lang = lang_script.explode(LSC.SCRIPTS).rename(columns={LSC.SCRIPTS: LSC.SCRIPT})
         sclc = script_common_langs_chars = (script_lang.groupby(LSC.SCRIPT, as_index=False).agg({
             LSC.LANG: flow(sorted, list),
@@ -52,7 +52,7 @@ class ModelIOMgr:
         ])
         return shary_script
 
-    def update_model_io_if_needed(self, kinds_to_vocab_classes: KindToVocabTargets) -> None:
+    def update_model_io_if_needed(self, kinds_to_vocab_classes: KindToTokensTargets) -> None:
         kinds_to_vocab_classes = colutils.order_dict_to_dict(kinds_to_vocab_classes)
         old_script_langs = self.model_io.load()
         if old_script_langs != kinds_to_vocab_classes:
@@ -61,11 +61,19 @@ class ModelIOMgr:
             # raise ValueError("Model requires retraining and that's unsupported and unhandled for now")
 
 
-class KindToTokenMgr:
+class KindToMgr:
     @classmethod
-    def separate_kinds_tos(cls, kinds_to_vocab_targets: KindToVocabTargets) -> tuple[KindToVocab, KindToTargets]:
+    def separate_kinds_tos(cls, kinds_to_tokens_targets: KindToTokensTargets) -> tuple[KindToVocab, KindToTargets]:
         kinds_to_vocab, kinds_to_targets = OrderedDict(), OrderedDict()
-        for kind, vc in kinds_to_vocab_targets.items():
+        for kind, vc in kinds_to_tokens_targets.items():
             kinds_to_vocab[kind] = vc[LSC.CHARS]
             kinds_to_targets[kind] = vc[LSC.LANGS]
         return kinds_to_vocab, kinds_to_targets
+
+    @classmethod
+    def map_kind_to_to_target_to_shared(cls, kinds_to_tokens_targets: KindToTokensTargets) -> dict[str, str]:
+        return {
+            target: tokens_targets[LSC.CHARS]
+            for kind, tokens_targets in kinds_to_tokens_targets.items()
+            for target in tokens_targets[LSC.LANGS]
+        }

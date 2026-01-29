@@ -15,7 +15,7 @@ from src.context import Context
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
-from src.lang_detecting.advanced_detecting.model_io_mging import KindToTokenMgr, ModelIOMgr
+from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import ValidDataMgr
 
@@ -37,19 +37,20 @@ class AdvancedDetector:
         self.valid_data_mgr = valid_data_mgr
         self.conf = conf
 
-        kinds_to_tokens_classes = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
-        self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_classes)
-        kinds_to_vocab, kinds_to_targets = KindToTokenMgr.separate_kinds_tos(kinds_to_tokens_classes)
+        kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
+        self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
+        kinds_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
         targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
         kind_to_specs: dict[str, Sequence[Callable]] = {
             'Latn': [str.isupper],
             'Cyrl': [str.isupper],
         }
+        self.targets_to_shared = KindToMgr.map_kind_to_to_target_to_shared(kinds_to_tokens_targets)
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
         self.moe = Moe(kinds_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
-        self.loss_func = nn.BCEWithLogitsLoss()
+        self.loss_func = nn.KLDivLoss(reduction='batchmean')
         self.writer = None
         self.metrics = {}
         self.confusion_matrix = None
@@ -66,7 +67,8 @@ class AdvancedDetector:
             for metric_class in [Accuracy, Precision, Recall, F1Score]
             for mode in ('macro', )
         }  if self.dev_training else {}
-        self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task='multiclass', num_classes=self._n_classes).to(self.device) if self.dev_training else None
+        if self.dev_training:
+            self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task='multiclass', num_classes=self._n_classes).to(self.device)
         self.confusion_matrix = ConfusionMatrix(task='multiclass', num_classes=self._n_classes).to(self.device) if self.dev_training else None
 
     @property
@@ -79,13 +81,13 @@ class AdvancedDetector:
 
     def retrain_model(self):
         self.init_for_training()
-        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, targets_to_shared=self.targets_to_shared)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
             total_loss = 0.0
             n_records = 0
-            for batch in tqdm(dataset, desc=f"Epoch {epoch+1}/{self.conf.epochs}"):
+            for batch in tqdm(dataset, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
                 preds: Tensor = self.moe(kinds, words, specs)
@@ -100,7 +102,7 @@ class AdvancedDetector:
                     n_records = 0
             if n_records:
                 optimizer.step()
-            self._board_metrics(epoch)
+            self._board_metrics(epoch+1)
 
     def _manage_metrics(self, func_name: str, *args, **kwargs) -> None:
         for metric in self.metrics.values():
@@ -119,20 +121,20 @@ class AdvancedDetector:
         pred_labels, true_labels = preds.argmax(dim=1), targets.argmax(dim=1)
         self.confusion_matrix.update(pred_labels, true_labels)
 
-    def _board_metrics(self, epoch: int) -> None:
+    def _board_metrics(self, step: int) -> None:
         if not self.dev_training:
             return
         for name, metric in self.metrics.items():
             metric: Metric
-            self.writer.add_scalar(f'train/metric/{name}', metric.compute().item(), epoch)
-        self._board_confusion_matrix(epoch, 'train')
+            self.writer.add_scalar(f'train/metric/{name}', metric.compute().item(), step)
+        self._board_confusion_matrix(step, 'train')
 
-    def _board_confusion_matrix(self, epoch: int, mode: str):
+    def _board_confusion_matrix(self, step: int, mode: str):
         if not self.dev_training:
             return
         confusion_matrix = self.confusion_matrix.compute().cpu().numpy()
         fig = self.plot_confusion_matrix(confusion_matrix, self._class_names)
-        self.writer.add_figure(f'ConfusionMatrix/{mode}', fig, epoch)
+        self.writer.add_figure(f'ConfusionMatrix/{mode}', fig, step)
         plt.close(fig)
 
     @classmethod

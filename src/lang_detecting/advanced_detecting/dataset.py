@@ -18,13 +18,20 @@ from src.resouce_managing.valid_data import VDC
 
 
 class BucketChunkDataset(Dataset[list[int]]):
-    def __init__(self, data: DataFrame, tokenizer: MultiKindTokenizer, conf: Conf, shuffle: bool = True):
+    def __init__(self,
+            data: DataFrame,
+            tokenizer: MultiKindTokenizer,
+            conf: Conf,
+            shuffle: bool = True,
+            targets_to_shared: dict[str, str] = None
+    ):
         """
         :param valid_data_mgr:
         :param max_batch_size: None means all
         :param shuffle:
         """
         super().__init__()
+        targets_to_shared = targets_to_shared or {}
         self.conf = conf
         self.shuffle = shuffle
         self.batches: list[tuple[Tensor, Tensor, Tensor, Tensor]] = []
