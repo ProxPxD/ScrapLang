@@ -70,10 +70,3 @@ class KindToMgr:
             kinds_to_targets[kind] = vc[LSC.LANGS]
         return kinds_to_vocab, kinds_to_targets
 
-    @classmethod
-    def map_kind_to_to_target_to_shared(cls, kinds_to_tokens_targets: KindToTokensTargets) -> dict[str, str]:
-        return {
-            target: tokens_targets[LSC.CHARS]
-            for kind, tokens_targets in kinds_to_tokens_targets.items()
-            for target in tokens_targets[LSC.LANGS]
-        }

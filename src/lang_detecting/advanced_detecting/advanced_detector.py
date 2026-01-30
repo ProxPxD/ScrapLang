@@ -40,12 +40,12 @@ class AdvancedDetector:
         kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
         self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
         kinds_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
+        self.kinds_to_vocab = kinds_to_vocab
         targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
         kind_to_specs: dict[str, Sequence[Callable]] = {
             'Latn': [str.isupper],
             'Cyrl': [str.isupper],
         }
-        self.targets_to_shared = KindToMgr.map_kind_to_to_target_to_shared(kinds_to_tokens_targets)
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
@@ -81,7 +81,7 @@ class AdvancedDetector:
 
     def retrain_model(self):
         self.init_for_training()
-        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, targets_to_shared=self.targets_to_shared)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, kinds_to_shared=self.kinds_to_vocab)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
