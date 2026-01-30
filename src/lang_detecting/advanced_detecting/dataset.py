@@ -1,4 +1,5 @@
 import random
+from collections import OrderedDict
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -13,7 +14,7 @@ from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 
-from src.conf import Conf
+from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import VDC
 
@@ -39,12 +40,21 @@ class BucketChunkDataset(Dataset[list[int]]):
         :param shuffle:
         """
         super().__init__()
-        self.conf = conf
+        self.conf: Conf = conf
         self.shuffle = shuffle
         self.tokenizer = tokenizer
         self._kinds_to_shared: dict[str, str] = kinds_to_shared or {}
         data = self._process_data(data)
+        self.class_counts = OrderedDict(data.explode(VDC.LANG).groupby(VDC.LANG, sort=True).agg({VDC.WORD: len}).reset_index().values)
         self.batches = self._map_data_to_tensor_batches(data)
+
+    @property
+    def class_weights(self):
+        t_class_count = torch.tensor(list(self.class_counts.values()), dtype=torch.float)
+        b = self.conf.weights_beta
+        weights = (1 - b) / (1 - b ** t_class_count)
+        weights = weights / weights.mean()
+        return weights
 
     def _process_data(self, data: DataFrame) -> DataFrame:
         data = data[~data[VDC.IS_MAPPED]][[VDC.LANG, VDC.WORD]]

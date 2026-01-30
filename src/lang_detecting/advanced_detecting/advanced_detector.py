@@ -50,7 +50,7 @@ class AdvancedDetector:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
         self.moe = Moe(kinds_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
-        self.loss_func = nn.KLDivLoss(reduction='batchmean')
+        self.loss_func = nn.BCEWithLogitsLoss()  #nn.KLDivLoss(reduction='batchmean')
         self.writer = None
         self.metrics = {}
         self.confusion_matrix = None
@@ -83,6 +83,7 @@ class AdvancedDetector:
         self.init_for_training()
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, kinds_to_shared=self.kinds_to_vocab)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
+        loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device))
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
             total_loss = 0.0
@@ -91,7 +92,7 @@ class AdvancedDetector:
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
                 preds: Tensor = self.moe(kinds, words, specs)
-                loss = self.loss_func(preds, targets)
+                loss = loss_func(preds, targets)
                 self._update_metrics(preds, targets)
                 loss.backward()
                 total_loss += loss.item()
