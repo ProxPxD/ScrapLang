@@ -1,4 +1,3 @@
-import contextlib
 import math
 import warnings
 from dataclasses import asdict
@@ -10,7 +9,6 @@ from unittest.mock import MagicMock
 import numpy as np
 import torch
 import torch.nn as nn
-from clearml.backend_api import Session
 from clearml.backend_api.session.defs import MissingConfigError
 from pandas import DataFrame
 from pydash import chain as c, flow
@@ -18,7 +16,6 @@ from toolz import valmap
 from torch import Tensor
 
 from src.constants import Paths
-from contextlib import nullcontext
 from src.context import Context
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
@@ -148,9 +145,12 @@ class AdvancedDetector:
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device))
         if self.dev_training:
-            lang_counts = '\n'.join(f'{lang}: {count}' for lang, count in sorted(dataset.class_counts.items(), key=c().get(1), reverse=True))
+            comment = []
+            comment += [class_names_string := ', '.join(self._class_names)]
+            self.writer.add_text(tag='Classes', text_string=class_names_string)
+            comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(dataset.class_counts.items(), key=c().get(1), reverse=True))]
             self.writer.add_text(tag='training info', text_string=lang_counts)
-            self.task.set_comment(lang_counts)
+            self.task.set_comment('\n'.join(comment))
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
             total_loss = 0.0
@@ -216,8 +216,8 @@ class AdvancedDetector:
                 title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
                 xlabels=self._class_names, ylabels=self._class_names, yaxis_reversed=True,
             )
-            # self._logger.report_confusion_matrix(**kwargs, series=mode)
-            if step == 0 or (step+1) % self._cm_every == 0:
+            retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5, **kwargs, series=mode)
+            if step == 0 or (step+1) % self._cm_every == 0 or step == self.conf.epochs - 1:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5,
                     **kwargs, series=f'{mode}_{(step+1) // self._cm_every:0>{self._n_cm_padding}}'
                 )
