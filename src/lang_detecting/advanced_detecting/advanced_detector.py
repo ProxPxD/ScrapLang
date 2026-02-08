@@ -213,13 +213,13 @@ class AdvancedDetector:
             plt.close(fig)
         if HAS_CLEARML:
             kwargs = dict(
-                title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step,
+                title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
                 xlabels=self._class_names, ylabels=self._class_names, yaxis_reversed=True,
             )
             # self._logger.report_confusion_matrix(**kwargs, series=mode)
             if step == 0 or (step+1) % self._cm_every == 0:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5,
-                         **kwargs, series=f'{mode}_{step // self._cm_every:0>{self._n_cm_padding}}'
+                    **kwargs, series=f'{mode}_{(step+1) // self._cm_every:0>{self._n_cm_padding}}'
                 )
 
     @classmethod
