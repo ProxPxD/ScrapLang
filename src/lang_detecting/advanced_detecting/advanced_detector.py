@@ -1,34 +1,66 @@
+import contextlib
+import math
+import warnings
+from dataclasses import asdict
 from functools import cached_property
-from itertools import product, repeat
+from itertools import product
 from typing import Callable, Sequence
+from unittest.mock import MagicMock
 
 import numpy as np
 import torch
 import torch.nn as nn
+from clearml.backend_api import Session
+from clearml.backend_api.session.defs import MissingConfigError
 from pandas import DataFrame
 from pydash import chain as c, flow
 from toolz import valmap
 from torch import Tensor
 
 from src.constants import Paths
+from contextlib import nullcontext
 from src.context import Context
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
+from src.lang_detecting.advanced_detecting.retry import retry_on
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import ValidDataMgr
+
+warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
 
 EXCEPTION = None
 try:
     from tqdm import tqdm
-    from torch.utils.tensorboard import SummaryWriter
     from torchmetrics import ConfusionMatrix, Metric, Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef
     import matplotlib.pyplot as plt
     HAS_TRAINING_SUPERVISION = True
 except ImportError as e:
     EXCEPTION = e
     HAS_TRAINING_SUPERVISION = False
+
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    HAS_TENSORBOARD = True
+except ImportError as e_t:
+    HAS_TENSORBOARD = False
+
+HAS_CLEARML = False
+try:
+    from clearml import Logger, Task
+    HAS_CLEARML = True
+    import flatten_dict
+    HAS_CLEARML = True
+except ImportError as e_c:
+    if HAS_CLEARML:
+        EXCEPTION = e_c
+    else:
+        HAS_CLEARML = False
+
+if HAS_TRAINING_SUPERVISION and not HAS_CLEARML and not HAS_TENSORBOARD:
+    EXCEPTION = Exception(e_t, e_c)
+
 
 class AdvancedDetector:
     def __init__(self, context: Context, lang_script: DataFrame, valid_data_mgr: ValidDataMgr, conf: Conf):
@@ -51,25 +83,45 @@ class AdvancedDetector:
         self._class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
         self.moe = Moe(kinds_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.loss_func = nn.BCEWithLogitsLoss()  #nn.KLDivLoss(reduction='batchmean')
-        self.writer = None
+        self.writer = MagicMock()
+        self.task = MagicMock()
         self.metrics = {}
         self.confusion_matrix = None
+        self._cm_every: int = 2**5
         self.init_for_training()
 
     def init_for_training(self) -> None:
-        if self.context.dev and not HAS_TRAINING_SUPERVISION:
-            raise RuntimeError('Dev mode run without tensorboard or torchmetrics or tqdm or matplotlib installed') from EXCEPTION
-        if self.dev_training:
-            Paths.DETECTION_LOG_DIR.mkdir(parents=True, exist_ok=True)
-        self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR) if self.dev_training else None
+        if self.context.dev and not HAS_TRAINING_SUPERVISION or EXCEPTION:
+            raise RuntimeError('Dev mode run without tensorboard, torchmetrics, tqdm or matplotlib or either tensorboard or clearml and flatten_dict installed') from EXCEPTION
+        if not self.dev_training:
+            return
+        Paths.DETECTION_LOG_DIR.mkdir(parents=True, exist_ok=True)
+        for file in Paths.DETECTION_LOG_DIR.iterdir():
+            if file.name.startswith('events'):
+                file.unlink()
+        if HAS_CLEARML:
+            try:
+                Task.set_credentials(
+                     api_host='http://127.0.0.1:7003',
+                     web_host='http://127.0.0.1:7004',
+                     files_host='http://127.0.0.1:7005',
+                     key='RA0LL08K8QWF588QOBVB53FMVRIZ6P',
+                     secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
+                )
+                self.task = Task.init(project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training)
+                self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
+            except MissingConfigError as e:
+                if not HAS_TENSORBOARD:
+                    raise RuntimeError('Dev mode run failed to initialize ClearML') from e
+        if HAS_TENSORBOARD:
+            self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
         self.metrics: dict[str, Metric] = {
             f'{metric_class.__name__}_{mode}'.lower(): metric_class(task='multiclass', num_classes=self._n_classes, average=mode).to(self.device)
             for metric_class in [Accuracy, Precision, Recall, F1Score]
             for mode in ('macro', )
-        }  if self.dev_training else {}
-        if self.dev_training:
-            self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task='multiclass', num_classes=self._n_classes).to(self.device)
-        self.confusion_matrix = ConfusionMatrix(task='multiclass', num_classes=self._n_classes).to(self.device) if self.dev_training else None
+        }
+        self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task='multiclass', num_classes=self._n_classes).to(self.device)
+        self.confusion_matrix = ConfusionMatrix(task='multiclass', num_classes=self._n_classes).to(self.device)
 
     @property
     def dev_training(self) -> bool:
@@ -79,11 +131,26 @@ class AdvancedDetector:
     def _n_classes(self) -> int:
         return len(self._class_names)
 
-    def retrain_model(self):
+    @cached_property
+    def _logger(self) -> Logger:
+        return self.task.get_logger()
+
+    def retrain_model(self) -> None:
+        try:
+            self._retrain_model()
+        finally:
+            self.task.close()
+
+    def _retrain_model(self) -> None:
         self.init_for_training()
+        self.task: Task
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, kinds_to_shared=self.kinds_to_vocab)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device))
+        if self.dev_training:
+            lang_counts = '\n'.join(f'{lang}: {count}' for lang, count in sorted(dataset.class_counts.items(), key=c().get(1), reverse=True))
+            self.writer.add_text(tag='training info', text_string=lang_counts)
+            self.task.set_comment(lang_counts)
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
             total_loss = 0.0
@@ -103,7 +170,7 @@ class AdvancedDetector:
                     n_records = 0
             if n_records:
                 optimizer.step()
-            self._board_metrics(epoch+1)
+            self._board_metrics(epoch, 'Train')
 
     def _manage_metrics(self, func_name: str, *args, **kwargs) -> None:
         for metric in self.metrics.values():
@@ -122,25 +189,42 @@ class AdvancedDetector:
         pred_labels, true_labels = preds.argmax(dim=1), targets.argmax(dim=1)
         self.confusion_matrix.update(pred_labels, true_labels)
 
-    def _board_metrics(self, step: int) -> None:
+    def _board_metrics(self, step: int, mode: str) -> None:
         if not self.dev_training:
             return
+        self.metrics: dict[str, Metric]
         for name, metric in self.metrics.items():
-            metric: Metric
-            self.writer.add_scalar(f'train/metric/{name}', metric.compute().item(), step)
-        self._board_confusion_matrix(step, 'train')
+            val = metric.compute().item()
+            self.writer.add_scalar(f'{mode}/metric/{name}'.lower(), val, step)
+            self._logger.report_scalar(name, mode, val, step)
+        self._board_confusion_matrix(step, mode)
+
+    @cached_property
+    def _n_cm_padding(self) -> int:
+        return math.floor(math.log10(self.conf.epochs // self._cm_every))
 
     def _board_confusion_matrix(self, step: int, mode: str):
         if not self.dev_training:
             return
         confusion_matrix = self.confusion_matrix.compute().cpu().numpy()
-        fig = self.plot_confusion_matrix(confusion_matrix, self._class_names)
-        self.writer.add_figure(f'ConfusionMatrix/{mode}', fig, step)
-        plt.close(fig)
+        if HAS_TENSORBOARD:
+            fig = self.plot_confusion_matrix(confusion_matrix, self._class_names)
+            self.writer.add_figure(f'{mode}/ConfusionMatrix', fig, step)
+            plt.close(fig)
+        if HAS_CLEARML:
+            kwargs = dict(
+                title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step,
+                xlabels=self._class_names, ylabels=self._class_names, yaxis_reversed=True,
+            )
+            # self._logger.report_confusion_matrix(**kwargs, series=mode)
+            if step == 0 or (step+1) % self._cm_every == 0:
+                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5,
+                         **kwargs, series=f'{mode}_{step // self._cm_every:0>{self._n_cm_padding}}'
+                )
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
         im = ax.imshow(conf_mat, interpolation="nearest")
 
         ax.figure.colorbar(im, ax=ax)
