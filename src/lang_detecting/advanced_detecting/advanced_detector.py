@@ -79,9 +79,9 @@ class AdvancedDetector:
 
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self._class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
+        self._all_class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
         self.moe = Moe(kinds_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
-        self.loss_func = nn.BCEWithLogitsLoss()  #nn.KLDivLoss(reduction='batchmean')
+        self.loss_func = nn.BCEWithLogitsLoss()
         self.writer = MagicMock()
         self.task = MagicMock()
         self.metrics = {}
@@ -133,7 +133,7 @@ class AdvancedDetector:
 
     @cached_property
     def _n_classes(self) -> int:
-        return len(self._class_names)
+        return len(self._all_class_names)
 
     @cached_property
     def _logger(self) -> Logger:
@@ -146,14 +146,15 @@ class AdvancedDetector:
             self.task.close()
 
     def _retrain_model(self) -> None:
-        self.init_for_training()
         self.task: Task
-        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, kinds_to_shared=self.kinds_to_vocab)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device))
+        self.init_for_training()
         if self.dev_training:
             comment = []
-            comment += [class_names_string := ', '.join(self._class_names)]
+            comment += [f'{len(self._all_class_names)}-label']
+            comment += [class_names_string := ', '.join(self._all_class_names)]
             self.writer.add_text(tag='Classes', text_string=class_names_string)
             comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(dataset.class_counts.items(), key=c().get(1), reverse=True))]
             self.writer.add_text(tag='training info', text_string=lang_counts)
@@ -215,13 +216,13 @@ class AdvancedDetector:
             return
         confusion_matrix = self.confusion_matrix.compute().cpu().numpy()
         if HAS_TENSORBOARD:
-            fig = self.plot_confusion_matrix(confusion_matrix, self._class_names)
+            fig = self.plot_confusion_matrix(confusion_matrix, self._all_class_names)
             self.writer.add_figure(f'{mode}/ConfusionMatrix', fig, step)
             plt.close(fig)
         if HAS_CLEARML:
             kwargs = dict(
                 title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
-                xlabels=self._class_names, ylabels=self._class_names, yaxis_reversed=True,
+                xlabels=self._all_class_names, ylabels=self._all_class_names, yaxis_reversed=True,
             )
             retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5, **kwargs, series=mode)
             if step == 0 or (step+1) % self._cm_every == 0 or step == self.conf.epochs - 1:

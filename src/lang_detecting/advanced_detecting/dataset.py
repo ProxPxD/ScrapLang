@@ -36,7 +36,7 @@ class BucketChunkDataset(Dataset[list[int]]):
             tokenizer: MultiKindTokenizer,
             conf: Conf,
             shuffle: bool = True,
-            kinds_to_shared: dict[str, str] = None
+            all_classes: list[str] = None
     ):
         """
         :param valid_data_mgr:
@@ -47,17 +47,23 @@ class BucketChunkDataset(Dataset[list[int]]):
         self.conf: Conf = conf
         self.shuffle = shuffle
         self.tokenizer = tokenizer
-        self._kinds_to_shared: dict[str, str] = kinds_to_shared or {}
         data = self._process_data(data)
-        self.class_counts = OrderedDict(data.explode(VDC.LANG).groupby(VDC.LANG, sort=True).agg({VDC.WORD: len}).reset_index().values)
+        self.class_counts = OrderedDict(data.explode(VDC.LANG)[VDC.LANG].value_counts())
+        self._all_classes = all_classes or list(self.class_counts.keys())
+        self.class_weights = self._compute_weights(self._all_classes, self.class_counts)
         self.batches = self._map_data_to_tensor_batches(data)
 
-    @property
-    def class_weights(self):
-        t_class_count = torch.tensor(list(self.class_counts.values()), dtype=torch.float)
-        b = self.conf.weights_beta
-        weights = (1 - b) / (1 - b ** t_class_count)
-        weights = weights / weights.mean()
+    def _compute_weights(self, all_classes: list[str], class_counts: OrderedDict[str, int], bias: float = None) -> Tensor:
+        b = bias or self.conf.weights_bias
+        present_classes = class_counts.keys()
+        counts = torch.tensor([class_counts[c] for c in present_classes])
+        freq = counts / counts.sum()
+        raw_weights = freq ** -b
+        raw_weights /= raw_weights.mean()
+
+        present_idxs = torch.tensor(_.map_(present_classes, all_classes.index), dtype=torch.long)
+        weights = torch.ones(len(all_classes), dtype=raw_weights.dtype)
+        weights[present_idxs] = raw_weights
         return weights
 
     def _process_data(self, data: DataFrame) -> DataFrame:
@@ -73,6 +79,9 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def _prefilter(self, data: DataFrame) -> DataFrame:
         data = data[~data[VDC.IS_MAPPED]][[VDC.LANG, VDC.WORD]]
+        class_counts = data[VDC.LANG].value_counts()
+        numerous_enough = class_counts[class_counts >= self.conf.data.record_count_thresh].index
+        data = data[data[VDC.LANG].isin(numerous_enough)]
         return data
 
     def _form_grouped_model_form(self, data: DataFrame) -> DataFrame:
@@ -95,7 +104,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         m_uniq = data[Cols.N_UNIQ] > 0
         m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= 5
         m_right_ratio = (data[Cols.LEN] - 3) / data[Cols.N_UNIQ] >= 2
-        m_long = data[Cols.LEN] >= self.conf.data.len_thresh
+        m_long = data[Cols.LEN] >= self.conf.data.input_len_thresh
         data = data[m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)]
         return data
 

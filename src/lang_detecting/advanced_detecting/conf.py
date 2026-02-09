@@ -3,7 +3,8 @@ from typing import Sequence, Optional
 
 @dataclass
 class Data:
-    len_thresh: int = 3
+    input_len_thresh: int = 3
+    record_count_thresh: int = 2**4
 
 @dataclass
 class ExpertConf:
@@ -25,4 +26,4 @@ class Conf:
     weight_decay = 1e-4  # 1e-4
     max_batch_size: Optional[int] = 2**12
     accum_grad_bs: int = 2**5
-    weights_beta: float = .999
+    weights_bias: float = 1.1
