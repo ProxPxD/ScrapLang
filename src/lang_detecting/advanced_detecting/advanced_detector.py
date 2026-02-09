@@ -225,7 +225,7 @@ class AdvancedDetector:
             )
             retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5, **kwargs, series=mode)
             if step == 0 or (step+1) % self._cm_every == 0 or step == self.conf.epochs - 1:
-                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5,
+                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7,
                     **kwargs, series=f'{mode}_{(step+1) // self._cm_every:0>{self._n_cm_padding}}'
                 )
 

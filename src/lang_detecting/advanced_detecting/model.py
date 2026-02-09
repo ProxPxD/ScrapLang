@@ -127,6 +127,7 @@ class Moe(nn.Module):
 
     def forward(self, kinds: Tensor, words: Tensor, specs: Tensor) -> Tensor:
         out = torch.zeros(words.size(0), self.n_classes, device=words.device)
+        specs = specs.to_dense()
         for expert_idx, expert in enumerate(self.experts):
             mask = kinds == expert_idx
             if mask.any():

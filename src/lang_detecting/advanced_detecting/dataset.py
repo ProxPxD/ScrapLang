@@ -115,7 +115,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         tokenized_kinds = Tensor(_.map_(kinds, self.tokenizer.tokenize_kind)).int()
         tokenized_words = Tensor([self.tokenizer.tokenize_input(word, kind) for word, kind in zip(words, kinds)]).int()
         tokenized_spec_groups = [Tensor(self.tokenizer.tokenize_spec_groups(word, kind)) for word, kind in zip(words, kinds)]
-        tokenized_spec_groups = pad_sequence(tokenized_spec_groups, batch_first=True, padding_value=0).int()
+        tokenized_spec_groups = pad_sequence(tokenized_spec_groups, batch_first=True, padding_value=0).int().to_sparse()
         tokenized_outputs = _.map_(outputs, c().map(self.tokenizer.tokenize_target))
         one_hot_encoded_outputs = torch.zeros(len(tokenized_outputs), self.tokenizer.n_target_tokens, dtype=torch.float32)
         for j, outputs in enumerate(tokenized_outputs):
