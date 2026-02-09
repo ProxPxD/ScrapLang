@@ -105,9 +105,11 @@ class AdvancedDetector:
                      key='RA0LL08K8QWF588QOBVB53FMVRIZ6P',
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
-                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train'):
+                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=['autodelete']):
+                    print(f'Deleting old task: {task.name}')
                     task.delete()
-                self.task = Task.init(project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training)
+                self.task = Task.init(project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training, tags=['autodelete'])
+
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
 
             except MissingConfigError as e:
