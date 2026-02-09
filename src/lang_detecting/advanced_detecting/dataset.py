@@ -24,6 +24,9 @@ class Cols:
     LEN = 'len'
     KIND = 'kind'
     TOKENS = 'tokens'
+    SPECS = 'specs'
+    DECODE = 'decode'
+    N_UNIQ = 'n_uniq'
 
 TensorBatch = tuple[Tensor, Tensor, Tensor, Tensor]
 
@@ -58,20 +61,42 @@ class BucketChunkDataset(Dataset[list[int]]):
         return weights
 
     def _process_data(self, data: DataFrame) -> DataFrame:
-        data = data[~data[VDC.IS_MAPPED]][[VDC.LANG, VDC.WORD]]
-        data[Cols.KIND] = data[VDC.WORD].apply(lambda w: next(iter(sp(w)[-1]['details'].keys())))
-        data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]), axis=1)
-        data = data.groupby([Cols.TOKENS, Cols.KIND], sort=False).agg({
-            VDC.WORD: flow(set, list, ''.join),
-            VDC.LANG: flow(set, sorted, list),
-        }).reset_index()
-        data['decode'] = data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND])).replace('<', '').replace('>', ''), axis=1)
-        data[Cols.LEN] = data[Cols.TOKENS].str.len()
-        data['n_?'] = data['decode'].apply(c().filter('?'.__contains__).apply(len))
-        data = data.sort_values(['len', 'n_?'])
+        data = self._prefilter(data)
+        data = self._form_grouped_model_form(data)
+        data = self._expand_rows(data)
+        data = self._filter_bad_train_data(data)
+        data = data.sort_values([Cols.LEN, Cols.N_UNIQ])
         pass
         # TODO: make it work with multikind langs like japanese
-        data = data[data.apply(lambda row: all(char in self._kinds_to_shared[row[Cols.KIND]] for char in row[VDC.WORD]), axis=1)]
+        #data = data[data.apply(lambda row: all(char in self._kinds_to_shared[row[Cols.KIND]] for char in row[VDC.WORD]), axis=1)]
+        return data
+
+    def _prefilter(self, data: DataFrame) -> DataFrame:
+        data = data[~data[VDC.IS_MAPPED]][[VDC.LANG, VDC.WORD]]
+        return data
+
+    def _form_grouped_model_form(self, data: DataFrame) -> DataFrame:
+        data[Cols.KIND] = data[VDC.WORD].apply(lambda w: next(iter(sp(w)[-1]['details'].keys())))
+        data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]), axis=1)
+        data[Cols.SPECS] = data.apply(lambda row: self.tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]), axis=1)
+        data = data.groupby([Cols.KIND, Cols.TOKENS, Cols.SPECS], sort=False).agg({
+            VDC.WORD: flow(set, list, ''.join),  # Should be same as c().get(0), but this allows to detect discrepancies
+            VDC.LANG: flow(set, sorted, list),
+        }).reset_index()
+        return data
+
+    def _expand_rows(self, data: DataFrame) -> DataFrame:
+        data[Cols.DECODE] = data.apply(lambda row: self.tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND]), axis=1)
+        data[Cols.LEN] = data[Cols.TOKENS].str.len()
+        data[Cols.N_UNIQ] = data[Cols.DECODE].apply(c().filter(self.tokenizer.unknown.__contains__).apply(len))
+        return data
+
+    def _filter_bad_train_data(self, data: DataFrame) -> DataFrame:
+        m_uniq = data[Cols.N_UNIQ] > 0
+        m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= 5
+        m_right_ratio = (data[Cols.LEN] - 3) / data[Cols.N_UNIQ] >= 2
+        m_long = data[Cols.LEN] >= self.conf.data.len_thresh
+        data = data[m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)]
         return data
 
     def _map_data_to_tensor_batches(self, data: DataFrame) -> list[TensorBatch]:

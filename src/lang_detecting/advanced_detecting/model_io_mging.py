@@ -22,8 +22,6 @@ SpecialGroup = OrderedDict[str, Vocab]  # Default
 KindToSpecialGroup = OrderedDict[Kind, SpecialGroup]
 TokenizedKindToGroupedVocab = OrderedDict[Kind, OrderedDict[str, list[int]]]
 
-ALL = 'all'
-
 
 class ModelIOMgr:
     def __init__(self):

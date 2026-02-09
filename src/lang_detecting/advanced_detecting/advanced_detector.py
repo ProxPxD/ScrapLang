@@ -22,7 +22,7 @@ from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.retry import retry_on
-from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
+from src.lang_detecting.advanced_detecting.tokenizer import KindToSpecs, MultiKindTokenizer
 from src.resouce_managing.valid_data import ValidDataMgr
 
 warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
@@ -66,15 +66,17 @@ class AdvancedDetector:
         self.valid_data_mgr = valid_data_mgr
         self.conf = conf
 
+        kind_to_specs: KindToSpecs = {
+            'Latn': [(str.isupper, str.lower)],
+            'Cyrl': [(str.isupper, str.lower)],
+        }
+
         kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
         self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
         kinds_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
         self.kinds_to_vocab = kinds_to_vocab
         targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
-        kind_to_specs: dict[str, Sequence[Callable]] = {
-            'Latn': [str.isupper],
-            'Cyrl': [str.isupper],
-        }
+
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()

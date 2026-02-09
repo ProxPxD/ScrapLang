@@ -3,10 +3,10 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+import pydash as _
 from GlotScript import sp
 from pandas import DataFrame
-from pydash import chain as c
-from pydash import flow
+from pydash import chain as c, flow
 
 from src.constants import preinitialized
 from src.resouce_managing.file import FileMgr
@@ -45,7 +45,8 @@ class DataProcessor:
         :param data: [lang: str, word: str]
         :return:
         """
-        lang_script = data[~data[VDC.IS_MAPPED]].groupby(VDC.LANG)[VDC.WORD].apply(flow(''.join, set, c().flat_map(lambda c: [c, c.upper()]), set, sorted, ''.join)).reset_index()
+        lang_to_words = data[~data[VDC.IS_MAPPED]].groupby(VDC.LANG)
+        lang_script = lang_to_words[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index()
         lang_script.rename(columns={VDC.WORD: LSC.CHARS, VDC.LANG: LSC.LANG}, inplace=True)
         lang_script[LSC.SCRIPTS] = lang_script[LSC.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
         return lang_script

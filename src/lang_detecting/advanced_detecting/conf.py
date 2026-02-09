@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Sequence, Optional
 
+@dataclass
+class Data:
+    len_thresh: int = 3
 
 @dataclass
 class ExpertConf:
@@ -15,8 +18,9 @@ class ExpertConf:
 
 @dataclass
 class Conf:
+    data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
-    epochs: int = 2**8
+    epochs: int = 2**6
     lr: float = 1e-3  # 1e-5  # 1e-3
     weight_decay = 1e-4  # 1e-4
     max_batch_size: Optional[int] = 2**12
