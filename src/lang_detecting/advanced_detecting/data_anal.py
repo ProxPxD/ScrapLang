@@ -1,11 +1,8 @@
 from itertools import product
-from math import sqrt
+from typing import Callable
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import pydash as _
-from pydash import chain as c
-
+import operator as op
 
 # (len, n_?) => recognizability
 predictabilities = {
@@ -21,7 +18,7 @@ predictabilities = {
     (7, 2): 1,
     (7, 3): 0,
     (8, 2): 1,
-    (8, 3): 0.7,
+    (8, 3): .7,
     (9, 2): 1,
     (9, 3): 1,
 }
@@ -37,8 +34,6 @@ ax.set_title('3D Representation of Predictability')
 ax.set_xlabel('Length'); ax.set_ylabel('Uniq'); ax.set_zlabel('Predictability')
 ax.scatter(x_vals, y_vals, z_vals, c=z_vals, cmap='viridis', s=100)
 
-
-from mpl_toolkits.mplot3d import axes3d
 import numpy as np
 
 # Make a grid for surface
@@ -51,21 +46,18 @@ for (i, x), (j, y) in product(enumerate(x_unique), enumerate(y_unique)):
 ax.plot_surface(X, Y, Z, alpha=0.5, cmap='viridis', edgecolor='k')
 #plt.show()
 
-func1 = [((l-3)/u, u, p) for ((l, u), p) in predictabilities.items()]
-l_sorted, u_sorted_1, p_sorted = zip(*sorted(func1))
-plt.figure(figsize=(8, 5))
-plt.plot(l_sorted, p_sorted, marker='o', linestyle='-', color='blue')
-for l, u_val, u_label in zip(l_sorted, p_sorted, u_sorted_1):
-    plt.text(l, u_val + 0.03, str(u_label), ha='center', va='bottom', fontsize=9)
-plt.title('Predictability vs LpU'); plt.xlabel('Length to Unique'); plt.ylabel('Predictability')
-plt.grid(True)
+def visualize_relation(func: Callable, title: str = 'Pred', xlabel: str = 'x', *, data: dict[tuple[int, int], float] = None):
+    data = data or predictabilities
+    func_repr = [(func(l, u), u, p) for ((l, u), p) in data.items()]
+    l_sorted, u_sorted, p_sorted = zip(*sorted(func_repr))
+    plt.figure(figsize=(8, 5))
+    plt.plot(l_sorted, p_sorted, marker='o', linestyle='-', color='blue')
+    for l, u_val, u_label in zip(l_sorted, p_sorted, u_sorted):
+        plt.text(l, u_val + 0.03, str(u_label), ha='center', va='bottom', fontsize=9)
+    plt.title(title); plt.xlabel(xlabel); plt.ylabel('Predictability')
+    plt.grid(True)
 
-func2 = [((l-u), u, p) for ((l, u), p) in predictabilities.items()]
-l_sorted_2, u_sorted_2, p_sorted_2 = zip(*sorted(func2))
-plt.figure(figsize=(8, 5))
-plt.plot(l_sorted_2, p_sorted_2, marker='o', linestyle='-', color='blue')
-for l, u_val, u_label in zip(l_sorted_2, p_sorted_2, u_sorted_2):
-    plt.text(l, u_val + 0.03, str(u_label), ha='center', va='bottom', fontsize=9)
-plt.title('Predictability vs L-U'); plt.xlabel('Length - Unique'); plt.ylabel('Predictability')
-plt.grid(True)
+visualize_relation(op.sub, 'Predictability vs L-U', 'Length - Unique')
+visualize_relation(op.truediv, 'Predictability vs L/U', 'L/U')
+visualize_relation(lambda l, u: (l-3)/u, 'Predictability vs L-3/U', 'L-3/U')
 plt.show()
