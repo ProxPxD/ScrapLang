@@ -23,6 +23,7 @@ from src.resouce_managing.valid_data import VDC
 class Cols:
     LEN = 'len'
     KIND = 'kind'
+    TOKENS = 'tokens'
 
 TensorBatch = tuple[Tensor, Tensor, Tensor, Tensor]
 
@@ -58,10 +59,18 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def _process_data(self, data: DataFrame) -> DataFrame:
         data = data[~data[VDC.IS_MAPPED]][[VDC.LANG, VDC.WORD]]
-        data = data.groupby(VDC.WORD, sort=False).agg({VDC.LANG: flow(set, sorted, list)}).reset_index()
-        data[Cols.LEN] = data[VDC.WORD].str.len()
-        # TODO: make it work with multikind langs like japanese
         data[Cols.KIND] = data[VDC.WORD].apply(lambda w: next(iter(sp(w)[-1]['details'].keys())))
+        data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]), axis=1)
+        data = data.groupby([Cols.TOKENS, Cols.KIND], sort=False).agg({
+            VDC.WORD: flow(set, list, ''.join),
+            VDC.LANG: flow(set, sorted, list),
+        }).reset_index()
+        data['decode'] = data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND])).replace('<', '').replace('>', ''), axis=1)
+        data[Cols.LEN] = data[Cols.TOKENS].str.len()
+        data['n_?'] = data['decode'].apply(c().filter('?'.__contains__).apply(len))
+        data = data.sort_values(['len', 'n_?'])
+        pass
+        # TODO: make it work with multikind langs like japanese
         data = data[data.apply(lambda row: all(char in self._kinds_to_shared[row[Cols.KIND]] for char in row[VDC.WORD]), axis=1)]
         return data
 

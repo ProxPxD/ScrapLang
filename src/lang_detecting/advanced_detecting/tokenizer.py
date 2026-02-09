@@ -1,26 +1,21 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
-from functools import cache
-from typing import Callable, Collection, Sequence
+from typing import Callable, Sequence
 
-import pydash as _
-from pydash import map_values
-from pydash import chain as c
 from toolz import valmap
 
-from src.lang_detecting.advanced_detecting.model_io_mging import KindToSpecialGroup, ALL, SpecialGroup, Class, \
-    KindToVocab, Vocab
+from src.lang_detecting.advanced_detecting.model_io_mging import Class, \
+    KindToVocab
 
 
 class ITokenizer(ABC):
     @abstractmethod
-    def tokenize(self, word: str | list[str]):
+    def tokenize(self, word: str | Sequence[str]):
         ...
 
-    def __call__(self, word: str | list[str]):
+    def __call__(self, word: str | Sequence[str]):
         return self.tokenize(word)
 
-    def __getitem__(self, word: str | list[str]):
+    def __getitem__(self, word: str | Sequence[str]):
         return self.tokenize(word)
 
 
@@ -39,19 +34,19 @@ class Tokenizer(ITokenizer):
     def n_known_tokens(self) -> int:
         return len(self.token2id)
 
-    def tokenize(self, tokens: list[str]) -> list[int]:
-        return [self.token2id.get(t, 0) if self.allow_unrecognized else self.token2id[t] for t in tokens]
+    def tokenize(self, tokens: list[str]) -> Sequence[int]:
+        return tuple([self.token2id.get(t, 0) if self.allow_unrecognized else self.token2id[t] for t in tokens])
 
-    def detokenize(self, ids: list[int]) -> list[str]:
-        return [self.id2token.get(i, '<?>') if self.allow_unrecognized else self.id2token[i] for i in ids]
+    def detokenize(self, ids: list[int]) -> Sequence[str]:
+        return tuple([self.id2token.get(i, '<?>') if self.allow_unrecognized else self.id2token[i] for i in ids])
 
 
 class GroupTokenizer(ITokenizer):
     def __init__(self, group: str):
         self.group = group
 
-    def tokenize(self, word: str) -> list[int]:
-        return [int(c in self.group) for c in word]
+    def tokenize(self, word: str) -> Sequence[int]:
+        return tuple([int(c in self.group) for c in word])
 
 
 class MultiKindTokenizer:
@@ -71,10 +66,10 @@ class MultiKindTokenizer:
     def n_target_tokens(self) -> int:
         return self.target_tokenizer.n_tokens
 
-    def tokenize_input(self, input: str, kind: str) -> list[int]:
+    def tokenize_input(self, input: str, kind: str) -> Sequence[int]:
         return self.kind_tokenizers[kind](input)
 
-    def detokenize_input(self, ids: list[int], kind: str) -> list[str]:
+    def detokenize_input(self, ids: list[int], kind: str) -> Sequence[str]:
         return self.kind_tokenizers[kind].detokenize(ids)
 
     def tokenize_kind(self, kind: str) -> int:
@@ -83,14 +78,14 @@ class MultiKindTokenizer:
     def detokenize_kind(self, id: int) -> str:
         return self.id2kind.get(id, '<?>')
 
-    def tokenize_target(self, target: str) -> list[int]:
+    def tokenize_target(self, target: str) -> Sequence[int]:
         return self.target_tokenizer([target])
 
-    def detokenize_target(self, target: int) -> list[str]:
+    def detokenize_target(self, target: int) -> Sequence[str]:
         return self.target_tokenizer.detokenize([target])
 
-    def tokenize_spec_groups(self, word: str | list[str], kind: str) -> list[list[int]]:
-        return [[int(spec(c)) for spec in self.kind_to_spec[kind]] for c in word]
+    def tokenize_spec_groups(self, word: str | Sequence[str], kind: str) -> Sequence[Sequence[int]]:
+        return tuple([tuple([int(spec(c)) for spec in self.kind_to_spec[kind]]) for c in word])
 
-    def tokenize(self, word: str | list[str], kind: str, targets: list[str]):
+    def tokenize(self, word: str | Sequence[str], kind: str, targets: Sequence[str]):
         return self.tokenize_input(word, kind), self.tokenize_kind(kind), self.tokenize_target(targets), self.tokenize_spec_groups(word, kind)
