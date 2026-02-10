@@ -137,7 +137,7 @@ class BucketChunkDataset(Dataset[list[int]]):
     def __iter__(self):
         if self.shuffle:
             rng = random.Random()
-            rng.seed(time.time())
+            rng.seed(9 or time.time())  # 9(3)
             rng.shuffle(self.batches)
         for batch in self.batches:
             kinds, words, specs, outputs = batch
