@@ -163,6 +163,7 @@ class AdvancedDetector:
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
             n_records = 0
+            epoch_loss = 0.0
             for batch in tqdm(dataset, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
@@ -179,6 +180,7 @@ class AdvancedDetector:
                 final_loss_full = asym_loss * (1 + m_pos * (scale - 1))
                 final_loss = final_loss_full.mean()
                 final_loss.backward()
+                epoch_loss += final_loss.item()
 
                 if n_records >= self.conf.accum_grad_bs:
                     optimizer.step()
@@ -186,7 +188,9 @@ class AdvancedDetector:
                     n_records = 0
             if n_records:
                 optimizer.step()
-            self._board_metrics(epoch, 'Train')
+
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', mode:='Train', epoch_loss, epoch)
+            self._board_metrics(epoch, mode)
 
     def _manage_metrics(self, func_name: str, *args, **kwargs) -> None:
         for metric in self.metrics.values():
@@ -233,7 +237,7 @@ class AdvancedDetector:
                 title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
                 xlabels=self._all_class_names, ylabels=self._all_class_names, yaxis_reversed=True,
             )
-            if step % 4 == 0 or step == self.conf.epochs - 1:
+            if step % 2 == 0 or step == self.conf.epochs - 1:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs, series=mode)
             if step == 0 or (step+1) % self._cm_kind_every == 0 or step == self.conf.epochs - 1:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7,
