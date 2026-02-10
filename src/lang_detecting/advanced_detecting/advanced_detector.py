@@ -86,7 +86,7 @@ class AdvancedDetector:
         self.task = MagicMock()
         self.metrics = {}
         self.confusion_matrix = None
-        self._cm_every: int = 2**5
+        self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
     def init_for_training(self) -> None:
@@ -218,7 +218,7 @@ class AdvancedDetector:
 
     @cached_property
     def _n_cm_padding(self) -> int:
-        return math.floor(math.log10(self.conf.epochs // self._cm_every))
+        return math.floor(math.log10(self.conf.epochs // self._cm_kind_every))
 
     def _board_confusion_matrix(self, step: int, mode: str):
         if not self.dev_training:
@@ -233,10 +233,11 @@ class AdvancedDetector:
                 title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
                 xlabels=self._all_class_names, ylabels=self._all_class_names, yaxis_reversed=True,
             )
-            retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs, series=mode)
-            if step == 0 or (step+1) % self._cm_every == 0 or step == self.conf.epochs - 1:
+            if step % 4 == 0 or step == self.conf.epochs - 1:
+                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs, series=mode)
+            if step == 0 or (step+1) % self._cm_kind_every == 0 or step == self.conf.epochs - 1:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7,
-                    **kwargs, series=f'{mode}_{(step+1) // self._cm_every:0>{self._n_cm_padding}}'
+                    **kwargs, series=f'{mode}_{(step+1) // self._cm_kind_every:0>{self._n_cm_padding}}'
                 )
 
     @classmethod
