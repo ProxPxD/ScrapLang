@@ -151,6 +151,7 @@ class AdvancedDetector:
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device), reduction='none')
         self.init_for_training()
+        eps = 1e-3
         if self.dev_training:
             comment = []
             comment += [f'{len(self._all_class_names)}-label']
@@ -171,8 +172,13 @@ class AdvancedDetector:
                 m_neg = targets == 0
                 loss_weights = torch.ones_like(preds)
                 loss_weights[m_neg] = (preds ** self.conf.neg_bias)[m_neg]
-                asym_loss = (loss * loss_weights).mean()
-                asym_loss.backward()
+                asym_loss = (loss * loss_weights)
+                loss_per_cls = loss.mean(0)
+                scale = loss_per_cls.detach().mean() / (loss_per_cls.detach() + eps)
+                m_pos = ~m_neg
+                final_loss_full = asym_loss * (1 + m_pos * (scale - 1))
+                final_loss = final_loss_full.mean()
+                final_loss.backward()
 
                 if n_records >= self.conf.accum_grad_bs:
                     optimizer.step()
@@ -207,6 +213,7 @@ class AdvancedDetector:
             val = metric.compute().item()
             self.writer.add_scalar(f'{mode}/metric/{name}'.lower(), val, step)
             self._logger.report_scalar(name, mode, val, step)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, name, mode, val, step)
         self._board_confusion_matrix(step, mode)
 
     @cached_property
@@ -226,7 +233,7 @@ class AdvancedDetector:
                 title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
                 xlabels=self._all_class_names, ylabels=self._all_class_names, yaxis_reversed=True,
             )
-            retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=5, **kwargs, series=mode)
+            retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs, series=mode)
             if step == 0 or (step+1) % self._cm_every == 0 or step == self.conf.epochs - 1:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7,
                     **kwargs, series=f'{mode}_{(step+1) // self._cm_every:0>{self._n_cm_padding}}'
