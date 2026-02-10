@@ -1,4 +1,5 @@
 import random
+import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from functools import cached_property
@@ -30,6 +31,8 @@ class Cols:
 
 TensorBatch = tuple[Tensor, Tensor, Tensor, Tensor]
 
+random.seed(time.time())
+
 class BucketChunkDataset(Dataset[list[int]]):
     def __init__(self,
             data: DataFrame,
@@ -54,7 +57,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         self.batches = self._map_data_to_tensor_batches(data)
 
     def _compute_weights(self, all_classes: list[str], class_counts: OrderedDict[str, int], bias: float = None) -> Tensor:
-        b = bias or self.conf.weights_bias
+        b = bias or self.conf.freq_bias
         present_classes = class_counts.keys()
         counts = torch.tensor([class_counts[c] for c in present_classes])
         freq = counts / counts.sum()
@@ -133,7 +136,9 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def __iter__(self):
         if self.shuffle:
-            random.shuffle(self.batches)
+            rng = random.Random()
+            rng.seed(time.time())
+            rng.shuffle(self.batches)
         for batch in self.batches:
             kinds, words, specs, outputs = batch
             yield kinds, words, specs, outputs
