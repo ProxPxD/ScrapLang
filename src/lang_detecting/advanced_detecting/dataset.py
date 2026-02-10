@@ -57,11 +57,11 @@ class BucketChunkDataset(Dataset[list[int]]):
         self.batches = self._map_data_to_tensor_batches(data)
 
     def _compute_weights(self, all_classes: list[str], class_counts: OrderedDict[str, int], bias: float = None) -> Tensor:
-        b = bias or self.conf.freq_bias
+        bias = bias or self.conf.freq_bias
         present_classes = class_counts.keys()
         counts = torch.tensor([class_counts[c] for c in present_classes])
         freq = counts / counts.sum()
-        raw_weights = freq ** -b
+        raw_weights = freq ** -bias
         raw_weights /= raw_weights.mean()
 
         present_idxs = torch.tensor(_.map_(present_classes, all_classes.index), dtype=torch.long)
