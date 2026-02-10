@@ -27,4 +27,4 @@ class Conf:
     max_batch_size: Optional[int] = 2**12
     accum_grad_bs: int = 2**5
     freq_bias: float = 1.1  # 1.1
-    neg_bias: float = 2
+    neg_bias: float = 3
