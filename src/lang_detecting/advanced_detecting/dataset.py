@@ -78,6 +78,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         data = data.groupby([Cols.KIND, Cols.TOKENS, Cols.SPECS], sort=False).agg({
             VDC.WORD: flow(set, list, ''.join),  # Should be same as c().get(0), but this allows to detect discrepancies
             VDC.LANG: flow(set, sorted, list),
+            Cols.LEN: flow(list, c().get(0)),
         }).reset_index()
         #data = data.sort_values([Cols.LEN, Cols.N_UNIQ])
         pass
