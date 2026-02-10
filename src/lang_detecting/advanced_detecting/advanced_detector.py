@@ -149,7 +149,7 @@ class AdvancedDetector:
         self.task: Task
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
-        loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device))
+        loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device), reduction='none')
         self.init_for_training()
         if self.dev_training:
             comment = []
@@ -161,16 +161,18 @@ class AdvancedDetector:
             self.task.set_comment('\n'.join(comment))
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
-            total_loss = 0.0
             n_records = 0
             for batch in tqdm(dataset, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
                 preds: Tensor = self.moe(kinds, words, specs)
-                loss = loss_func(preds, targets)
                 self._update_metrics(preds, targets)
-                loss.backward()
-                total_loss += loss.item()
+                loss = loss_func(preds, targets)
+                m_neg = targets == 0
+                loss_weights = torch.ones_like(preds)
+                loss_weights[m_neg] = (preds ** self.conf.neg_bias)[m_neg]
+                asym_loss = (loss * loss_weights).mean()
+                asym_loss.backward()
 
                 if n_records >= self.conf.accum_grad_bs:
                     optimizer.step()
