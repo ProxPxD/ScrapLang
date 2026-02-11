@@ -133,16 +133,19 @@ class BucketChunkDataset(Dataset[list[int]]):
         tokenized_spec_groups = [Tensor(self.tokenizer.tokenize_spec_groups(word, kind)) for word, kind in zip(words, kinds)]
         tokenized_spec_groups = pad_sequence(tokenized_spec_groups, batch_first=True, padding_value=0).int().to_sparse()
         tokenized_outputs = _.map_(outputs, c().map(self.tokenizer.tokenize_target))
-        one_hot_encoded_outputs = torch.zeros(len(tokenized_outputs), self.tokenizer.n_target_tokens, dtype=torch.float32)
+        one_hot_encoded_outputs = torch.zeros(len(tokenized_outputs), self.tokenizer.n_target_tokens, dtype=torch.long)
         for j, outputs in enumerate(tokenized_outputs):
-            one_hot_encoded_outputs[j, outputs] = 1 / len(outputs)
+            one_hot_encoded_outputs[j, outputs] = 1 #/ len(outputs)
         return tokenized_kinds, tokenized_words, tokenized_spec_groups, one_hot_encoded_outputs
+
+    def shuffle_batches(self) -> None:
+        rng = random.Random()
+        rng.seed(9 or time.time())  # 9(3)
+        rng.shuffle(self.batches)
 
     def __iter__(self):
         if self.shuffle:
-            rng = random.Random()
-            rng.seed(9 or time.time())  # 9(3)
-            rng.shuffle(self.batches)
+            self.shuffle_batches()
         for batch in self.batches:
             kinds, words, specs, outputs = batch
             yield kinds, words, specs, outputs

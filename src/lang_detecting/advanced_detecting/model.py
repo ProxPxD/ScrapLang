@@ -24,8 +24,8 @@ class Expert(nn.Module):
         self.s_chunk = conf.s_chunk
         self.s_chunk_step = conf.s_chunk_step
         self.n_specs = n_specs
-        self.act = nn.LeakyReLU(negative_slope=0.01)
-        self.norm = nn.Softmax(dim=-1)
+        self.hid_act = nn.LeakyReLU(negative_slope=conf.leaky_relu_slop)
+        self.out_act = nn.Sigmoid()
 
         self.embed = nn.Embedding(n_tokens, conf.emb_dim-n_specs)
         channels = (conf.emb_dim, *conf.hidden_channels, n_classes)
@@ -60,13 +60,13 @@ class Expert(nn.Module):
         B, ch, C, L = x.shape
         x = x.reshape(B*ch, C, L)
         for conv in self.convs:
-            x = self.act(conv(x))  # B*ch x c_k x l_k
+            x = self.hid_act(conv(x))  # B*ch x c_k x l_k
 
         x = x.reshape(B, ch, *x.shape[-2:])   # B x ch x c_k x l_k
         # merge '(ch)unks' and '(l_k)ength'
         x = self._weight_positional(x)  # B x o
         # Mask non-expert outputs
-        x = self.norm(x * self.output_mask)
+        x = x * self.output_mask
         return x
 
     def chunk(self, x: Tensor) -> Tensor:
@@ -103,8 +103,9 @@ class Expert(nn.Module):
         chunk_o_length = x.shape[-1]
         n_edge_vals = min(self.s_chunk_step, chunk_o_length // 2)
         n_mid_vals = chunk_o_length - 2*n_edge_vals
-        pos = F.softplus(self.positional)
-        weights = torch.cat([pos[i].expand(n)/n for i, n in enumerate((n_edge_vals, n_mid_vals, n_edge_vals))]).to(dtype=x.dtype)
+        pos = self.positional / self.positional.sum()
+        weights = torch.cat([pos[i].expand(n) for i, n in enumerate((n_edge_vals, n_mid_vals, n_edge_vals))]).to(dtype=x.dtype)
+        weights = weights / weights.sum()
         x = (x * weights).sum(dim=-1)  # B x o
         return x
 
