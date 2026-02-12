@@ -66,7 +66,7 @@ class Expert(nn.Module):
         # merge '(ch)unks' and '(l_k)ength'
         x = self._weight_positional(x)  # B x o
         # Mask non-expert outputs
-        x = x * self.output_mask
+        x = x * self.output_mask + (self.output_mask - 1) * 1e9  # set masked to very negative value
         return x
 
     def chunk(self, x: Tensor) -> Tensor:

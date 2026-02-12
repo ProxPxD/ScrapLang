@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from clearml.backend_api.session.defs import MissingConfigError
+from matplotlib.pyplot import title
 from pandas import DataFrame
 from pydash import chain as c, flow
 from toolz import valmap
@@ -85,7 +86,7 @@ class AdvancedDetector:
         self.writer = MagicMock()
         self.task = MagicMock()
         self.metrics = {}
-        self.confusion_matrix = None
+        self.cms: dict[int, ConfusionMatrix] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
@@ -126,7 +127,7 @@ class AdvancedDetector:
             for mode in ('macro', )
         }
         self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task=task_kind, num_labels=self._n_classes).to(self.device)
-        self.confusion_matrix = ConfusionMatrix(task=task_kind, num_labels=self._n_classes).to(self.device)
+        self.cms = {th: ConfusionMatrix(task=task_kind, num_labels=self._n_classes).to(self.device) for th in (.90, .80, .60, .50, .33, .25)}
 
     @property
     def dev_training(self) -> bool:
@@ -150,7 +151,7 @@ class AdvancedDetector:
         self.task: Task
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
-        loss_func = nn.BCEWithLogitsLoss(weight=dataset.class_weights.to(self.device), reduction='none')
+        loss_func = nn.BCEWithLogitsLoss(weight=None and dataset.class_weights.to(self.device), reduction='none')
         self.init_for_training()
         eps = 1e-3
         if self.dev_training:
@@ -170,20 +171,24 @@ class AdvancedDetector:
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
                 preds: Tensor = self.moe(kinds, words, specs)
-                clamp_preds = torch.clamp(preds, 0, 1)
-                self._update_metrics(clamp_preds, targets)
-                loss = loss_func(clamp_preds, targets.float())
-                m_neg = targets == 0
-                loss_weights = torch.ones_like(preds)
-                loss_weights[m_neg] = (preds ** self.conf.neg_bias)[m_neg]
-                asym_loss = (loss * loss_weights)
-                loss_per_cls = loss.mean(0)
-                scale = loss_per_cls.detach().mean() / (loss_per_cls.detach() + eps)
-                m_pos = ~m_neg
-                final_loss_full = asym_loss * (1 + m_pos * (scale - 1))
-                final_loss = final_loss_full.mean()
+                probs = torch.sigmoid(preds)
+                probs_vis = (probs - probs.min()) / (probs.max() - probs.min() + 1e-8)
+                self._update_metrics(probs_vis, targets)
+                loss = loss_func(preds, targets.float())
+                final_loss = loss.mean()
                 final_loss.backward()
                 epoch_loss += final_loss.item()
+                # m_neg = targets == 0
+                # loss_weights = torch.ones_like(preds)
+                # loss_weights[m_neg] = (preds ** self.conf.neg_bias)[m_neg]
+                # asym_loss = (loss * loss_weights)
+                # loss_per_cls = loss.mean(0)
+                # scale = loss_per_cls.detach().mean() / (loss_per_cls.detach() + eps)
+                # m_pos = ~m_neg
+                # final_loss_full = asym_loss * (1 + m_pos * (scale - 1))
+                # final_loss = final_loss_full.mean()
+                # final_loss.backward()
+                # epoch_loss += final_loss.item()
 
                 if n_records >= self.conf.accum_grad_bs:
                     optimizer.step()
@@ -203,14 +208,15 @@ class AdvancedDetector:
         if not self.dev_training:
             return
         self._manage_metrics('reset')
-        self.confusion_matrix.reset()
+        for cm in self.cms.values():
+            cm.reset()
 
-    def _update_metrics(self, preds: Tensor, targets: Tensor) -> None:
+    def _update_metrics(self, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
-        self._manage_metrics('update', preds.long(), targets)
-        # pred_labels, true_labels = preds.argmax(dim=1), targets.argmax(dim=1)
-        self.confusion_matrix.update(preds.long(), targets)
+        self._manage_metrics('update', (probs > .80).long(), targets)
+        for thresh, cm in self.cms.items():
+            cm.update((probs > thresh).long(), targets)
 
     def _board_metrics(self, step: int, mode: str) -> None:
         if not self.dev_training:
@@ -221,31 +227,39 @@ class AdvancedDetector:
             self.writer.add_scalar(f'{mode}/metric/{name}'.lower(), val, step)
             self._logger.report_scalar(name, mode, val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, name, mode, val, step)
-        self._board_confusion_matrix(step, mode)
+        self._board_confusion_matrices(step, mode)
 
     @cached_property
     def _n_cm_padding(self) -> int:
         return math.floor(math.log10(self.conf.epochs // self._cm_kind_every))
 
-    def _board_confusion_matrix(self, step: int, mode: str):
+    def _board_confusion_matrices(self, step: int, mode: str) -> None:
         if not self.dev_training:
             return
-        confusion_matrix = self.confusion_matrix.compute().cpu().numpy()
-        if False and HAS_TENSORBOARD:
-            fig = self.plot_confusion_matrix(confusion_matrix, self._all_class_names)
-            self.writer.add_figure(f'{mode}/ConfusionMatrix', fig, step)
-            plt.close(fig)
-        if HAS_CLEARML:
-            kwargs = dict(
-                title='Confusion Matrix', matrix=confusion_matrix.tolist(), iteration=step+1,
-                xlabels=self._all_class_names, ylabels=self._all_class_names, yaxis_reversed=True,
-            )
-            if step % 2 == 0 or step == self.conf.epochs - 1:
-                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs, series=mode)
-            if step == 0 or (step+1) % self._cm_kind_every == 0 or step == self.conf.epochs - 1:
-                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7,
-                    **kwargs, series=f'{mode}_{(step+1) // self._cm_kind_every:0>{self._n_cm_padding}}'
-                )
+        for thresh, cm in self.cms.items():
+            full_cm = cm.compute().cpu()
+            overall_cm = full_cm.sum(axis=0)
+            if HAS_CLEARML:
+                kwargs = dict(iteration=step + 1, yaxis_reversed=True)
+                if step == 0 or step % 2 == 0 or step == self.conf.epochs - 1:
+                    retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                             title=f'TP', series=f'{mode}: {thresh:.2f}', matrix=overall_cm.tolist(),
+                             xlabels=['Act Pos', 'Act Neg'], ylabels=['Pred Pos', 'Pred Neg'])
+                    pos_neg, true_false = ('Neg', 'Pos'), ('False', 'True')
+                    for (pred_i, pred), (act_i, act) in product(enumerate(pos_neg), repeat=2):
+                        sub_cm = self._extract_cm_matrix(full_cm, pred_i, act_i)
+                        tf_label = true_false[pred == act]
+                        label = f'{tf_label}{pred}'
+                        retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                                 title=f'Class > {thresh:.2f}', series=f'{mode}: {label}', matrix=sub_cm.tolist(),
+                                 xlabels=self._all_class_names, ylabels=self._all_class_names)
+
+    def _extract_cm_matrix(self, cm: Tensor, pred: bool | int = True, act: bool | int = True) -> Tensor:
+        pred, act = int(bool(pred)), int(bool(act))
+        sub_cm = torch.zeros((self._n_classes, self._n_classes), dtype=torch.int)
+        for i in range(self._n_classes):
+            sub_cm[i, i] = cm[i, pred, act]
+        return sub_cm
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
