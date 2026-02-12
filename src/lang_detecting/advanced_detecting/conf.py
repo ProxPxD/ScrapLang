@@ -22,10 +22,11 @@ class ExpertConf:
 class Conf:
     data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
-    epochs: int = 2**7
-    lr: float = 1e-3  # 1e-5  # 1e-3
-    weight_decay = 1e-5  # 1e-4
+    epochs: int = 2**10  #2**7
+    lr: float = 1e-2  # 1e-5  # 1e-3
+    weight_decay = 1e-4  # 1e-4
     max_batch_size: Optional[int] = 2**12
     accum_grad_bs: int = 2**9
+
     freq_bias: float = 4 # 1.1 # 1.1
     neg_bias: float = 4 # 4  # 3

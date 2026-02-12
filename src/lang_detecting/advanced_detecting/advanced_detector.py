@@ -88,7 +88,7 @@ class AdvancedDetector:
         self.task = MagicMock()
         self.metrics = {}
         self._cm_threshes = (.25, .33, .40, .50, .60, .70, .80, .90)
-        self.cms: dict[int, Tensor] = {}
+        self.cms: dict[int, np.ndarray] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
@@ -230,7 +230,7 @@ class AdvancedDetector:
             val = metric.compute().item()
             self.writer.add_scalar(f'{mode}/metric/{name}'.lower(), val, step)
             self._logger.report_scalar(f'Metric/{name}', mode, val, step)
-            retry_on(self._logger.report_scalar, ConnectionError, 7, name, mode, val, step)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', mode, val, step)
         self._board_confusion_matrices(step, mode)
 
     @cached_property
@@ -241,13 +241,18 @@ class AdvancedDetector:
         if not self.dev_training:
             return
         for thresh, cm in self.cms.items():
-
-            if HAS_CLEARML:
-                kwargs = dict(iteration=step + 1, yaxis_reversed=True)
-                if step == 0 or step % 2 == 0 or step == self.conf.epochs - 1:
+            if step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1:
+                if HAS_CLEARML:
+                    kwargs = dict(iteration=step + 1, yaxis_reversed=True)
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f'CM', series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
-                             xlabels=self._all_class_names + ['_'], ylabels=self._all_class_names + ['_'])
+                            title=f'CM', series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
+                            xlabels=self._all_class_names + ['_'], ylabels=self._all_class_names + ['_'])
+                    true_pos = np.diag(cm)
+                    false = cm.sum(axis=1) - true_pos
+                    true_false = np.stack([true_pos, false], axis=0)
+                    retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                             title=f'Simple CM', series=f'{mode}: {thresh:.2f}', matrix=true_false.tolist(),
+                             xlabels=self._all_class_names + ['_'], ylabels=['True', 'False'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
