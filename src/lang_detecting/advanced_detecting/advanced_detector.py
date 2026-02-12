@@ -229,7 +229,7 @@ class AdvancedDetector:
         for name, metric in self.metrics.items():
             val = metric.compute().item()
             self.writer.add_scalar(f'{mode}/metric/{name}'.lower(), val, step)
-            self._logger.report_scalar(name, mode, val, step)
+            self._logger.report_scalar(f'Metric/{name}', mode, val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, name, mode, val, step)
         self._board_confusion_matrices(step, mode)
 
@@ -247,7 +247,7 @@ class AdvancedDetector:
                 if step == 0 or step % 2 == 0 or step == self.conf.epochs - 1:
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                              title=f'CM', series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
-                             xlabels=self._all_class_names + ['No'], ylabels=self._all_class_names + ['No'])
+                             xlabels=self._all_class_names + ['_'], ylabels=self._all_class_names + ['_'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
