@@ -3,14 +3,14 @@ import warnings
 from dataclasses import asdict
 from functools import cached_property
 from itertools import product
-from typing import Callable, Sequence
 from unittest.mock import MagicMock
 
 import numpy as np
+
+np.int = int
 import torch
 import torch.nn as nn
 from clearml.backend_api.session.defs import MissingConfigError
-from matplotlib.pyplot import title
 from pandas import DataFrame
 from pydash import chain as c, flow
 from toolz import valmap
@@ -33,6 +33,7 @@ try:
     from tqdm import tqdm
     from torchmetrics import ConfusionMatrix, Metric, Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef
     import matplotlib.pyplot as plt
+    from mlcm import mlcm
     HAS_TRAINING_SUPERVISION = True
 except ImportError as e:
     EXCEPTION = e
@@ -86,13 +87,14 @@ class AdvancedDetector:
         self.writer = MagicMock()
         self.task = MagicMock()
         self.metrics = {}
-        self.cms: dict[int, ConfusionMatrix] = {}
+        self._cm_threshes = (.25, .33, .40, .50, .60, .70, .80, .90)
+        self.cms: dict[int, Tensor] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
     def init_for_training(self) -> None:
         if self.context.dev and not HAS_TRAINING_SUPERVISION or EXCEPTION:
-            raise RuntimeError('Dev mode run without tensorboard, torchmetrics, tqdm or matplotlib or either tensorboard or clearml and flatten_dict installed') from EXCEPTION
+            raise RuntimeError('Dev mode run without tensorboard, torchmetrics, tqdm or matplotlib or mlcm or either tensorboard or clearml and flatten_dict installed') from EXCEPTION
         if not self.dev_training:
             return
         Paths.DETECTION_LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -127,7 +129,7 @@ class AdvancedDetector:
             for mode in ('macro', )
         }
         self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task=task_kind, num_labels=self._n_classes).to(self.device)
-        self.cms = {th: ConfusionMatrix(task=task_kind, num_labels=self._n_classes).to(self.device) for th in (.90, .80, .60, .50, .33, .25)}
+        self.cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
 
     @property
     def dev_training(self) -> bool:
@@ -208,15 +210,17 @@ class AdvancedDetector:
         if not self.dev_training:
             return
         self._manage_metrics('reset')
-        for cm in self.cms.values():
-            cm.reset()
+        self.cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
 
     def _update_metrics(self, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
         self._manage_metrics('update', (probs > .80).long(), targets)
         for thresh, cm in self.cms.items():
-            cm.update((probs > thresh).long(), targets)
+            np.int = int
+            count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
+            cm += count_matrix
+            # cm.update((probs > thresh).long(), targets)
 
     def _board_metrics(self, step: int, mode: str) -> None:
         if not self.dev_training:
@@ -237,29 +241,13 @@ class AdvancedDetector:
         if not self.dev_training:
             return
         for thresh, cm in self.cms.items():
-            full_cm = cm.compute().cpu()
-            overall_cm = full_cm.sum(axis=0)
+
             if HAS_CLEARML:
                 kwargs = dict(iteration=step + 1, yaxis_reversed=True)
                 if step == 0 or step % 2 == 0 or step == self.conf.epochs - 1:
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f'TP', series=f'{mode}: {thresh:.2f}', matrix=overall_cm.tolist(),
-                             xlabels=['Act Pos', 'Act Neg'], ylabels=['Pred Pos', 'Pred Neg'])
-                    pos_neg, true_false = ('Neg', 'Pos'), ('False', 'True')
-                    for (pred_i, pred), (act_i, act) in product(enumerate(pos_neg), repeat=2):
-                        sub_cm = self._extract_cm_matrix(full_cm, pred_i, act_i)
-                        tf_label = true_false[pred == act]
-                        label = f'{tf_label}{pred}'
-                        retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                                 title=f'Class > {thresh:.2f}', series=f'{mode}: {label}', matrix=sub_cm.tolist(),
-                                 xlabels=self._all_class_names, ylabels=self._all_class_names)
-
-    def _extract_cm_matrix(self, cm: Tensor, pred: bool | int = True, act: bool | int = True) -> Tensor:
-        pred, act = int(bool(pred)), int(bool(act))
-        sub_cm = torch.zeros((self._n_classes, self._n_classes), dtype=torch.int)
-        for i in range(self._n_classes):
-            sub_cm[i, i] = cm[i, pred, act]
-        return sub_cm
+                             title=f'CM', series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
+                             xlabels=self._all_class_names + ['No'], ylabels=self._all_class_names + ['No'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
