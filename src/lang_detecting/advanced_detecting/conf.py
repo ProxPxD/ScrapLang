@@ -3,7 +3,9 @@ from typing import Sequence, Optional
 
 @dataclass
 class Data:
-    input_len_thresh: int = 3
+    input_len_thresh: int = 5
+    input_non_uniq_enough_count: int = 7
+    input_right_ratio: float = 2.0
     record_count_thresh: int = 2**4
 
 @dataclass

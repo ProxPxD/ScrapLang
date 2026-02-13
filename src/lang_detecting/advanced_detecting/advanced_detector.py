@@ -23,7 +23,7 @@ from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.retry import retry_on
-from src.lang_detecting.advanced_detecting.tokenizer import KindToSpecs, MultiKindTokenizer
+from src.lang_detecting.advanced_detecting.tokenizer import KindToSpecs, MultiKindTokenizer, Tokens
 from src.resouce_managing.valid_data import ValidDataMgr
 
 warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
@@ -76,7 +76,7 @@ class AdvancedDetector:
         kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
         self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
         kind_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
-        kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, ['<B>'])
+        kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, [Tokens.BOS])
         self.kinds_to_vocab = kind_to_vocab
         targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
 

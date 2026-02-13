@@ -97,8 +97,8 @@ class BucketChunkDataset(Dataset[list[int]]):
     def _form_model_form(self, data: DataFrame) -> DataFrame:
         data = copy(data)
         data[Cols.KIND] = data[VDC.WORD].apply(lambda w: next(iter(sp(w)[-1]['details'].keys())))
-        data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input([Tokens.BOS] + list(row[VDC.WORD]) + [Tokens.BOS], row[Cols.KIND]), axis=1)
-        data[Cols.SPECS] = data.apply(lambda row: self.tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]), axis=1)
+        data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input([Tokens.BOS, *list(row[VDC.WORD]), Tokens.BOS], row[Cols.KIND]), axis=1)
+        data[Cols.SPECS] = data.apply(lambda row: self.tokenizer.tokenize_spec_groups(['|', *list(row[VDC.WORD]), '|'], row[Cols.KIND]), axis=1)  # A bit silly fix, but let it slide
         return data
 
     def _expand_rows(self, data: DataFrame) -> DataFrame:
@@ -110,8 +110,8 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def _filter_out_bad_train_data(self, data: DataFrame) -> DataFrame:
         m_uniq = data[Cols.N_UNIQ] > 0
-        m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= 5
-        m_right_ratio = (data[Cols.LEN] - 3) / data[Cols.N_UNIQ] >= 2
+        m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= self.conf.data.input_non_uniq_enough_count
+        m_right_ratio = (data[Cols.LEN] - 5) / data[Cols.N_UNIQ] >= self.conf.data.input_right_ratio
         m_long = data[Cols.LEN] >= self.conf.data.input_len_thresh
         data = data[m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)]
         class_counts = data[VDC.LANG].value_counts()
@@ -120,6 +120,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         return data
 
     def _augment_data(self, data: DataFrame) -> DataFrame:
+        data = self._augment_unknown(data)
         data = self._filter_extend(data)
         return data
 

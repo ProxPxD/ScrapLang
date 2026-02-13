@@ -10,7 +10,7 @@ CondMap = tuple[Callable, Callable]
 KindToSpecs = dict[str, Sequence[CondMap]]
 
 class Tokens:
-    BOS = '<BOS>'  # Boundary of Sequence
+    BOS = '<bos>'  # Boundary of Sequence
 
 
 class ITokenizer(ABC):
