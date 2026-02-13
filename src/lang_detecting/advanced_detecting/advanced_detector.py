@@ -247,15 +247,30 @@ class AdvancedDetector:
             if step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1:
                 if HAS_CLEARML:
                     kwargs = dict(iteration=step + 1, yaxis_reversed=True)
+                    # Class x Class
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                            title=f'CM', series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
+                            title=f"Class x Class' CM", series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
                             xlabels=self._all_class_names + ['_'], ylabels=self._all_class_names + ['_'])
+                    # Class x True/False
                     true_pos = np.diag(cm)
                     false = cm.sum(axis=1) - true_pos
-                    true_false = np.stack([true_pos, false], axis=0)
+                    true_false = np.stack([true_pos, false], axis=0).T
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f'Simple CM', series=f'{mode}: {thresh:.2f}', matrix=true_false.tolist(),
-                             xlabels=self._all_class_names + ['_'], ylabels=['True', 'False'])
+                             title=f"Class x TF' CM", series=f'{mode}: {thresh:.2f}', matrix=true_false.tolist(),
+                             xlabels=['True', 'False'], ylabels=self._all_class_names + ['_'])
+
+                    # Simplest CM
+                    C = self._n_classes
+                    tp, core = true_pos.sum(), cm[0:C, 0:C].sum()
+                    off_diag = core - tp
+                    last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()
+                    tf = [
+                        [tp, off_diag + last_col],
+                        [off_diag + last_row, bottom]
+                    ]
+                    retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                             title=f"TF Pos Neg' CM", series=f'{mode}: {thresh:.2f}', matrix=tf,
+                             xlabels=['Pred Pos', 'Pred Neg', '_'], ylabels=['Act Pos', 'Act Neg', '_'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
