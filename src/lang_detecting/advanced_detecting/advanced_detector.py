@@ -265,12 +265,12 @@ class AdvancedDetector:
                     off_diag = core - tp
                     last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()
                     tf = [
-                        [tp, off_diag + last_col],
-                        [off_diag + last_row, bottom]
+                        [tp, off_diag, last_col],
+                        [bottom, last_row, 0]
                     ]
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                              title=f"TF Pos Neg' CM", series=f'{mode}: {thresh:.2f}', matrix=tf,
-                             xlabels=['Pred Pos', 'Pred Neg'], ylabels=['Act Pos', 'Act Neg'])
+                             xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
