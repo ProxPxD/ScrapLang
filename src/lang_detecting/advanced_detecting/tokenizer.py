@@ -9,7 +9,7 @@ from src.lang_detecting.advanced_detecting.model_io_mging import Class, \
 CondMap = tuple[Callable, Callable]
 KindToSpecs = dict[str, Sequence[CondMap]]
 
-class Tokens:
+class Tokens:  # Req lowercase
     BOS = '<bos>'  # Boundary of Sequence
 
 

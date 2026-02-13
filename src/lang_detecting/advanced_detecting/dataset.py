@@ -6,9 +6,10 @@ from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass
 from functools import cached_property
+from itertools import zip_longest
 
-import pydash as _
 import pandas as pd
+import pydash as _
 import torch
 from GlotScript import sp
 from pandas import DataFrame
@@ -92,11 +93,16 @@ class BucketChunkDataset(Dataset[list[int]]):
     def _remove_mappings(cls, data: DataFrame) -> DataFrame:
         mask = ~data[VDC.IS_MAPPED] if VDC.IS_MAPPED in data.columns else pd.Series(True, index=data.index)
         data = data[mask][[VDC.LANG, VDC.WORD]]
-        return data
+        return data.drop_duplicates()
 
     def _form_model_form(self, data: DataFrame) -> DataFrame:
         data = copy(data)
-        data[Cols.KIND] = data[VDC.WORD].apply(lambda w: next(iter(sp(w)[-1]['details'].keys())))
+        data[VDC.WORD] = data[VDC.WORD].apply(lambda w: w[1:-1] if Tokens.BOS in w else w)
+        def get_kind(word: str):
+            details: dict = sp(''.join(word))[-1]['details']
+            return next(iter(details.keys())) if details else None
+        data[Cols.KIND] = data[VDC.WORD].apply(get_kind)
+        data = data[~data[Cols.KIND].isna()]
         data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input([Tokens.BOS, *list(row[VDC.WORD]), Tokens.BOS], row[Cols.KIND]), axis=1)
         data[Cols.SPECS] = data.apply(lambda row: self.tokenizer.tokenize_spec_groups(['|', *list(row[VDC.WORD]), '|'], row[Cols.KIND]), axis=1)  # A bit silly fix, but let it slide
         return data
@@ -125,7 +131,33 @@ class BucketChunkDataset(Dataset[list[int]]):
         return data
 
     def _augment_unknown(self, data: DataFrame) -> DataFrame:
-        return data
+        pre_patterns, post_patterns = self._extract_patterns(data)
+        def apply_pattern(word: list[str], pattern: list[str], reverse: bool = False):
+            if reverse:
+                word, pattern = word[::-1], pattern[::-1]
+            applied = [u if u and l not in {Tokens.BOS} else l for l, u in zip_longest(word, pattern)]
+            if reverse:
+                applied = applied[::-1]
+            return tuple(applied)
+
+        dfs = [data]
+        for patterns, reverse in [(pre_patterns, False), (post_patterns, True)]:
+            for pattern in patterns:
+                pre_df = copy(data)
+                pre_df[VDC.WORD] = pre_df[Cols.DECODE].apply(lambda word: apply_pattern(word, pattern, reverse=reverse))
+                dfs.append(pre_df)
+        return pd.concat(dfs).drop_duplicates()
+
+    def _extract_patterns(self, data) -> tuple[list[list[str]], list[list[str]]]:
+        unknown_patterns = (
+            c(data[Cols.DECODE].to_list())
+            .map(c().map_(flow(self.tokenizer.unknown.__eq__, int)))
+            .uniq()
+        )
+        norm = c().uniq().filter(any).map(c().map(lambda t: self.tokenizer.unknown if t else ''))
+        pre_patterns = unknown_patterns.commit().map(lambda p: p[:self.conf.data.pre_augment_size]).value()
+        post_patterns = unknown_patterns.map(lambda p: p[-self.conf.data.post_augment_size:]).value()
+        return norm(pre_patterns), norm(post_patterns)
 
     def _map_data_to_tensor_batches(self, data: DataFrame) -> list[TensorBatch]:
         batches: list[TensorBatch] = []
