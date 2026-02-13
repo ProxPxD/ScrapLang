@@ -75,14 +75,15 @@ class AdvancedDetector:
 
         kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
         self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
-        kinds_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
-        self.kinds_to_vocab = kinds_to_vocab
+        kind_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
+        kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, ['<B>'])
+        self.kinds_to_vocab = kind_to_vocab
         targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
 
-        self.tokenizer = MultiKindTokenizer(kinds_to_vocab, targets, kind_to_specs=kind_to_specs)
+        self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._all_class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
-        self.moe = Moe(kinds_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
+        self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.loss_func = nn.BCEWithLogitsLoss()
         self.writer = MagicMock()
         self.task = MagicMock()

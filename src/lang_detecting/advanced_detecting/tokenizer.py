@@ -9,6 +9,10 @@ from src.lang_detecting.advanced_detecting.model_io_mging import Class, \
 CondMap = tuple[Callable, Callable]
 KindToSpecs = dict[str, Sequence[CondMap]]
 
+class Tokens:
+    BOS = '<BOS>'  # Boundary of Sequence
+
+
 class ITokenizer(ABC):
     unknown = '<?>'
     @abstractmethod
@@ -69,7 +73,7 @@ class MultiKindTokenizer(ITokenizer):
     def n_target_tokens(self) -> int:
         return self.target_tokenizer.n_tokens
 
-    def tokenize_input(self, input: str, kind: str) -> Sequence[int]:
+    def tokenize_input(self, input: str | Sequence[str], kind: str) -> Sequence[int]:
         specs = self.kind_to_spec.get(kind, [])
         input = [(func(ch) if cond(ch) else ch) for ch in input for (cond, func) in specs]
         return self.kind_tokenizers[kind](input)
@@ -92,5 +96,5 @@ class MultiKindTokenizer(ITokenizer):
     def tokenize_spec_groups(self, word: str | Sequence[str], kind: str) -> Sequence[Sequence[int]]:
         return tuple([tuple([int(cond(c)) for (cond, func) in self.kind_to_spec[kind]]) for c in word])
 
-    def tokenize(self, word: str | Sequence[str], kind: str, targets: Sequence[str]):
+    def tokenize(self, word: str | Sequence[str], kind: str, targets: str | Sequence[str]):
         return self.tokenize_input(word, kind), self.tokenize_kind(kind), self.tokenize_target(targets), self.tokenize_spec_groups(word, kind)

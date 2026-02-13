@@ -15,7 +15,7 @@ from src.lang_detecting.preprocessing.data import LSC
 from src.resouce_managing.file import FileMgr
 
 Kind = Vocab = Class = str
-KindToVocab = OrderedDict[Kind, Vocab]
+KindToVocab = OrderedDict[Kind, list[Vocab]]
 KindToTargets = OrderedDict[Kind, list[Class]]
 KindToTokensTargets = OrderedDict[Kind, KindToVocab | KindToTargets]
 SpecialGroup = OrderedDict[str, Vocab]  # Default
@@ -58,13 +58,18 @@ class ModelIOMgr:
             self.model_io.save(kinds_to_vocab_classes) # TODO: Uncomment after retraining functionality
             # raise ValueError("Model requires retraining and that's unsupported and unhandled for now")
 
+    @classmethod
+    def enhance_tokens(cls, kind_to_vocab: KindToVocab, tokens: list[Vocab]) -> KindToVocab:
+        for kind, vocab in kind_to_vocab.items():
+            vocab.extend(tokens)
+        return kind_to_vocab
 
 class KindToMgr:
     @classmethod
     def separate_kinds_tos(cls, kinds_to_tokens_targets: KindToTokensTargets) -> tuple[KindToVocab, KindToTargets]:
         kinds_to_vocab, kinds_to_targets = OrderedDict(), OrderedDict()
         for kind, vc in kinds_to_tokens_targets.items():
-            kinds_to_vocab[kind] = vc[LSC.CHARS]
+            kinds_to_vocab[kind] = list(vc[LSC.CHARS])
             kinds_to_targets[kind] = vc[LSC.LANGS]
         return kinds_to_vocab, kinds_to_targets
 
