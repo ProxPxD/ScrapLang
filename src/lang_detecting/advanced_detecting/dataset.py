@@ -76,7 +76,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         data = self._filter_extend(data)
         data = self._augment_data(data)
         data = data.groupby([Cols.KIND, Cols.TOKENS, Cols.SPECS], sort=False).agg({
-            VDC.WORD: flow(set, list, ''.join),  # Should be same as c().get(0), but this allows to detect discrepancies
+            VDC.WORD: flow(set, list, c().get(0)),
             VDC.LANG: flow(set, sorted, list),
             Cols.LEN: flow(list, c().get(0)),
         }).reset_index()
@@ -97,7 +97,7 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def _form_model_form(self, data: DataFrame) -> DataFrame:
         data = copy(data)
-        data[VDC.WORD] = data[VDC.WORD].apply(lambda w: w[1:-1] if Tokens.BOS in w else w)
+        data[VDC.WORD] = data[VDC.WORD].apply(lambda w: w[1:-1] if Tokens.BOS in w else tuple(w))
         def get_kind(word: str):
             details: dict = sp(''.join(word))[-1]['details']
             return next(iter(details.keys())) if details else None
@@ -105,7 +105,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         data = data[~data[Cols.KIND].isna()]
         data[Cols.TOKENS] = data.apply(lambda row: self.tokenizer.tokenize_input([Tokens.BOS, *list(row[VDC.WORD]), Tokens.BOS], row[Cols.KIND]), axis=1)
         data[Cols.SPECS] = data.apply(lambda row: self.tokenizer.tokenize_spec_groups(['|', *list(row[VDC.WORD]), '|'], row[Cols.KIND]), axis=1)  # A bit silly fix, but let it slide
-        return data
+        return data.drop_duplicates()
 
     def _expand_rows(self, data: DataFrame) -> DataFrame:
         data = copy(data)
@@ -127,7 +127,7 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def _augment_data(self, data: DataFrame) -> DataFrame:
         data = self._augment_unknown(data)
-        data = self._filter_extend(data)
+        data = self._filter_extend(data)  # TODO: Think of more rigorous ratio threshold for the augmented data (mark them temporally with a column)
         return data
 
     def _augment_unknown(self, data: DataFrame) -> DataFrame:
@@ -146,7 +146,7 @@ class BucketChunkDataset(Dataset[list[int]]):
                 pre_df = copy(data)
                 pre_df[VDC.WORD] = pre_df[Cols.DECODE].apply(lambda word: apply_pattern(word, pattern, reverse=reverse))
                 dfs.append(pre_df)
-        return pd.concat(dfs).drop_duplicates()
+        return pd.concat(dfs).drop_duplicates([VDC.WORD, VDC.LANG])
 
     def _extract_patterns(self, data) -> tuple[list[list[str]], list[list[str]]]:
         unknown_patterns = (
