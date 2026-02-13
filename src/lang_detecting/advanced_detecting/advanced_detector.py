@@ -88,7 +88,7 @@ class AdvancedDetector:
         self.writer = MagicMock()
         self.task = MagicMock()
         self.metrics = {}
-        self._cm_threshes = (.66, .75, .80, .90)
+        self._cm_threshes = (.10, .66, .80, .90)
         self._cms: dict[int, np.ndarray] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
