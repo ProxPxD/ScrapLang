@@ -89,7 +89,7 @@ class AdvancedDetector:
         self.task = MagicMock()
         self.metrics = {}
         self._cm_threshes = (.66, .75, .80, .90)
-        self.cms: dict[int, np.ndarray] = {}
+        self._cms: dict[int, np.ndarray] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
@@ -133,7 +133,7 @@ class AdvancedDetector:
             for mode in ('macro', )
         }
         self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task=task_kind, num_labels=self._n_classes).to(self.device)
-        self.cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
+        self._cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
 
     @property
     def dev_training(self) -> bool:
@@ -214,13 +214,13 @@ class AdvancedDetector:
         if not self.dev_training:
             return
         self._manage_metrics('reset')
-        self.cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
+        self._cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
 
     def _update_metrics(self, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
         self._manage_metrics('update', (probs > .80).long(), targets)
-        for thresh, cm in self.cms.items():
+        for thresh, cm in self._cms.items():
             np.int = int
             count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
             cm += count_matrix
@@ -244,7 +244,7 @@ class AdvancedDetector:
     def _board_confusion_matrices(self, step: int, mode: str) -> None:
         if not self.dev_training:
             return
-        for thresh, cm in self.cms.items():
+        for thresh, cm in self._cms.items():
             if step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1:
                 if HAS_CLEARML:
                     kwargs = dict(iteration=step + 1, yaxis_reversed=True)
