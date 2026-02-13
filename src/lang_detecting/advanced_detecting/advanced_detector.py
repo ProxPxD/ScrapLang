@@ -113,7 +113,10 @@ class AdvancedDetector:
                 for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=['autodelete']):
                     print(f'Deleting old task: {task.name}')
                     task.delete()
-                self.task = Task.init(project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training, tags=['autodelete'])
+                self.task = Task.init(
+                    project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
+                    tags=['autodelete'], reuse_last_task_id=False, auto_connect_arg_parser=False
+                )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
 
