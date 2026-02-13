@@ -270,7 +270,7 @@ class AdvancedDetector:
                     ]
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                              title=f"TF Pos Neg' CM", series=f'{mode}: {thresh:.2f}', matrix=tf,
-                             xlabels=['Pred Pos', 'Pred Neg', '_'], ylabels=['Act Pos', 'Act Neg', '_'])
+                             xlabels=['Pred Pos', 'Pred Neg'], ylabels=['Act Pos', 'Act Neg'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
