@@ -5,12 +5,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.constants import Paths
-from src.app_managing import AppMgr
+
 
 
 def main():
     try:
+        from src.constants import Paths
+        from src.app_managing import AppMgr
+
         AppMgr(
             conf_path=Paths.CONF_FILE,
             valid_data_file=Paths.VALID_DATA_FILE,
