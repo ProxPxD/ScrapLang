@@ -76,7 +76,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         data = self._filter_extend(data)
         data = self._augment_data(data)
         data = data.groupby([Cols.KIND, Cols.TOKENS, Cols.SPECS], sort=False).agg({
-            VDC.WORD: flow(set, list, c().get(0)),
+            VDC.WORD: flow(list, c().get(0)),
             VDC.LANG: flow(set, sorted, list),
             Cols.LEN: flow(list, c().get(0)),
         }).reset_index()
