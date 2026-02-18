@@ -2,12 +2,19 @@ from dataclasses import dataclass, field
 from typing import Sequence, Optional
 
 @dataclass
+class Augment:
+    is_augmenting: bool = True
+    pre_augment_size: int = 5
+    post_augment_size: int = pre_augment_size
+
+@dataclass
 class Data:
+    augment: Augment = field(default_factory=Augment)
     input_len_thresh: int = 5
     input_non_uniq_enough_count: int = 7
     input_right_ratio: float = 2.0
-    pre_augment_size: int = 5
-    post_augment_size: int = pre_augment_size
+
+
     record_count_thresh: int = 2**4
 
 @dataclass
@@ -26,11 +33,14 @@ class ExpertConf:
 class Conf:
     data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
-    epochs: int = 2**9  #2**7
+    epochs: int = 2**8  #2**7
     lr: float = 1e-2  # 1e-5  # 1e-3
     weight_decay = 1e-5  # 1e-4
     max_batch_size: Optional[int] = 2**12
     accum_grad_bs: int = 2**9
+
+    prob_tau: float = .5
+    entropy_tau: float = .5
 
     freq_bias: float = 4 # 1.1 # 1.1
     neg_bias: float = 4 # 4  # 3

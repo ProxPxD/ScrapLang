@@ -19,7 +19,7 @@ from torch import Tensor
 from src.constants import Paths
 from src.context import Context
 from src.lang_detecting.advanced_detecting.conf import Conf
-from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
+from src.lang_detecting.advanced_detecting.data.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.retry import retry_on
@@ -114,9 +114,14 @@ class AdvancedDetector:
                 for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=['autodelete']):
                     print(f'Deleting old task: {task.name}')
                     task.delete()
+                tags = ['autodelete']
+                match self.conf.data.augment.is_augmenting:
+                    case True: tags.append('augmented')
+                    case False: tags.append('non-augmented')
+
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=['autodelete'], reuse_last_task_id=False, auto_connect_arg_parser=False
+                    tags=tags, reuse_last_task_id=False, auto_connect_arg_parser=False
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -126,16 +131,13 @@ class AdvancedDetector:
                     raise RuntimeError('Dev mode run failed to initialize ClearML') from e
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
-        task_kind = 'multilabel'
+        kwargs = dict(task='multilabel', num_labels=self._n_classes)
         self.metrics: dict[str, Metric] = {
-            f'{metric_class.__name__}_{mode}'.lower(): metric_class(task=task_kind, num_labels=self._n_classes, average=mode).to(self.device)
+            f'{metric_class.__name__}_{mode}'.lower(): metric_class(**kwargs, average=mode).to(self.device)
             for metric_class in [Accuracy, Precision, Recall, F1Score]
             for mode in ('macro',)
         }
-        self.metrics: dict[str, Metric] = {
-            f'{metric_class.__name__}'.lower(): metric_class(task=task_kind, num_labels=self._n_classes).to(self.device)
-            for metric_class in [MatthewsCorrCoef, SensitivityAtSpecificity]
-        }
+        self.metrics['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
         self._cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
 
     @property
@@ -158,7 +160,7 @@ class AdvancedDetector:
 
     def _retrain_model(self) -> None:
         self.task: Task
-        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names, augment=True)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names, augment=True, include_special=True)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         loss_func = nn.BCEWithLogitsLoss(weight=None and dataset.class_weights.to(self.device), reduction='none')
         self.init_for_training()
@@ -179,11 +181,15 @@ class AdvancedDetector:
             for batch in tqdm(dataset, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
-                preds: Tensor = self.moe(kinds, words, specs)
-                probs = torch.sigmoid(preds)
+                logits: Tensor = self.moe(kinds, words, specs)
+                probs = torch.sigmoid(logits)
                 probs_vis = (probs - probs.min()) / (probs.max() - probs.min() + 1e-8)
-                self._update_metrics(probs_vis, targets)
-                loss = loss_func(preds, targets.float())
+
+                dist = torch.distributions.Bernoulli(probs=probs)
+                entropy = dist.entropy()
+
+                self._update_metrics(probs, targets)
+                loss = loss_func(logits, targets.float())
                 final_loss = loss.mean()
                 final_loss.backward()
                 epoch_loss += final_loss.item()

@@ -44,22 +44,22 @@ class BucketChunkDataset(Dataset[list[int]]):
             shuffle: bool = True,
             all_classes: list[str] = None,
             augment: bool = False,
+            include_special: bool = True,
     ):
-        """
-        :param valid_data_mgr:
-        :param max_batch_size: None means all
-        :param shuffle:
-        """
         super().__init__()
         self.conf: Conf = conf
         self.shuffle = shuffle
-        self.augment = augment
+        self.include_special = include_special
         self.tokenizer = tokenizer
         data = self._process_data(data)
         self.class_counts = OrderedDict(data.explode(VDC.LANG)[VDC.LANG].value_counts())
         self._all_classes = all_classes or list(self.class_counts.keys())
         self.class_weights = self._compute_weights(self._all_classes, self.class_counts)
         self.batches = self._map_data_to_tensor_batches(data)
+
+    @property
+    def augment(self) -> bool:
+        return self.conf.data.augment.is_augmenting
 
     def _compute_weights(self, all_classes: list[str], class_counts: OrderedDict[str, int], bias: float = None) -> Tensor:
         bias = bias or self.conf.freq_bias
@@ -158,8 +158,8 @@ class BucketChunkDataset(Dataset[list[int]]):
             .uniq()
         )
         norm = c().uniq().filter(any).map(c().map(lambda t: self.tokenizer.unknown if t else ''))
-        pre_patterns = unknown_patterns.commit().map(lambda p: p[:self.conf.data.pre_augment_size]).value()
-        post_patterns = unknown_patterns.map(lambda p: p[-self.conf.data.post_augment_size:]).value()
+        pre_patterns = unknown_patterns.commit().map(lambda p: p[:self.conf.data.augment.pre_augment_size]).value()
+        post_patterns = unknown_patterns.map(lambda p: p[-self.conf.data.augment.post_augment_size:]).value()
         return norm(pre_patterns), norm(post_patterns)
 
     def _map_data_to_tensor_batches(self, data: DataFrame) -> list[TensorBatch]:
