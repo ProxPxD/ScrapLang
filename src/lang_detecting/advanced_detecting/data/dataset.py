@@ -43,7 +43,6 @@ class BucketChunkDataset(Dataset[list[int]]):
             conf: Conf,
             shuffle: bool = True,
             all_classes: list[str] = None,
-            augment: bool = False,
             include_special: bool = True,
     ):
         super().__init__()
