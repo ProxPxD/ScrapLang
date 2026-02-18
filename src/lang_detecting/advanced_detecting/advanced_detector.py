@@ -158,7 +158,7 @@ class AdvancedDetector:
 
     def _retrain_model(self) -> None:
         self.task: Task
-        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names)
+        dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True, all_classes=self._all_class_names, augment=True)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         loss_func = nn.BCEWithLogitsLoss(weight=None and dataset.class_weights.to(self.device), reduction='none')
         self.init_for_training()

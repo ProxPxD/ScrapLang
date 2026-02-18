@@ -42,7 +42,8 @@ class BucketChunkDataset(Dataset[list[int]]):
             tokenizer: MultiKindTokenizer,
             conf: Conf,
             shuffle: bool = True,
-            all_classes: list[str] = None
+            all_classes: list[str] = None,
+            augment: bool = False,
     ):
         """
         :param valid_data_mgr:
@@ -52,6 +53,7 @@ class BucketChunkDataset(Dataset[list[int]]):
         super().__init__()
         self.conf: Conf = conf
         self.shuffle = shuffle
+        self.augment = augment
         self.tokenizer = tokenizer
         data = self._process_data(data)
         self.class_counts = OrderedDict(data.explode(VDC.LANG)[VDC.LANG].value_counts())
@@ -74,7 +76,8 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def _process_data(self, data: DataFrame) -> DataFrame:
         data = self._filter_extend(data)
-        data = self._augment_data(data)
+        if self.augment:
+            data = self._augment_data(data)
         data = data.groupby([Cols.KIND, Cols.TOKENS, Cols.SPECS], sort=False).agg({
             VDC.WORD: flow(list, c().get(0)),
             VDC.LANG: flow(set, sorted, list),
