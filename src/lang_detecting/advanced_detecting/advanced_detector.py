@@ -183,7 +183,6 @@ class AdvancedDetector:
                 n_records += (bs:=words.size(0))
                 logits: Tensor = self.moe(kinds, words, specs)
                 probs = torch.sigmoid(logits)
-                probs_vis = (probs - probs.min()) / (probs.max() - probs.min() + 1e-8)
 
                 dist = torch.distributions.Bernoulli(probs=probs)
                 entropy = dist.entropy()
@@ -263,11 +262,12 @@ class AdvancedDetector:
                             xlabels=self._all_class_names + ['_'], ylabels=self._all_class_names + ['_'])
                     # Class x True/False
                     true_pos = np.diag(cm)
-                    false = cm.sum(axis=1) - true_pos
-                    true_false = np.stack([true_pos, false], axis=0).T
+                    false_pos = cm.sum(axis=0) - true_pos
+                    false_neg = cm.sum(axis=1) - true_pos
+                    true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                              title=f"Class x TF' CM", series=f'{mode}: {thresh:.2f}', matrix=true_false.tolist(),
-                             xlabels=['True', 'False'], ylabels=self._all_class_names + ['_'])
+                             xlabels=['True', 'False Pos', 'False Neg'], ylabels=self._all_class_names + ['_'])
 
                     # Simplest CM
                     C = self._n_classes
