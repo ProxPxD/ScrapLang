@@ -31,7 +31,7 @@ warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resource
 EXCEPTION = None
 try:
     from tqdm import tqdm
-    from torchmetrics import ConfusionMatrix, Metric, Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef
+    from torchmetrics import ConfusionMatrix, Metric, Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, SensitivityAtSpecificity
     import matplotlib.pyplot as plt
     from mlcm import mlcm
     HAS_TRAINING_SUPERVISION = True
@@ -130,9 +130,12 @@ class AdvancedDetector:
         self.metrics: dict[str, Metric] = {
             f'{metric_class.__name__}_{mode}'.lower(): metric_class(task=task_kind, num_labels=self._n_classes, average=mode).to(self.device)
             for metric_class in [Accuracy, Precision, Recall, F1Score]
-            for mode in ('macro', )
+            for mode in ('macro',)
         }
-        self.metrics['matthews_corr_coef'] = MatthewsCorrCoef(task=task_kind, num_labels=self._n_classes).to(self.device)
+        self.metrics: dict[str, Metric] = {
+            f'{metric_class.__name__}'.lower(): metric_class(task=task_kind, num_labels=self._n_classes).to(self.device)
+            for metric_class in [MatthewsCorrCoef, SensitivityAtSpecificity]
+        }
         self._cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
 
     @property
