@@ -1,4 +1,6 @@
 import math
+import random
+import time
 import warnings
 from dataclasses import asdict
 from functools import cached_property
@@ -160,6 +162,7 @@ class AdvancedDetector:
 
     def _retrain_model(self) -> None:
         self.task: Task
+        random.seed(time.time())
         dataset = BucketChunkDataset(
             self.valid_data_mgr.data,
             tokenizer=self.tokenizer,
