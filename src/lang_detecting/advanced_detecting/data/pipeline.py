@@ -77,6 +77,7 @@ class Pipeline:
         self.whole_process = SeqStep(
             is_not_mapped,
             uniq_lang_word,
+            form_model_form,
             expand_rows,
             filter_out_bad_data,
             augment_filter,

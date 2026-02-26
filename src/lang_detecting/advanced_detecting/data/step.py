@@ -5,13 +5,13 @@ from pandas import DataFrame
 from pydash import flow
 
 from src.lang_detecting.advanced_detecting.conf import Conf
-from src.lang_detecting.advanced_detecting.tokenizer import Tokenizer
+from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer, Tokenizer
 
 
 class Resources:
-    def __init__(self, tokenizer: Tokenizer = None, conf: Conf = None):
-        self.tokenizer: Tokenizer = tokenizer
-        self.conf = conf
+    def __init__(self, tokenizer: MultiKindTokenizer = None, conf: Conf = None):
+        self.tokenizer: MultiKindTokenizer = tokenizer
+        self.conf: Conf = conf
 
 
 class Step(Protocol):
