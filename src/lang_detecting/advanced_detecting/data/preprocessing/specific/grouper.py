@@ -15,5 +15,5 @@ class Grouper(AbstractStep):
             VDC.WORD: flow(list, c().get(0)),
             VDC.LANG: flow(set, sorted, list),
             Cols.LEN: flow(list, c().get(0)),
-        }).reset_index()
+        }).reset_index(drop=True)
         return data

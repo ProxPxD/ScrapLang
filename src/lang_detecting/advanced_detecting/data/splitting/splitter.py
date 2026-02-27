@@ -19,16 +19,13 @@ class Splitter:
 
     def split(self, df: DataFrame):
         df = df.sample(frac=1, random_state=self.conf.seed).reset_index(drop=True)
-
         n_val_records = int(len(df) * self.conf.data.s_valset)
         val_indices = self._get_min_val_indices(df)
         rest = df.drop(val_indices)
         n_rest_val = n_val_records - len(val_indices)
         val_indices.update(rest.sample(n=n_rest_val, random_state=self.conf.seed).index)
-
-        val_df = df.loc[val_indices].reset_index(drop=True)
+        val_df = df.loc[list(val_indices)].reset_index(drop=True)
         train_df = df.drop(val_indices).reset_index(drop=True)
-
         return train_df, val_df
 
     def _get_min_val_indices(self, df: DataFrame) -> set[pd.Index]:

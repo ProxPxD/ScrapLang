@@ -46,7 +46,7 @@ class DataProcessor:
         :return:
         """
         lang_to_words = data[~data[VDC.IS_MAPPED]].groupby(VDC.LANG)
-        lang_script = lang_to_words[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index()
+        lang_script = lang_to_words[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index(drop=True)
         lang_script.rename(columns={VDC.WORD: LSC.CHARS, VDC.LANG: LSC.LANG}, inplace=True)
         lang_script[LSC.SCRIPTS] = lang_script[LSC.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
         return lang_script
