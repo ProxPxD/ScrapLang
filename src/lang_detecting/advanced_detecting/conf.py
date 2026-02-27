@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Sequence, Optional
+from typing import OrderedDict, Sequence, Optional
 
 @dataclass
 class Augment:
@@ -35,8 +35,8 @@ class ExpertConf:
 @dataclass
 class Conf:
     seed: int = 9
-    all_label_names: tuple[str] = None  # Filled automatically
-    used_label_names: tuple[str] = None  # Filled automatically
+    all_label_names: tuple[str] = None  # Autofilled
+    used_label_count: OrderedDict[str, int] = None  # Autofilled
     data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
     epochs: int = 2**8  #2**7
@@ -58,3 +58,7 @@ class Conf:
     @property
     def n_used_labels(self) -> Optional[int]:
         return None if self.used_label_names is None else len(self.used_label_names)
+
+    @property
+    def used_label_names(self) -> tuple[str, ...]:
+        return tuple(self.used_label_count.keys())

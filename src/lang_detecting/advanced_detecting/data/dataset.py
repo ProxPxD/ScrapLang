@@ -25,7 +25,6 @@ class BucketChunkDataset(Dataset[list[int]]):
             tokenizer: MultiKindTokenizer,
             conf: Conf,
             shuffle: bool = True,
-            all_classes: list[str] = None,
             include_special: bool = True,
     ):
         super().__init__()
@@ -34,8 +33,6 @@ class BucketChunkDataset(Dataset[list[int]]):
         self.include_special = include_special
         self.tokenizer = tokenizer
         data = self._process_data(data)
-        self.class_counts = OrderedDict(data.explode(VDC.LANG)[VDC.LANG].value_counts())
-        self._all_classes = all_classes or list(self.class_counts.keys())
         self.class_weights = self._compute_weights(self._all_classes, self.class_counts)
         self.batches = self._map_data_to_tensor_batches(data)
 

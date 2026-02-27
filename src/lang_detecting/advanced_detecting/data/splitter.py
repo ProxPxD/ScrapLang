@@ -1,7 +1,5 @@
 from collections import Counter
-from copy import copy
 
-import numpy as np
 import pandas as pd
 from pandas.core.interchange.dataframe_protocol import DataFrame
 

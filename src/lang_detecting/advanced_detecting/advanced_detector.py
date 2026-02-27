@@ -1,7 +1,7 @@
 import math
 import random
-import time
 import warnings
+from collections import OrderedDict
 from dataclasses import asdict
 from functools import cached_property
 from itertools import product
@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
-from src.lang_detecting.advanced_detecting.data.splitting.splitter import Splitter
+from src.lang_detecting.advanced_detecting.data.splitter import Splitter
 
 np.int = int
 
@@ -170,7 +170,7 @@ class AdvancedDetector:
         self.task: Task
         random.seed(self.conf.seed)
         df: DataFrame = self.preprocessing.init_preprocessor(self.valid_data_mgr.data)
-        self.conf.used_label_names = c(df[VDC.LANG].unique()).apply(flow(sorted, tuple)).value()
+        self.conf.used_label_count = OrderedDict(df.explode(VDC.LANG)[VDC.LANG].value_counts())
         train_df, val_df = self.splitter.split(self.preprocessing.group(df))
         train_df = self.preprocessing.train_preprocessor(train_df)
         val_df = self.preprocessing.val_preprocessor(val_df)
