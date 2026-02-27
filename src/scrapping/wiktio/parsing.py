@@ -177,7 +177,11 @@ class WiktioParser(Parser):
             from .scrap_adapting import WiktioScrapAdapter
             last_tag = next((elem for elem in reversed(list(content.children)) if isinstance(elem, Tag) and elem.name != 'span'))
             href = last_tag.next.attrs['href']
-            further_word, further_lang = re.split('[#/]', href.removeprefix('/wiki/').removeprefix('/w/'))
+            core = href.removeprefix('/wiki/').removeprefix('/w/')
+            # if '/' in core and '#' in core:
+            #     further_word, further_lang = re.split('#', core)
+            # else:
+            further_word, further_lang = re.split('[#/]', core)  # TODO: fix: t pl z -o
             further_word = (further_word or last_tag.text).split('=')[-1]
             further_lang = further_lang.split(':')[0].removeprefix('#').split('&')[0]
             if further_word.startswith(RECONSTRUCTION:='Reconstruction:'):
