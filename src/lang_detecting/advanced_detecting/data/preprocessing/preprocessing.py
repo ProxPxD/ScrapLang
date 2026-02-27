@@ -41,7 +41,7 @@ class PreprocessorFactory:
         resources = self.resources
         tokenizer, conf = self.resources.tokenizer, self.resources.conf
 
-        is_not_mapped = ColFilter(col=VDC.IS_MAPPED, func=lambda col: ~col, precond=lambda df: VDC.IS_MAPPED in df.columns)
+        is_not_mapped = ColFilter(col=VDC.IS_MAPPED, mask_func=lambda col: ~col, precond=lambda df: VDC.IS_MAPPED in df.columns)
         uniq_lang_word = ColFilter(output_cols=[VDC.LANG, VDC.WORD])
 
         def get_kind(word: str):
@@ -49,7 +49,7 @@ class PreprocessorFactory:
             return next(iter(details.keys())) if details else None
 
         strip_bos = RowTransform(col=VDC.WORD, func=c().apply(tuple).reject(Tokens.BOS.__eq__))
-        is_with_kind = ColFilter(col=Cols.KIND, func=flow(DataFrame.isna, op.inv))
+        is_with_kind = ColFilter(col=Cols.KIND, mask_func=flow(DataFrame.isna, op.inv))
         put_kind = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind, post_func=is_with_kind)
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
         put_specs = RowTransform(to_col=Cols.SPECS,
@@ -67,16 +67,16 @@ class PreprocessorFactory:
             m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= conf.data.input_non_uniq_enough_count
             m_right_ratio = (data[Cols.LEN] - 5) / data[Cols.N_UNIQ] >= conf.data.input_right_ratio
             m_long = data[Cols.LEN] >= conf.data.input_len_thresh
-            return data[m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)]
+            return m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)
 
-        enough_uniq = ColFilter(func=constrain)
+        enough_uniq = ColFilter(mask_func=constrain)
 
         def enough_count_func(data: DataFrame) -> DataFrame:
             class_counts = data[VDC.LANG].value_counts()
             numerous_enough = class_counts[class_counts >= conf.data.record_count_thresh].index
-            return data[data[VDC.LANG].isin(numerous_enough)]
+            return data[VDC.LANG].isin(numerous_enough)
 
-        enough_count = ColFilter(func=enough_count_func)
+        enough_count = ColFilter(mask_func=enough_count_func)
         filter_out_bad_data = SeqStep(enough_uniq, enough_count)
         self.group = Grouper()
 

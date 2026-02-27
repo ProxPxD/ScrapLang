@@ -10,9 +10,9 @@ from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import A
 
 
 class ColFilter(AbstractStep):
-    def __init__(self, func: Callable = None, col: str = None, output_cols: list[str] = None, precond: Callable[[DataFrame], bool] = c().identity(True), **kwargs):
+    def __init__(self, mask_func: Callable = None, col: str = None, output_cols: list[str] = None, precond: Callable[[DataFrame], bool] = c().identity(True), **kwargs):
         self.precond = precond
-        self.func = func
+        self.func = mask_func
         self.col = col
         self.output_cols = output_cols
         super().__init__(**kwargs)
@@ -37,10 +37,10 @@ class ColFilter(AbstractStep):
         return self.func if not self.col else lambda df: self.func(df[self.col])
 
     def __and__(self, other) -> ColFilter:
-        return ColFilter(func=flow(self, other))
+        return ColFilter(mask_func=flow(self, other))
 
     def __or__(self, other) -> ColFilter:
-        return ColFilter(func=lambda df: self._decol_func(df) | other._decol_func(df))
+        return ColFilter(mask_func=lambda df: self._decol_func(df) | other._decol_func(df))
 
     def __invert__(self):
-        return ColFilter(func=lambda df: ~self._decol_func(df))
+        return ColFilter(mask_func=lambda df: ~self._decol_func(df))
