@@ -80,8 +80,9 @@ class TranslationParser(Parser):
             return ParsingException('No indirect translations')
         indirects = []
         for button in translation_buttons:
-            translation = button.find('span', {'class': 'text-primary-700 break-words font-medium text-base cursor-pointer'})
-            indirects.append(TransResult(TransResultKind.INDIRECT, translation.text.replace('\n', '')))
+            translation = button.find('span', {'class': 'text-primary-700 break-words font-medium text-init cursor-pointer'})
+            elem = translation or button
+            indirects.append(TransResult(TransResultKind.INDIRECT, elem.text.strip()))
         return indirects
 
         # https://glosbe.com/uk/en/%D0%B7%D0%B1%D0%B8%D1%80%D0%B0%D1%82%D0%B8%D1%81%D1%8F/fragment/indirect
