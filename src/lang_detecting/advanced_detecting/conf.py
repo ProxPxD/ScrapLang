@@ -9,11 +9,14 @@ class Augment:
 
 @dataclass
 class Data:
+    s_valset: float = .1
+    min_n_per_label: int = 5
+
     augment: Augment = field(default_factory=Augment)
+
     input_len_thresh: int = 5
     input_non_uniq_enough_count: int = 7
     input_right_ratio: float = 2.0
-
 
     record_count_thresh: int = 2**4
 
@@ -31,6 +34,9 @@ class ExpertConf:
 
 @dataclass
 class Conf:
+    seed: int = 9
+    all_label_names: tuple[str] = None  # Filled automatically
+    used_label_names: tuple[str] = None  # Filled automatically
     data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
     epochs: int = 2**8  #2**7
@@ -44,3 +50,11 @@ class Conf:
 
     freq_bias: float = 4 # 1.1 # 1.1
     neg_bias: float = 4 # 4  # 3
+
+    @property
+    def n_all_labels(self) -> Optional[int]:
+        return None if self.all_label_names is None else len(self.all_label_names)
+
+    @property
+    def n_used_labels(self) -> Optional[int]:
+        return None if self.used_label_names is None else len(self.used_label_names)

@@ -6,11 +6,11 @@ import pydash as _
 from pandas import DataFrame
 from pydash import chain as c, flow
 
-from src.lang_detecting.advanced_detecting.data.step import AbstractStep
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import AbstractStep
 
 
 class ColFilter(AbstractStep):
-    def __init__(self, func: Callable = _.identity, col: str = None, output_cols: list[str] = None, precond: Callable[[DataFrame], bool] = c().identity(True), **kwargs):
+    def __init__(self, func: Callable = None, col: str = None, output_cols: list[str] = None, precond: Callable[[DataFrame], bool] = c().identity(True), **kwargs):
         self.precond = precond
         self.func = func
         self.col = col
@@ -25,7 +25,7 @@ class ColFilter(AbstractStep):
             case _ if self.col in data.columns: pivot = data[self.col]
             case _: pivot = None
         # noinspection PyUnboundLocalVariable
-        if pivot is not None:  # noinspection PyUnboundLocalVariable
+        if self.func and pivot is not None:  # noinspection PyUnboundLocalVariable
             mask = self.func(pivot)
             data = data[mask]
         if self.output_cols:

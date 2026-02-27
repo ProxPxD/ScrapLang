@@ -9,7 +9,11 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
+from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
+from src.lang_detecting.advanced_detecting.data.splitting.splitter import Splitter
+
 np.int = int
+
 import torch
 import torch.nn as nn
 from clearml.backend_api.session.defs import MissingConfigError
@@ -26,7 +30,7 @@ from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.retry import retry_on
 from src.lang_detecting.advanced_detecting.tokenizer import KindToSpecs, MultiKindTokenizer, Tokens
-from src.resouce_managing.valid_data import ValidDataMgr
+from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
 warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
 
@@ -84,7 +88,9 @@ class AdvancedDetector:
 
         self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self._all_class_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
+        self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf)
+        self.splitter = Splitter(self.conf)
+        self.conf.all_label_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.loss_func = nn.BCEWithLogitsLoss()
         self.writer = MagicMock()
@@ -162,7 +168,14 @@ class AdvancedDetector:
 
     def _retrain_model(self) -> None:
         self.task: Task
-        random.seed(time.time())
+        random.seed(self.conf.seed)
+        df: DataFrame = self.preprocessing.init_preprocessor(self.valid_data_mgr.data)
+        self.conf.used_label_names = c(df[VDC.LANG].unique()).apply(flow(sorted, tuple)).value()
+        train_df, val_df = self.splitter.split(self.preprocessing.group(df))
+        train_df = self.preprocessing.train_preprocessor(train_df)
+        val_df = self.preprocessing.val_preprocessor(val_df)
+
+        # TODO: remove
         dataset = BucketChunkDataset(
             self.valid_data_mgr.data,
             tokenizer=self.tokenizer,

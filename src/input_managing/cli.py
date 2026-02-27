@@ -141,7 +141,7 @@ class CLI:
         self.context.update(**{**vars(parsed), 'words': UNSET, 'from_langs': UNSET, 'to_langs': UNSET}); logging.debug('Updating context in CLI')
         setup_logging(parsed)
         parsed = self._distribute_args(parsed)
-        logging.debug(f'base Parsed: {parsed}')
+        logging.debug(f'init Parsed: {parsed}')
         return parsed
 
     def _distribute_args(self, parsed: Namespace) -> Namespace:

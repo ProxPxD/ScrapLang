@@ -3,23 +3,19 @@ from __future__ import annotations
 import random
 import time
 from collections import OrderedDict
-from copy import copy
 from functools import cached_property
-from itertools import zip_longest
 
-import pandas as pd
 import pydash as _
 import torch
-from GlotScript import sp
 from pandas import DataFrame
-from pydash import chain as c, flow
+from pydash import chain as c
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 
 from src.lang_detecting.advanced_detecting.conf import Conf
-from src.lang_detecting.advanced_detecting.data.consts import Cols, TensorBatch
-from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer, Tokens
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import Cols, TensorBatch
+from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import VDC
 
 
@@ -80,7 +76,7 @@ class BucketChunkDataset(Dataset[list[int]]):
 
     def shuffle_batches(self) -> None:
         rng = random.Random()
-        rng.seed(9 or time.time())  # 9(3)
+        rng.seed(self.conf.seed or time.time())  # 9(3)
         rng.shuffle(self.batches)
 
     def __iter__(self):

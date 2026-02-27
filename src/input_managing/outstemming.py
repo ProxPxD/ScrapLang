@@ -48,7 +48,7 @@ class ReSymbolSet(frozenset[str]):
     def __or__(self, other):
         return ReSymbolSet(set(self)|set(other))
 
-# TODO: idea "+" splitter: Bund+[es]+verfassung+[s]+gericht => Bundesverfassungsgericht
+# TODO: idea "+" splitting: Bund+[es]+verfassung+[s]+gericht => Bundesverfassungsgericht
 # TODO: ... Straße+[n]+verkehr+[s]+ordnung => Straße, verkehr, ordnung, Straßenverkehr, verkehrsordnung, Straßenverkehrsordnung
 # TODO: ... Arbeit+[s]+zeit+gesetz => Arbeit, zeit, gesetz, Arbeitszeit, zeitgesetz, Arbeitszeitgesetz
 class Outstemmer:

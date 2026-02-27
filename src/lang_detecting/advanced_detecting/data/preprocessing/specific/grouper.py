@@ -1,8 +1,8 @@
 from pandas import DataFrame
 from pydash import chain as c, flow
 
-from src.lang_detecting.advanced_detecting.data.consts import Cols
-from src.lang_detecting.advanced_detecting.data.step import AbstractStep
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import Cols
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import AbstractStep
 from src.resouce_managing.valid_data import VDC
 
 

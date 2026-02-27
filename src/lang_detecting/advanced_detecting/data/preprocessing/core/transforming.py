@@ -3,14 +3,9 @@ from __future__ import annotations
 from copy import copy
 from typing import Callable
 
-from GlotScript import sp
 from pandas import DataFrame
-from pydash import chain as c
 
-from src.lang_detecting.advanced_detecting.data.consts import Cols
-from src.lang_detecting.advanced_detecting.data.step import AbstractStep
-from src.lang_detecting.advanced_detecting.tokenizer import Tokens
-from src.resouce_managing.valid_data import VDC
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import AbstractStep
 
 
 class RowTransform(AbstractStep):
