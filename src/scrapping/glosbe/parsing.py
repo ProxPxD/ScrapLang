@@ -4,14 +4,11 @@ from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
 from itertools import product
-from tkinter.scrolledtext import example
 from typing import Optional
 
 import pandas as pd
 import pydash as _
 from bs4.element import ResultSet, Tag
-from more_itertools import bucket
-from numpy.lib.recfunctions import join_by
 from pandas import DataFrame
 from pydash import chain as c, flow, partial
 
