@@ -50,7 +50,7 @@ class PreprocessorFactory:
 
         ensure_word_tuple = RowTransform(col=VDC.WORD, func=tuple)
         strip_bos = RowTransform(col=VDC.WORD, func=c().apply(tuple).reject(Tokens.BOS.__eq__))
-        enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: [Tokens.BOS, *list(w), Tokens.BOS])
+        enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: tuple([Tokens.BOS, *tuple(w), Tokens.BOS]))
         ensure_bos = SeqStep(strip_bos, enclose_with_bos)
         is_with_kind = ColFilter(col=Cols.KIND, mask_func=flow(DataFrame.isna, op.inv))
         is_with_kind_precond = lambda df: Cols.KIND not in df.columns

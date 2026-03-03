@@ -15,27 +15,27 @@ class Augmenter(AbstractStep):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def perform(self, data: DataFrame) -> DataFrame:
+    def perform(self, df: DataFrame) -> DataFrame:
         # TODO: Think of more rigorous ratio threshold for the augmented data (mark them temporally with a column)
-        pre_patterns, post_patterns = self._extract_patterns(data)
-        dfs = [data]
+        pre_patterns, post_patterns = self._extract_patterns(df)
+        dfs = [df]
         for patterns, reverse in [(pre_patterns, False), (post_patterns, True)]:
             for pattern in patterns:
-                pre_df = copy(data)
+                pre_df = copy(df)
                 pre_df[VDC.WORD] = pre_df[Cols.DECODE].apply(lambda word: self.apply_pattern(word, pattern, reverse=reverse))
                 dfs.append(pre_df)
         return pd.concat(dfs).drop_duplicates([VDC.WORD, VDC.LANG])
 
-    def _extract_patterns(self, data) -> tuple[list[list[str]], list[list[str]]]:
+    def _extract_patterns(self, df) -> tuple[list[list[str]], list[list[str]]]:
         tokenizer = self.resources.tokenizer
         conf = self.resources.conf
         unknown_patterns = (
-            c(data[Cols.DECODE].to_list())
+            c(df[Cols.DECODE].to_list())
             .map(c().map_(flow(tokenizer.unknown.__eq__, int)))
             .uniq()
         )
         norm = c().uniq().filter(any).map(c().map(lambda t: tokenizer.unknown if t else ''))
-        pre_patterns = unknown_patterns.commit().map(lambda p: p[conf.data.augment.pre_augment_size]).value()
+        pre_patterns = unknown_patterns.commit().map(lambda p: p[:conf.data.augment.pre_augment_size]).value()
         post_patterns = unknown_patterns.map(lambda p: p[conf.data.augment.post_augment_size:]).value()
         return norm(pre_patterns), norm(post_patterns)
 

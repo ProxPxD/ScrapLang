@@ -13,7 +13,7 @@ class Grouper(AbstractStep):
     def perform(self, data: DataFrame) -> DataFrame:
         data = data.groupby([Cols.KIND, Cols.TOKENS, Cols.SPECS], sort=False).agg({
             VDC.WORD: flow(list, c().get(0)),
-            VDC.LANG: flow(set, sorted, list),
+            VDC.LANG: flow(set, sorted, tuple),
             Cols.LEN: flow(list, c().get(0)),
             Cols.DECODE: flow(list, c().get(0)),
         }).reset_index(drop=True)
