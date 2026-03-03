@@ -16,5 +16,5 @@ class Grouper(AbstractStep):
             VDC.LANG: flow(set, sorted, tuple),
             Cols.LEN: flow(list, c().get(0)),
             Cols.DECODE: flow(list, c().get(0)),
-        }).reset_index(drop=True)
+        }).reset_index(drop=False)
         return data

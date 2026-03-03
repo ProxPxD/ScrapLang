@@ -16,7 +16,7 @@ class Splitter:
         return self.conf.data.min_n_per_label
 
     def split(self, df: DataFrame):
-        df = df.sample(frac=1, random_state=self.conf.seed).reset_index(drop=True)
+        df = df.sample(frac=1, random_state=self.conf.seed).reset_index(drop=False)
         n_val_records = int(len(df) * self.conf.data.s_valset)
         val_indices = self._get_min_val_indices(df)
         rest = df.drop(val_indices)

@@ -53,9 +53,8 @@ class PreprocessorFactory:
         enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: tuple([Tokens.BOS, *tuple(w), Tokens.BOS]))
         ensure_bos = SeqStep(strip_bos, enclose_with_bos)
         is_with_kind = ColFilter(col=Cols.KIND, mask_func=flow(DataFrame.isna, op.inv))
-        is_with_kind_precond = lambda df: Cols.KIND not in df.columns
-        put_kind = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind, post_func=is_with_kind, precond=is_with_kind_precond)
-        ensure_kind_safe_for_bos = SeqStep(strip_bos, put_kind, enclose_with_bos, precond=is_with_kind_precond)
+        put_kind = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind, post_func=is_with_kind)
+        ensure_kind_safe_for_bos = SeqStep(strip_bos, put_kind, enclose_with_bos, precond=lambda df: Cols.KIND not in df.columns)
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
         put_specs = RowTransform(to_col=Cols.SPECS,
                                  func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))

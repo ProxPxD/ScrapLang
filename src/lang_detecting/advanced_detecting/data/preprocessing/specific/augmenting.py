@@ -36,7 +36,7 @@ class Augmenter(AbstractStep):
         )
         norm = c().uniq().filter(any).map(c().map(lambda t: tokenizer.unknown if t else ''))
         pre_patterns = unknown_patterns.commit().map(lambda p: p[:conf.data.augment.pre_augment_size]).value()
-        post_patterns = unknown_patterns.map(lambda p: p[conf.data.augment.post_augment_size:]).value()
+        post_patterns = unknown_patterns.map(lambda p: p[-conf.data.augment.post_augment_size:]).value()
         return norm(pre_patterns), norm(post_patterns)
 
     @classmethod
