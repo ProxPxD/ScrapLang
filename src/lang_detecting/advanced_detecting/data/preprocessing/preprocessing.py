@@ -11,7 +11,7 @@ from pydash import chain as c, flow
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import Cols
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.filtering import ColFilter
-from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import Resources, SeqStep, Step
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import Resources, SeqStep, SimpleStep, Step
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.transforming import RowTransform
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.augmenting import Augmenter
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.grouper import Grouper
@@ -43,24 +43,28 @@ class PreprocessorFactory:
 
         is_not_mapped = ColFilter(col=VDC.IS_MAPPED, mask_func=lambda col: ~col, precond=lambda df: VDC.IS_MAPPED in df.columns)
         uniq_lang_word = ColFilter(output_cols=[VDC.LANG, VDC.WORD])
+        uniq_lang_word_kind = ColFilter(output_cols=[VDC.LANG, VDC.WORD, Cols.KIND])
 
         def get_kind(word: str):
             details: dict = sp(''.join(word))[-1]['details']
             return next(iter(details.keys())) if details else None
 
+        ensure_word_tuple = RowTransform(col=VDC.WORD, func=tuple)
         strip_bos = RowTransform(col=VDC.WORD, func=c().apply(tuple).reject(Tokens.BOS.__eq__))
+        enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: [Tokens.BOS, *list(w), Tokens.BOS])
+        ensure_bos = SeqStep(strip_bos, enclose_with_bos)
         is_with_kind = ColFilter(col=Cols.KIND, mask_func=flow(DataFrame.isna, op.inv))
-        put_kind = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind, post_func=is_with_kind)
+        is_with_kind_precond = lambda df: Cols.KIND not in df.columns
+        put_kind = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind, post_func=is_with_kind, precond=is_with_kind_precond)
+        ensure_kind_safe_for_bos = SeqStep(strip_bos, put_kind, enclose_with_bos, precond=is_with_kind_precond)
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
         put_specs = RowTransform(to_col=Cols.SPECS,
-                                 func=lambda row: tokenizer.tokenize_spec_groups(['|', *list(row[VDC.WORD]), '|'], row[Cols.KIND]))  # A bit silly fix, but let it slide
-        form_model_form = SeqStep(strip_bos, put_kind, put_tokens, put_specs)
-
-        enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: [Tokens.BOS, *list(w), Tokens.BOS])
+                                 func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))
+        form_model_form = SeqStep(ensure_word_tuple, ensure_kind_safe_for_bos, put_tokens, put_specs)
         put_decode = RowTransform(to_col=Cols.DECODE, func=lambda row: tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND]))
         put_len = RowTransform(to_col=Cols.LEN, from_col=Cols.TOKENS, func=len)
         put_n_uniq = RowTransform(to_col=Cols.N_UNIQ, from_col=Cols.DECODE, func=c().filter(tokenizer.unknown.__contains__).apply(len))
-        expand_rows = SeqStep(strip_bos, enclose_with_bos, put_decode, put_len, put_n_uniq)
+        expand_rows = SeqStep(ensure_bos, put_decode, put_len, put_n_uniq)
 
         def constrain(data) -> DataFrame:
             m_uniq = data[Cols.N_UNIQ] > 0
@@ -81,9 +85,9 @@ class PreprocessorFactory:
         self.group = Grouper()
 
         self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, form_model_form, expand_rows, filter_out_bad_data)
-        augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word, form_model_form, expand_rows, filter_out_bad_data,
+        ensure_dropped = SimpleStep(lambda df: df.drop(columns=[Cols.DECODE, Cols.N_UNIQ], errors='ignore'))
+        augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word_kind, form_model_form, expand_rows, filter_out_bad_data,
                                  precond=_.constant(conf.data.augment.is_augmenting))
-
         self.train_preprocessor = SeqStep(augment_filter)
-        self.val_preprocessor = SeqStep()
+        self.val_preprocessor = SeqStep(ensure_dropped)
 

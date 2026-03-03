@@ -27,7 +27,6 @@ from torch import Tensor
 from src.constants import Paths
 from src.context import Context
 from src.lang_detecting.advanced_detecting.conf import Conf
-from src.lang_detecting.advanced_detecting.data.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.retry import retry_on
