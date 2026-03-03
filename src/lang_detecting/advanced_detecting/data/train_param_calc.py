@@ -40,6 +40,7 @@ class TrainParamCalc:
         return batches
 
     def compute_loss(self, logits: Tensor, targets: Tensor) -> Tensor:
+        eps = 1e-3
         loss = self.loss_func(logits, targets.float())
         final_loss = loss.mean()
         return final_loss

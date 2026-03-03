@@ -8,9 +8,10 @@ from itertools import product
 from unittest.mock import MagicMock
 
 import numpy as np
-
+import pydash as _
 from src.lang_detecting.advanced_detecting.data.batcher import Batcher
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
+from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import TensorBatch
 from src.lang_detecting.advanced_detecting.data.splitter import Splitter
 from src.lang_detecting.advanced_detecting.data.train_param_calc import TrainParamCalc
 
@@ -67,6 +68,7 @@ except ImportError as e_c:
 if HAS_TRAINING_SUPERVISION and not HAS_CLEARML and not HAS_TENSORBOARD:
     EXCEPTION = Exception(e_t, e_c)
 
+SERIES_SEQ = (TRAIN:='Train', VAL:='Val')
 
 class AdvancedDetector:
     def __init__(self, context: Context, lang_script: DataFrame, valid_data_mgr: ValidDataMgr, conf: Conf):
@@ -95,12 +97,11 @@ class AdvancedDetector:
         self.train_param_calc = TrainParamCalc(self.conf)
         self.conf.all_label_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
-        self.loss_func = nn.BCEWithLogitsLoss()
         self.writer = MagicMock()
         self.task = MagicMock()
         self.metrics = {}
         self._cm_threshes = (.10, .66, .80, .90)
-        self._cms: dict[int, np.ndarray] = {}
+        self._cms: dict[str, dict[float, np.ndarray]] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
@@ -143,15 +144,19 @@ class AdvancedDetector:
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
         kwargs = dict(task='multilabel', num_labels=self.conf.n_all_labels)
-        self.metrics: dict[str, Metric] = {
-            f'{metric_class.__name__}_{mode}'.lower(): metric_class(**kwargs, average=mode).to(self.device)
-            for metric_class in [Accuracy, Precision, Recall, F1Score]
-            for mode in ('macro',)
-        }
-        self.metrics['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
-        self._cms = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
-        class_weights = self.train_param_calc.compute_weights().to(self.device)
-        self.train_param_calc.loss = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
+        self.metrics: dict[str, dict[str, Metric]] = {}
+        for series in SERIES_SEQ:
+            # noinspection PyTypeChecker
+            self.metrics[series] = {
+                f'{metric_class.__name__}-{mode}': metric_class(**kwargs, average=mode).to(self.device)  # noinspection PyTypeChecker
+                for metric_class in [Accuracy, Precision, Recall, F1Score]
+                for mode in ('macro',)
+            }
+            self.metrics[series]['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
+            self._cms[series] = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
+        if self.conf.all_label_names:
+            class_weights = self.train_param_calc.compute_weights().to(self.device)
+            self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
 
     @property
     def dev_training(self) -> bool:
@@ -176,10 +181,10 @@ class AdvancedDetector:
         train_df, val_df = self.splitter.split(self.preprocessing.group(df))
         train_df = self.preprocessing.train_preprocessor(train_df)
         val_df = self.preprocessing.val_preprocessor(val_df)
-        train_batches = self.batcher.batch_data_up(train_df)
+        batch_all = c().map(self.batcher.batch_data_up)
+        train_batches, val_batches = batch_all([train_df, val_df])
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
         self.init_for_training()
-        eps = 1e-3
         if self.dev_training:
             comment = []
             comment += [f'{len(self.conf.all_label_names)}-label']
@@ -197,8 +202,11 @@ class AdvancedDetector:
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
                 logits: Tensor = self.moe(kinds, words, specs)
+                # self.moe.eval()
+                # with torch.no_grad():
+                #     val_logits = self.moe()
                 probs = torch.sigmoid(logits)
-                self._update_metrics(probs, targets)
+                self._update_metrics(TRAIN, probs, targets)
                 loss = self.train_param_calc.compute_loss(logits, targets)
                 loss.backward()
                 epoch_loss += loss.item()
@@ -209,55 +217,70 @@ class AdvancedDetector:
                     n_records = 0
             if n_records:
                 optimizer.step()
+            self._val(val_batches, epoch)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', TRAIN, epoch_loss, epoch)
+            self._board_metrics(TRAIN, epoch)
 
-            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', mode:='Train', epoch_loss, epoch)
-            self._board_metrics(epoch, mode)
+    def _val(self, batches: list[TensorBatch], epoch: int) -> None:
+        self.moe.eval()
+        with torch.no_grad():
+            val_loss = .0
+            for batch in batches:
+                kinds, words, specs, targets = [t.to(self.device) for t in batch]
+                logits: Tensor = self.moe(kinds, words, specs)
+                probs = torch.sigmoid(logits)
+                self._update_metrics(VAL, probs, targets)
+                val_loss += self.train_param_calc.compute_loss(logits, targets)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, val_loss, epoch)
+            self._board_metrics(VAL, epoch)
+        self.moe.train()
 
-    def _manage_metrics(self, func_name: str, *args, **kwargs) -> None:
-        for metric in self.metrics.values():
+    def _manage_metrics(self, func_name: str, series: str, *args, **kwargs) -> None:
+        for metric in self.metrics[series].values():
             getattr(metric, func_name)(*args, **kwargs)
 
     def _reset_metrics(self) -> None:
         if not self.dev_training:
             return
-        self._manage_metrics('reset')
-        self._cms = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
+        for series in SERIES_SEQ:
+            self._manage_metrics('reset', series)
+            for cm in self._cms[series].values():
+                cm *= 0
 
-    def _update_metrics(self, probs: Tensor, targets: Tensor) -> None:
+    def _update_metrics(self, series: str, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
-        self._manage_metrics('update', (probs > .80).long(), targets)
-        for thresh, cm in self._cms.items():
+        self._manage_metrics('update', series, (probs > .80).long(), targets)
+        for thresh, cm in self._cms[series].items():
             np.int = int
             count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
             cm += count_matrix
-            # cm.update((probs > thresh).long(), targets)
 
-    def _board_metrics(self, step: int, mode: str) -> None:
+    def _board_metrics(self, series: str, step: int) -> None:
         if not self.dev_training:
             return
         self.metrics: dict[str, Metric]
-        for name, metric in self.metrics.items():
+        for name, metric in self.metrics[series].items():
             val = metric.compute().item()
-            self.writer.add_scalar(f'{mode}/metric/{name}'.lower(), val, step)
-            self._logger.report_scalar(f'Metric/{name}', mode, val, step)
-            retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', mode, val, step)
-        self._board_confusion_matrices(step, mode)
+            self.writer.add_scalar(f'{series}/metric/{name}'.lower(), val, step)
+            self._logger.report_scalar(f'Metric/{name}', series, val, step)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', series, val, step)
+        self._board_confusion_matrices(series, step)
 
     @cached_property
     def _n_cm_padding(self) -> int:
         return math.floor(math.log10(self.conf.epochs // self._cm_kind_every))
 
-    def _board_confusion_matrices(self, step: int, mode: str) -> None:
+    def _board_confusion_matrices(self, series: str, step: int) -> None:
         if not self.dev_training:
             return
-        for thresh, cm in self._cms.items():
+        for thresh, cm in self._cms[series].items():
             if step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1:
                 if HAS_CLEARML:
                     kwargs = dict(iteration=step + 1, yaxis_reversed=True)
                     # Class x Class
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                            title=f"Class x Class' CM", series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
+                            title=f"Class x Class' CM", series=f'{series}: {thresh:.2f}', matrix=cm.tolist(),
                             xlabels=[*self.conf.all_label_names, '_'], ylabels=[*self.conf.all_label_names, '_'])
                     # Class x True/False
                     true_pos = np.diag(cm)
@@ -265,7 +288,7 @@ class AdvancedDetector:
                     false_neg = cm.sum(axis=1) - true_pos
                     true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f"Class x TF' CM", series=f'{mode}: {thresh:.2f}', matrix=true_false.tolist(),
+                             title=f"Class x TF' CM", series=f'{series}: {thresh:.2f}', matrix=true_false.tolist(),
                              xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*self.conf.all_label_names, '_'])
 
                     # Simplest CM
@@ -278,7 +301,7 @@ class AdvancedDetector:
                         [bottom, last_row, 0]
                     ]
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f"TF Pos Neg' CM", series=f'{mode}: {thresh:.2f}', matrix=tf,
+                             title=f"TF Pos Neg' CM", series=f'{series}: {thresh:.2f}', matrix=tf,
                              xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
 
     @classmethod
