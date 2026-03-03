@@ -9,8 +9,10 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
+from src.lang_detecting.advanced_detecting.data.batcher import Batcher
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
 from src.lang_detecting.advanced_detecting.data.splitter import Splitter
+from src.lang_detecting.advanced_detecting.data.train_param_calc import TrainParamCalc
 
 np.int = int
 
@@ -90,6 +92,8 @@ class AdvancedDetector:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf)
         self.splitter = Splitter(self.conf)
+        self.batcher = Batcher(self.conf, self.tokenizer)
+        self.train_param_calc = TrainParamCalc(self.conf)
         self.conf.all_label_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.loss_func = nn.BCEWithLogitsLoss()
@@ -174,34 +178,26 @@ class AdvancedDetector:
         train_df, val_df = self.splitter.split(self.preprocessing.group(df))
         train_df = self.preprocessing.train_preprocessor(train_df)
         val_df = self.preprocessing.val_preprocessor(val_df)
-
-        # TODO: remove
-        dataset = BucketChunkDataset(
-            self.valid_data_mgr.data,
-            tokenizer=self.tokenizer,
-            conf=self.conf,
-            shuffle=True,
-            all_classes=self._all_class_names,
-            include_special=True
-        )
+        train_batches = self.batcher.batch_data_up(train_df)
+        class_weights = self.train_param_calc.compute_weights().to(self.device)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
-        loss_func = nn.BCEWithLogitsLoss(weight=None and dataset.class_weights.to(self.device), reduction='none')
+        loss_func = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
         self.init_for_training()
         eps = 1e-3
         if self.dev_training:
             comment = []
-            comment += [f'{len(self._all_class_names)}-label']
-            comment += [class_names_string := ', '.join(self._all_class_names)]
+            comment += [f'{len(self.conf.all_label_names)}-label']
+            comment += [class_names_string := ', '.join(self.conf.all_label_names)]
             self.writer.add_text(tag='Classes', text_string=class_names_string)
-            comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(dataset.class_counts.items(), key=c().get(1), reverse=True))]
+            comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(self.conf.used_label_count.items(), key=c().get(1), reverse=True))]
             self.writer.add_text(tag='training info', text_string=lang_counts)
             self.task.set_comment('\n'.join(comment))
         for epoch in range(self.conf.epochs):
             self._reset_metrics()
-            dataset.shuffle_batches()
+            train_batches = self.train_param_calc.shuffle_batches(train_batches)
             n_records = 0
             epoch_loss = 0.0
-            for batch in tqdm(dataset, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
+            for batch in tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += (bs:=words.size(0))
                 logits: Tensor = self.moe(kinds, words, specs)

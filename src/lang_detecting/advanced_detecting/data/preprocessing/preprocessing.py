@@ -28,9 +28,9 @@ class PreprocessorFactory:
         put - adds a column
         """
         self.resources = Resources(tokenizer=tokenizer, conf=conf)
-        self.init_preprocessor: Optional[Step] = None
-        self.train_preprocessor: Optional[Step] = None
-        self.val_preprocessor: Optional[Step] = None
+        self.init_preprocessor: Step | None = None
+        self.train_preprocessor: Step | None = None
+        self.val_preprocessor: Step | None = None
         self._create_preprocessors()
 
     def _create_preprocessors(self) -> None:
