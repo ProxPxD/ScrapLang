@@ -48,7 +48,7 @@ class PreprocessorFactory:
             details: dict = sp(''.join(word))[-1]['details']
             return next(iter(details.keys())) if details else None
 
-        ensure_word_tuple = RowTransform(col=VDC.WORD, func=tuple)
+        ensure_word_seq = RowTransform(col=VDC.WORD, func=tuple)
         strip_bos = RowTransform(col=VDC.WORD, func=c().apply(tuple).reject(Tokens.BOS.__eq__))
         enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: tuple([Tokens.BOS, *tuple(w), Tokens.BOS]))
         ensure_bos = SeqStep(strip_bos, enclose_with_bos)
@@ -58,7 +58,7 @@ class PreprocessorFactory:
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
         put_specs = RowTransform(to_col=Cols.SPECS,
                                  func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))
-        form_model_form = SeqStep(ensure_word_tuple, ensure_kind_safe_for_bos, put_tokens, put_specs)
+        form_model_form = SeqStep(ensure_word_seq, ensure_kind_safe_for_bos, put_tokens, put_specs)
         put_decode = RowTransform(to_col=Cols.DECODE, func=lambda row: tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND]))
         put_len = RowTransform(to_col=Cols.LEN, from_col=Cols.TOKENS, func=len)
         put_n_uniq = RowTransform(to_col=Cols.N_UNIQ, from_col=Cols.DECODE, func=c().filter(tokenizer.unknown.__contains__).apply(len))
