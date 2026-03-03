@@ -8,7 +8,7 @@ from itertools import product
 from unittest.mock import MagicMock
 
 import numpy as np
-import pydash as _
+
 from src.lang_detecting.advanced_detecting.data.batcher import Batcher
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import TensorBatch
@@ -38,16 +38,22 @@ warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resource
 
 EXCEPTION = None
 try:
+    # noinspection PyUnresolvedReferences
     from tqdm import tqdm
+    # noinspection PyUnresolvedReferences
     from torchmetrics import ConfusionMatrix, Metric, Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, SensitivityAtSpecificity
+    # noinspection PyUnresolvedReferences
     import matplotlib.pyplot as plt
+    # noinspection PyUnresolvedReferences
     from mlcm import mlcm
     HAS_TRAINING_SUPERVISION = True
 except ImportError as e:
     EXCEPTION = e
     HAS_TRAINING_SUPERVISION = False
 
+e_t = e_c = None
 try:
+    # noinspection PyUnresolvedReferences
     from torch.utils.tensorboard import SummaryWriter
     HAS_TENSORBOARD = True
 except ImportError as e_t:
@@ -55,17 +61,17 @@ except ImportError as e_t:
 
 HAS_CLEARML = False
 try:
+    # noinspection PyUnresolvedReferences
     from clearml import Logger, Task
     HAS_CLEARML = True
+    # noinspection PyUnresolvedReferences
     import flatten_dict
-    HAS_CLEARML = True
 except ImportError as e_c:
     if HAS_CLEARML:
         EXCEPTION = e_c
-    else:
-        HAS_CLEARML = False
 
 if HAS_TRAINING_SUPERVISION and not HAS_CLEARML and not HAS_TENSORBOARD:
+    # noinspection PyUnboundLocalVariable
     EXCEPTION = Exception(e_t, e_c)
 
 SERIES_SEQ = (TRAIN:='Train', VAL:='Val')
@@ -77,6 +83,7 @@ class AdvancedDetector:
         self.valid_data_mgr = valid_data_mgr
         self.conf = conf
 
+        # noinspection SpellCheckingInspection
         kind_to_specs: KindToSpecs = {
             'Latn': [(str.isupper, str.lower)],
             'Cyrl': [(str.isupper, str.lower)],
@@ -95,6 +102,7 @@ class AdvancedDetector:
         self.splitter = Splitter(self.conf)
         self.batcher = Batcher(self.conf, self.tokenizer)
         self.train_param_calc = TrainParamCalc(self.conf)
+        # noinspection PyTypeChecker
         self.conf.all_label_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.writer = MagicMock()
@@ -116,6 +124,7 @@ class AdvancedDetector:
                 file.unlink()
         if HAS_CLEARML:
             try:
+                # noinspection SpellCheckingInspection
                 Task.set_credentials(
                      api_host='http://127.0.0.1:7003',
                      web_host='http://127.0.0.1:7004',
@@ -138,9 +147,9 @@ class AdvancedDetector:
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
 
-            except MissingConfigError as e:
+            except MissingConfigError as mce:
                 if not HAS_TENSORBOARD:
-                    raise RuntimeError('Dev mode run failed to initialize ClearML') from e
+                    raise RuntimeError('Dev mode run failed to initialize ClearML') from mce
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
         kwargs = dict(task='multilabel', num_labels=self.conf.n_all_labels)
@@ -200,7 +209,7 @@ class AdvancedDetector:
             epoch_loss = 0.0
             for batch in tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
-                n_records += (bs:=words.size(0))
+                n_records += words.size(0)
                 logits: Tensor = self.moe(kinds, words, specs)
                 # self.moe.eval()
                 # with torch.no_grad():
@@ -274,35 +283,40 @@ class AdvancedDetector:
     def _board_confusion_matrices(self, series: str, step: int) -> None:
         if not self.dev_training:
             return
+        if not (step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1):
+            return
+        kwargs = dict(iteration=step + 1, yaxis_reversed=True)
+        # NxN
         for thresh, cm in self._cms[series].items():
-            if step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1:
-                if HAS_CLEARML:
-                    kwargs = dict(iteration=step + 1, yaxis_reversed=True)
-                    # Class x Class
-                    retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                            title=f"Class x Class' CM", series=f'{series}: {thresh:.2f}', matrix=cm.tolist(),
-                            xlabels=[*self.conf.all_label_names, '_'], ylabels=[*self.conf.all_label_names, '_'])
-                    # Class x True/False
-                    true_pos = np.diag(cm)
-                    false_pos = cm.sum(axis=0) - true_pos
-                    false_neg = cm.sum(axis=1) - true_pos
-                    true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
-                    retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f"Class x TF' CM", series=f'{series}: {thresh:.2f}', matrix=true_false.tolist(),
-                             xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*self.conf.all_label_names, '_'])
-
-                    # Simplest CM
-                    C = self.conf.n_all_labels
-                    tp, core = true_pos.sum(), cm[0:C, 0:C].sum()
-                    off_diag = core - tp
-                    last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()
-                    tf = [
-                        [tp, off_diag, last_col],
-                        [bottom, last_row, 0]
-                    ]
-                    retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                             title=f"TF Pos Neg' CM", series=f'{series}: {thresh:.2f}', matrix=tf,
-                             xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
+            if HAS_CLEARML:
+                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                         title=f'NxN {thresh:.2f}', series=series, matrix=cm.tolist(),
+                         xlabels=[*self.conf.all_label_names, '_'], ylabels=[*self.conf.all_label_names, '_'])
+        # OvR
+        true_pos_dict = {}
+        for thresh, cm in self._cms[series].items():
+            if HAS_CLEARML:
+                true_pos_dict[thresh] = true_pos = np.diag(cm)
+                false_pos = cm.sum(axis=0) - true_pos
+                false_neg = cm.sum(axis=1) - true_pos
+                true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
+                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                         title=f'OvR {thresh:.2f}', series=series, matrix=true_false.tolist(),
+                         xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*self.conf.all_label_names, '_'])
+        for thresh, cm in self._cms[series].items():
+            if HAS_CLEARML:
+                # noinspection PyPep8Naming
+                C = self.conf.n_all_labels
+                tp, core = true_pos_dict[thresh].sum(), cm[0:C, 0:C].sum()
+                off_diag = core - tp
+                last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()
+                tf = [
+                    [tp, off_diag, last_col],
+                    [bottom, last_row, 0]
+                ]
+                retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
+                         title=f'Micro {thresh:.2f}', series=series, matrix=tf,
+                         xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
 
     @classmethod
     def plot_confusion_matrix(cls, conf_mat, class_names):
