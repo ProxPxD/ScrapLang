@@ -139,7 +139,10 @@ class AdvancedDetector:
                 match self.conf.data.augment.is_augmenting:
                     case True: tags.append('augmented')
                     case False: tags.append('non-augmented')
-
+                match math.log2(self.conf.epochs):
+                    case exp if exp <= 8: tags.append('lil')
+                    case exp if 8 < exp <= 10: tags.append('mid')
+                    case exp if 10 < exp: tags.append('big')
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
                     tags=tags, reuse_last_task_id=False, auto_connect_arg_parser=False
@@ -290,7 +293,7 @@ class AdvancedDetector:
         for thresh, cm in self._cms[series].items():
             if HAS_CLEARML:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'NxN {thresh:.2f}', series=series, matrix=cm.tolist(),
+                         title=f'I NxN {thresh:.2f}', series=series, matrix=cm.tolist(),
                          xlabels=[*self.conf.all_label_names, '_'], ylabels=[*self.conf.all_label_names, '_'])
         # OvR
         true_pos_dict = {}
@@ -301,7 +304,7 @@ class AdvancedDetector:
                 false_neg = cm.sum(axis=1) - true_pos
                 true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'OvR {thresh:.2f}', series=series, matrix=true_false.tolist(),
+                         title=f'II OvR {thresh:.2f}', series=series, matrix=true_false.tolist(),
                          xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*self.conf.all_label_names, '_'])
         for thresh, cm in self._cms[series].items():
             if HAS_CLEARML:
@@ -315,7 +318,7 @@ class AdvancedDetector:
                     [bottom, last_row, 0]
                 ]
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'Micro {thresh:.2f}', series=series, matrix=tf,
+                         title=f'III Micro {thresh:.2f}', series=series, matrix=tf,
                          xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
 
     @classmethod
