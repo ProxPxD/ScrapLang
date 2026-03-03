@@ -150,6 +150,8 @@ class AdvancedDetector:
         }
         self.metrics['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
         self._cms = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
+        class_weights = self.train_param_calc.compute_weights().to(self.device)
+        self.train_param_calc.loss = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
 
     @property
     def dev_training(self) -> bool:
@@ -168,15 +170,14 @@ class AdvancedDetector:
     def _retrain_model(self) -> None:
         self.task: Task
         random.seed(self.conf.seed)
+
         df: DataFrame = self.preprocessing.init_preprocessor(self.valid_data_mgr.data)
         self.conf.used_label_count = OrderedDict(df.explode(VDC.LANG)[VDC.LANG].value_counts())
         train_df, val_df = self.splitter.split(self.preprocessing.group(df))
         train_df = self.preprocessing.train_preprocessor(train_df)
         val_df = self.preprocessing.val_preprocessor(val_df)
         train_batches = self.batcher.batch_data_up(train_df)
-        class_weights = self.train_param_calc.compute_weights().to(self.device)
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
-        loss_func = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
         self.init_for_training()
         eps = 1e-3
         if self.dev_training:
@@ -197,26 +198,10 @@ class AdvancedDetector:
                 n_records += (bs:=words.size(0))
                 logits: Tensor = self.moe(kinds, words, specs)
                 probs = torch.sigmoid(logits)
-
-                dist = torch.distributions.Bernoulli(probs=probs)
-                entropy = dist.entropy()
-
                 self._update_metrics(probs, targets)
-                loss = loss_func(logits, targets.float())
-                final_loss = loss.mean()
-                final_loss.backward()
-                epoch_loss += final_loss.item()
-                # m_neg = targets == 0
-                # loss_weights = torch.ones_like(preds)
-                # loss_weights[m_neg] = (preds ** self.conf.neg_bias)[m_neg]
-                # asym_loss = (loss * loss_weights)
-                # loss_per_cls = loss.mean(0)
-                # scale = loss_per_cls.detach().mean() / (loss_per_cls.detach() + eps)
-                # m_pos = ~m_neg
-                # final_loss_full = asym_loss * (1 + m_pos * (scale - 1))
-                # final_loss = final_loss_full.mean()
-                # final_loss.backward()
-                # epoch_loss += final_loss.item()
+                loss = self.train_param_calc.compute_loss(logits, targets)
+                loss.backward()
+                epoch_loss += loss.item()
 
                 if n_records >= self.conf.accum_grad_bs:
                     optimizer.step()
