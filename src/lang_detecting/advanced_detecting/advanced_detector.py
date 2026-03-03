@@ -142,22 +142,18 @@ class AdvancedDetector:
                     raise RuntimeError('Dev mode run failed to initialize ClearML') from e
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
-        kwargs = dict(task='multilabel', num_labels=self._n_classes)
+        kwargs = dict(task='multilabel', num_labels=self.conf.n_all_labels)
         self.metrics: dict[str, Metric] = {
             f'{metric_class.__name__}_{mode}'.lower(): metric_class(**kwargs, average=mode).to(self.device)
             for metric_class in [Accuracy, Precision, Recall, F1Score]
             for mode in ('macro',)
         }
         self.metrics['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
-        self._cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
+        self._cms = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
 
     @property
     def dev_training(self) -> bool:
         return self.context.dev and HAS_TRAINING_SUPERVISION
-
-    @cached_property
-    def _n_classes(self) -> int:
-        return len(self._all_class_names)
 
     @cached_property
     def _logger(self) -> Logger:
@@ -240,7 +236,7 @@ class AdvancedDetector:
         if not self.dev_training:
             return
         self._manage_metrics('reset')
-        self._cms = {th: np.zeros((self._n_classes + 1, self._n_classes + 1), dtype=int) for th in self._cm_threshes}
+        self._cms = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
 
     def _update_metrics(self, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
@@ -277,7 +273,7 @@ class AdvancedDetector:
                     # Class x Class
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                             title=f"Class x Class' CM", series=f'{mode}: {thresh:.2f}', matrix=cm.tolist(),
-                            xlabels=self._all_class_names + ['_'], ylabels=self._all_class_names + ['_'])
+                            xlabels=[*self.conf.all_label_names, '_'], ylabels=[*self.conf.all_label_names, '_'])
                     # Class x True/False
                     true_pos = np.diag(cm)
                     false_pos = cm.sum(axis=0) - true_pos
@@ -285,10 +281,10 @@ class AdvancedDetector:
                     true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
                     retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                              title=f"Class x TF' CM", series=f'{mode}: {thresh:.2f}', matrix=true_false.tolist(),
-                             xlabels=['True', 'False Pos', 'False Neg'], ylabels=self._all_class_names + ['_'])
+                             xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*self.conf.all_label_names, '_'])
 
                     # Simplest CM
-                    C = self._n_classes
+                    C = self.conf.n_all_labels
                     tp, core = true_pos.sum(), cm[0:C, 0:C].sum()
                     off_diag = core - tp
                     last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()
