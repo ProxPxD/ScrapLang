@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import operator as op
-from typing import Optional
 
 import pydash as _
 from GlotScript import sp
