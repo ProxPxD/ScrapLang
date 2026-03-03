@@ -183,7 +183,6 @@ class AdvancedDetector:
         loss_func = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
         self.init_for_training()
         eps = 1e-3
-        e = eps
         if self.dev_training:
             comment = []
             comment += [f'{len(self.conf.all_label_names)}-label']
