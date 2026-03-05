@@ -66,10 +66,11 @@ class PreprocessorFactory:
 
         def constrain(data) -> DataFrame:
             w = conf.data.word
+            offset = 2
             m_uniq = data[Cols.N_UNIQ] > 0
-            m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= w.n_non_uniq
-            m_right_ratio = (data[Cols.LEN] - 5) / data[Cols.N_UNIQ] >= w.len_to_uniq_ratio
-            m_long = data[Cols.LEN] >= w.len_thresh
+            m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= w.n_non_uniq + offset
+            m_right_ratio = (data[Cols.LEN] - 5 - offset) / data[Cols.N_UNIQ] >= w.len_to_uniq_ratio
+            m_long = data[Cols.LEN] >= w.len_thresh + offset
             return m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)
 
         enough_uniq = ColFilter(mask_func=constrain)
