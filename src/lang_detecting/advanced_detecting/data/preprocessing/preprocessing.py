@@ -65,17 +65,18 @@ class PreprocessorFactory:
         expand_rows = SeqStep(ensure_bos, put_decode, put_len, put_n_uniq)
 
         def constrain(data) -> DataFrame:
+            w = conf.data.word
             m_uniq = data[Cols.N_UNIQ] > 0
-            m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= conf.data.input_non_uniq_enough_count
-            m_right_ratio = (data[Cols.LEN] - 5) / data[Cols.N_UNIQ] >= conf.data.input_right_ratio
-            m_long = data[Cols.LEN] >= conf.data.input_len_thresh
+            m_enough_non_uniq = data[Cols.LEN] - data[Cols.N_UNIQ] >= w.n_non_uniq
+            m_right_ratio = (data[Cols.LEN] - 5) / data[Cols.N_UNIQ] >= w.len_to_uniq_ratio
+            m_long = data[Cols.LEN] >= w.len_thresh
             return m_long & (~m_uniq | m_enough_non_uniq & m_right_ratio)
 
         enough_uniq = ColFilter(mask_func=constrain)
 
         def enough_count_func(data: DataFrame) -> DataFrame:
             class_counts = data[VDC.LANG].value_counts()
-            numerous_enough = class_counts[class_counts >= conf.data.record_count_thresh].index
+            numerous_enough = class_counts[class_counts >= conf.data.min_record_n_thresh].index
             return data[VDC.LANG].isin(numerous_enough)
 
         enough_count = ColFilter(mask_func=enough_count_func)

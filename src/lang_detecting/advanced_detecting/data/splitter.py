@@ -12,12 +12,12 @@ class Splitter:
         self.conf = conf
 
     @property
-    def min_n_per_label(self) -> int:
-        return self.conf.data.min_n_per_label
+    def min_n_label(self) -> int:
+        return self.conf.data.valset.min_n_label
 
     def split(self, df: DataFrame):
         df = df.sample(frac=1, random_state=self.conf.seed).reset_index(drop=False)
-        n_val_records = int(len(df) * self.conf.data.s_valset)
+        n_val_records = int(len(df) * self.conf.data.valset.size)
         val_indices = self._get_min_val_indices(df)
         rest = df.drop(val_indices)
         n_rest_val = n_val_records - len(val_indices)
@@ -29,14 +29,14 @@ class Splitter:
     def _get_min_val_indices(self, df: DataFrame) -> set[pd.Index]:
         val_indices, label_counter = set(), Counter()
         for idx, labels in df[VDC.LANG].items():
-            if all(label_counter[l] >= self.min_n_per_label for l in labels):
+            if all(label_counter[l] >= self.min_n_label for l in labels):
                 continue
 
             val_indices.add(idx)
             for l in labels:
                 label_counter[l] += 1
 
-            if all(n >= self.min_n_per_label for n in label_counter.values()):
+            if all(n >= self.min_n_label for n in label_counter.values()):
                 break
         return val_indices
 

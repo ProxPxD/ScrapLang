@@ -8,17 +8,41 @@ class Augment:
     post_augment_size: int = pre_augment_size
 
 @dataclass
+class ValSet:
+    size: float = .1
+    min_n_label: int = 5
+
+@dataclass
+class WordConstrain:
+    len_thresh: int = 5
+    n_non_uniq: int = 7
+    len_to_uniq_ratio: float = 2.0
+
+@dataclass
+class Labels:
+    all_names: tuple[str] = None  # Autofilled
+    used_count: OrderedDict[str, int] = None  # Autofilled
+
+    @property
+    def n_all(self) -> Optional[int]:
+        return None if self.all_names is None else len(self.all_names)
+
+    @property
+    def n_used(self) -> Optional[int]:
+        return None if self.used_count is None else len(self.used_names)
+
+    @property
+    def used_names(self) -> tuple[str, ...]:
+        return tuple(self.used_count.keys())
+
+@dataclass
 class Data:
-    s_valset: float = .1
-    min_n_per_label: int = 5
-
+    min_record_n_thresh: int =2**5
+    valset: ValSet = field(default_factory=ValSet)
     augment: Augment = field(default_factory=Augment)
+    word: WordConstrain = field(default_factory=WordConstrain)
+    labels: Labels = field(default_factory=Labels)
 
-    input_len_thresh: int = 5
-    input_non_uniq_enough_count: int = 7
-    input_right_ratio: float = 2.0
-
-    record_count_thresh: int = 2**4
 
 @dataclass
 class ExpertConf:
@@ -31,34 +55,26 @@ class ExpertConf:
     paddings: Sequence[int] =  (0, 1, 1)
     leaky_relu_slop: float = 0.1
 
-
 @dataclass
-class Conf:
-    seed: int = 9
-    all_label_names: tuple[str] = None  # Autofilled
-    used_label_count: OrderedDict[str, int] = None  # Autofilled
-    data: Data = field(default_factory=Data)
-    expert: ExpertConf = field(default_factory=ExpertConf)
-    epochs: int = 2**11  #2**7
-    lr: float = 1e-2  # 1e-5  # 1e-3
-    weight_decay = 1e-5  # 1e-4
-    max_batch_size: Optional[int] = 2**12
-    accum_grad_bs: int = 2**9
-
+class Weights:
     prob_tau: float = .5
     entropy_tau: float = .5
 
     freq_bias: float = 4 # 1.1 # 1.1
     neg_bias: float = 4 # 4  # 3
 
-    @property
-    def n_all_labels(self) -> Optional[int]:
-        return None if self.all_label_names is None else len(self.all_label_names)
+@dataclass
+class Train:
+    epochs: int = 2**8  # 2**7
+    lr: float = 1e-2  # 1e-5  # 1e-3
+    weight_decay = 1e-5  # 1e-4
+    max_batch_size: Optional[int] = 2**12
+    accum_grad_bs: int = 2**9
 
-    @property
-    def n_used_labels(self) -> Optional[int]:
-        return None if self.used_label_names is None else len(self.used_label_names)
-
-    @property
-    def used_label_names(self) -> tuple[str, ...]:
-        return tuple(self.used_label_count.keys())
+@dataclass
+class Conf:
+    seed: int = 9
+    data: Data = field(default_factory=Data)
+    expert: ExpertConf = field(default_factory=ExpertConf)
+    train: Train = field(default_factory=Train)
+    weights: Weights = field(default_factory=Weights)

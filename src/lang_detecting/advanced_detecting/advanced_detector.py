@@ -103,7 +103,7 @@ class AdvancedDetector:
         self.batcher = Batcher(self.conf, self.tokenizer)
         self.train_param_calc = TrainParamCalc(self.conf)
         # noinspection PyTypeChecker
-        self.conf.all_label_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
+        self.conf.data.labels.all_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.writer = MagicMock()
         self.task = MagicMock()
@@ -139,9 +139,10 @@ class AdvancedDetector:
                 match self.conf.data.augment.is_augmenting:
                     case True: tags.append('augmented')
                     case False: tags.append('non-augmented')
-                match math.log2(self.conf.epochs):
+                match math.log2(self.conf.train.epochs):
                     case exp if exp <= 8: tags.append('lil')
-                    case exp if 8 < exp <= 10: tags.append('mid')
+                    case exp if 8 < exp <= 9: tags.append('mid')
+                    case exp if 9 < exp <= 10: tags.append('mid-big')
                     case exp if 10 < exp: tags.append('big')
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
@@ -155,7 +156,7 @@ class AdvancedDetector:
                     raise RuntimeError('Dev mode run failed to initialize ClearML') from mce
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
-        kwargs = dict(task='multilabel', num_labels=self.conf.n_all_labels)
+        kwargs = dict(task='multilabel', num_labels=self.conf.data.labels.n_all)
         self.metrics: dict[str, dict[str, Metric]] = {}
         for series in SERIES_SEQ:
             # noinspection PyTypeChecker
@@ -165,10 +166,10 @@ class AdvancedDetector:
                 for mode in ('macro',)
             }
             self.metrics[series]['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
-            self._cms[series] = {th: np.zeros((self.conf.n_all_labels + 1, self.conf.n_all_labels + 1), dtype=int) for th in self._cm_threshes}
-        if self.conf.all_label_names:
+            self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self._cm_threshes}
+        if self.conf.data.labels.all_names:
             class_weights = self.train_param_calc.compute_weights().to(self.device)
-            self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=None and class_weights.to(self.device), reduction='none')
+            self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=class_weights.to(self.device), reduction='none')
 
     @property
     def dev_training(self) -> bool:
@@ -189,28 +190,28 @@ class AdvancedDetector:
         random.seed(self.conf.seed)
 
         df: DataFrame = self.preprocessing.init_preprocessor(self.valid_data_mgr.data)
-        self.conf.used_label_count = OrderedDict(df.explode(VDC.LANG)[VDC.LANG].value_counts())
+        self.conf.data.labels.used_count = OrderedDict(valmap(int, df.explode(VDC.LANG)[VDC.LANG].value_counts().to_dict()))
         train_df, val_df = self.splitter.split(self.preprocessing.group(df))
         train_df = self.preprocessing.train_preprocessor(train_df)
         val_df = self.preprocessing.val_preprocessor(val_df)
         batch_all = c().map(self.batcher.batch_data_up)
         train_batches, val_batches = batch_all([train_df, val_df])
-        optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.lr, weight_decay=self.conf.weight_decay)
+        optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.train.lr, weight_decay=self.conf.train.weight_decay)
         self.init_for_training()
         if self.dev_training:
             comment = []
-            comment += [f'{len(self.conf.all_label_names)}-label']
-            comment += [class_names_string := ', '.join(self.conf.all_label_names)]
+            comment += [f'{len(self.conf.data.labels.all_names)}-label']
+            comment += [class_names_string := ', '.join(self.conf.data.labels.all_names)]
             self.writer.add_text(tag='Classes', text_string=class_names_string)
-            comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(self.conf.used_label_count.items(), key=c().get(1), reverse=True))]
+            comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(self.conf.data.labels.used_count.items(), key=c().get(1), reverse=True))]
             self.writer.add_text(tag='training info', text_string=lang_counts)
             self.task.set_comment('\n'.join(comment))
-        for epoch in range(self.conf.epochs):
+        for epoch in range(self.conf.train.epochs):
             self._reset_metrics()
             train_batches = self.train_param_calc.shuffle_batches(train_batches)
             n_records = 0
             epoch_loss = 0.0
-            for batch in tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.epochs}'):
+            for batch in tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.train.epochs}'):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += words.size(0)
                 logits: Tensor = self.moe(kinds, words, specs)
@@ -223,7 +224,7 @@ class AdvancedDetector:
                 loss.backward()
                 epoch_loss += loss.item()
 
-                if n_records >= self.conf.accum_grad_bs:
+                if n_records >= self.conf.train.accum_grad_bs:
                     optimizer.step()
                     optimizer.zero_grad()
                     n_records = 0
@@ -281,20 +282,21 @@ class AdvancedDetector:
 
     @cached_property
     def _n_cm_padding(self) -> int:
-        return math.floor(math.log10(self.conf.epochs // self._cm_kind_every))
+        return math.floor(math.log10(self.conf.train.epochs // self._cm_kind_every))
 
     def _board_confusion_matrices(self, series: str, step: int) -> None:
         if not self.dev_training:
             return
-        if not (step <= 10 or step % 4 == 0 or step == self.conf.epochs - 1):
+        if not (step <= 10 or step % 4 == 0 or step == self.conf.train.epochs - 1):
             return
+        all_names = self.conf.data.labels.all_names
         kwargs = dict(iteration=step + 1, yaxis_reversed=True)
         # NxN
         for thresh, cm in self._cms[series].items():
             if HAS_CLEARML:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                          title=f'I NxN {thresh:.2f}', series=series, matrix=cm.tolist(),
-                         xlabels=[*self.conf.all_label_names, '_'], ylabels=[*self.conf.all_label_names, '_'])
+                         xlabels=[*all_names, '_'], ylabels=[*all_names, '_'])
         # OvR
         true_pos_dict = {}
         for thresh, cm in self._cms[series].items():
@@ -305,11 +307,11 @@ class AdvancedDetector:
                 true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
                          title=f'II OvR {thresh:.2f}', series=series, matrix=true_false.tolist(),
-                         xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*self.conf.all_label_names, '_'])
+                         xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*all_names, '_'])
         for thresh, cm in self._cms[series].items():
             if HAS_CLEARML:
                 # noinspection PyPep8Naming
-                C = self.conf.n_all_labels
+                C = self.conf.data.labels.n_all
                 tp, core = true_pos_dict[thresh].sum(), cm[0:C, 0:C].sum()
                 off_diag = core - tp
                 last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()

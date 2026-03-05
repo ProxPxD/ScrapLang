@@ -29,7 +29,7 @@ class Batcher:
         batches: list[TensorBatch] = []
         len_bucketed = data.sort_values(Cols.LEN, ascending=False).groupby(Cols.LEN, sort=False)
         for word_length, bucket in len_bucketed:
-            batch_size = self.conf.max_batch_size or len(bucket)
+            batch_size = self.conf.train.max_batch_size or len(bucket)
             for i in range(0, len(bucket), batch_size):
                 batch_data = list(bucket.iloc[i: i + batch_size][[Cols.KIND, Cols.TOKENS, Cols.SPECS, VDC.LANG]].itertuples(index=False, name=None))
                 batch = self._create_batch(batch_data)
