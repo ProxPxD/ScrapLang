@@ -160,7 +160,7 @@ class AdvancedDetector:
         for series in SERIES_SEQ:
             # noinspection PyTypeChecker
             self.metrics[series] = {
-                f'{metric_class.__name__}-{mode}': metric_class(**kwargs, average=mode).to(self.device)  # noinspection PyTypeChecker
+                f'{metric_class.__name__}': metric_class(**kwargs, average=mode).to(self.device)  # noinspection PyTypeChecker
                 for metric_class in [Accuracy, Precision, Recall, F1Score]
                 for mode in ('macro',)
             }
