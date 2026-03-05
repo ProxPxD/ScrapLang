@@ -43,26 +43,23 @@ class PreprocessorFactory:
         is_not_mapped = ColFilter(col=VDC.IS_MAPPED, mask_func=lambda col: ~col, precond=lambda df: VDC.IS_MAPPED in df.columns)
         uniq_lang_word = ColFilter(output_cols=[VDC.LANG, VDC.WORD])
         uniq_lang_word_kind = ColFilter(output_cols=[VDC.LANG, VDC.WORD, Cols.KIND])
-
-        def get_kind(word: str):
-            details: dict = sp(''.join(word))[-1]['details']
-            return next(iter(details.keys())) if details else None
-
         ensure_word_seq = RowTransform(col=VDC.WORD, func=tuple)
-        strip_bos = RowTransform(col=VDC.WORD, func=c().apply(tuple).reject(Tokens.BOS.__eq__))
-        enclose_with_bos = RowTransform(col=VDC.WORD, func=lambda w: tuple([Tokens.BOS, *tuple(w), Tokens.BOS]))
-        ensure_bos = SeqStep(strip_bos, enclose_with_bos)
+        ensure_bos = RowTransform(col=VDC.WORD, func=lambda w: tuple([Tokens.BOS, *tuple(w), Tokens.BOS]) if Tokens.BOS not in w else tuple(w))
+        pad_word = SeqStep(ensure_word_seq, ensure_bos)
+
+        def get_kind_save(word: list[str]):
+            chars = [c for c in word if len(c) == 1]
+            details: dict = sp(''.join(chars))[-1]['details']
+            return next(iter(details.keys())) if details else None
         is_with_kind = ColFilter(col=Cols.KIND, mask_func=flow(DataFrame.isna, op.inv))
-        put_kind = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind, post_func=is_with_kind)
-        ensure_kind_safe_for_bos = SeqStep(strip_bos, put_kind, enclose_with_bos, precond=lambda df: Cols.KIND not in df.columns)
+        put_kind_safe = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind_save, post_func=is_with_kind, precond=lambda df: Cols.KIND not in df.columns)
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
-        put_specs = RowTransform(to_col=Cols.SPECS,
-                                 func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))
-        form_model_form = SeqStep(ensure_word_seq, ensure_kind_safe_for_bos, put_tokens, put_specs)
+        put_specs = RowTransform(to_col=Cols.SPECS, func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))
+        put_kind_tokens_specs = SeqStep(put_kind_safe, put_tokens, put_specs)
         put_decode = RowTransform(to_col=Cols.DECODE, func=lambda row: tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND]))
         put_len = RowTransform(to_col=Cols.LEN, from_col=Cols.TOKENS, func=len)
         put_n_uniq = RowTransform(to_col=Cols.N_UNIQ, from_col=Cols.DECODE, func=c().filter(tokenizer.unknown.__contains__).apply(len))
-        expand_rows = SeqStep(ensure_bos, put_decode, put_len, put_n_uniq)
+        expand_rows = SeqStep(put_decode, put_len, put_n_uniq)
 
         def constrain(data) -> DataFrame:
             w = conf.data.word
@@ -84,9 +81,9 @@ class PreprocessorFactory:
         filter_out_bad_data = SeqStep(enough_uniq, enough_count)
         self.group = Grouper()
 
-        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, form_model_form, expand_rows, filter_out_bad_data)
+        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, pad_word, put_kind_tokens_specs, expand_rows, filter_out_bad_data)
         ensure_dropped = SimpleStep(lambda df: df.drop(columns=[Cols.DECODE, Cols.N_UNIQ], errors='ignore'))
-        augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word_kind, form_model_form, expand_rows, filter_out_bad_data,
+        augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word_kind, put_kind_tokens_specs, expand_rows, filter_out_bad_data,
                                  precond=_.constant(conf.data.augment.is_augmenting))
         self.train_preprocessor = SeqStep(augment_filter)
         self.val_preprocessor = SeqStep(ensure_dropped)
