@@ -21,14 +21,14 @@ class RowTransform(AbstractStep):
         self.post_func = post_func
         super().__init__(**kwargs)
 
-    def perform(self, data: DataFrame) -> DataFrame:
-        data = copy(data)
-        transformed = data[self.from_col].apply(self.func) if self.from_col else data.apply(self.func, axis=1)
+    def perform(self, df: DataFrame) -> DataFrame:
+        df = copy(df)
+        transformed = df[self.from_col].apply(self.func) if self.from_col else df.apply(self.func, axis=1)
         if self.to_col:
-            data[self.to_col] = transformed
+            df[self.to_col] = transformed
         else:
-            data = transformed
+            df = transformed
         if self.post_func:
-            data = self.post_func(data)
-        return data
+            df = self.post_func(df)
+        return df
 

@@ -29,7 +29,7 @@ class AbstractStep(ABC):
         self.precond = precond or _.constant(True)
 
     @abstractmethod
-    def perform(self, data: DataFrame) -> DataFrame:
+    def perform(self, df: DataFrame) -> DataFrame:
         pass
 
     def __call__(self, *args, **kwargs):
@@ -41,8 +41,8 @@ class SimpleStep(AbstractStep):
         super().__init__(**kwargs)
         self.func = func
 
-    def perform(self, data: DataFrame) -> DataFrame:
-        return self.func(data)
+    def perform(self, df: DataFrame) -> DataFrame:
+        return self.func(df)
 
 
 class SeqStep(AbstractStep):
@@ -50,7 +50,7 @@ class SeqStep(AbstractStep):
         self.steps = steps
         super().__init__(**kwargs)
 
-    def perform(self, data: DataFrame) -> DataFrame:
-        if not self.precond(data):
-            return data
-        return flow(*self.steps)(data)
+    def perform(self, df: DataFrame) -> DataFrame:
+        if not self.precond(df):
+            return df
+        return flow(*self.steps)(df)

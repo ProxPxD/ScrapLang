@@ -17,20 +17,20 @@ class ColFilter(AbstractStep):
         self.output_cols = output_cols
         super().__init__(**kwargs)
 
-    def perform(self, data: DataFrame) -> DataFrame:
-        if not self.precond(data):
-            return data
+    def perform(self, df: DataFrame) -> DataFrame:
+        if not self.precond(df):
+            return df
         match self.col:
-            case None: pivot = data
-            case _ if self.col in data.columns: pivot = data[self.col]
+            case None: pivot = df
+            case _ if self.col in df.columns: pivot = df[self.col]
             case _: pivot = None
         # noinspection PyUnboundLocalVariable
         if self.func and pivot is not None:  # noinspection PyUnboundLocalVariable
             mask = self.func(pivot)
-            data = data[mask]
+            df = df[mask]
         if self.output_cols:
-            data = data[self.output_cols].drop_duplicates()
-        return data
+            df = df[self.output_cols].drop_duplicates()
+        return df
 
     @property
     def _decol_func(self) -> Callable:
