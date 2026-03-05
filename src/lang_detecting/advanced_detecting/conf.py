@@ -60,7 +60,7 @@ class Weights:
     prob_tau: float = .5
     entropy_tau: float = .5
 
-    freq_bias: float = 4 # 1.1 # 1.1
+    freq_bias: float = 1.1 # 1.1 # 1.1
     neg_bias: float = 4 # 4  # 3
 
 @dataclass

@@ -19,9 +19,10 @@ class TrainParamCalc:
         self.loss_func: Optional[nn.Module] = loss_func
 
     def compute_weights(self, bias: float = None) -> Tensor:
+        import pandas as pd
         bias = bias or self.conf.weights.freq_bias
         all_labels, used_label_count = self.conf.data.labels.all_names, self.conf.data.labels.used_count
-        present_classes = used_label_count.keys()
+        present_classes = sorted(used_label_count.keys())
         counts = torch.tensor([used_label_count[c] for c in present_classes])
         freq = counts / counts.sum()
         raw_weights = freq ** -bias
