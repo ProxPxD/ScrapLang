@@ -181,7 +181,12 @@ class WiktioParser(Parser):
             # if '/' in core and '#' in core:
             #     further_word, further_lang = re.split('#', core)
             # else:
-            further_word, further_lang = re.split('[#/]', core)  # TODO: fix: t pl z -o
+            further = re.split('[#/]', core)
+            if len(further) == 1:
+                further += ['']
+            further_word, further_lang = further  # TODO: fix: t pl z -o
+            if 'index.php' in further_word:
+                further_word = further_word.split('=')[1].split('&')[0]
             further_word = (further_word or last_tag.text).split('=')[-1]
             further_lang = further_lang.split(':')[0].removeprefix('#').split('&')[0]
             if further_word.startswith(RECONSTRUCTION:='Reconstruction:'):
