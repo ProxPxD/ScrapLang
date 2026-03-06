@@ -13,6 +13,7 @@ from src.lang_detecting.advanced_detecting.data.preprocessing.core.filtering imp
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import Resources, SeqStep, SimpleStep, Step
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.transforming import RowTransform
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.augmenting import Augmenter
+from src.lang_detecting.advanced_detecting.data.preprocessing.specific.chunker import Chunker
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.grouper import Grouper
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer, Tokens
 from src.resouce_managing.valid_data import VDC
@@ -55,11 +56,14 @@ class PreprocessorFactory:
         put_kind_safe = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind_save, post_func=is_with_kind, precond=lambda df: Cols.KIND not in df.columns)
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
         put_specs = RowTransform(to_col=Cols.SPECS, func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))
-        put_kind_tokens_specs = SeqStep(put_kind_safe, put_tokens, put_specs)
+        put_tokens_specs = SeqStep(put_tokens, put_specs)
+        put_kind_tokens_specs = SeqStep(put_kind_safe, put_tokens_specs)
         put_decode = RowTransform(to_col=Cols.DECODE, func=lambda row: tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND]))
         put_len = RowTransform(to_col=Cols.LEN, from_col=Cols.TOKENS, func=len)
         put_n_uniq = RowTransform(to_col=Cols.N_UNIQ, from_col=Cols.DECODE, func=c().filter(tokenizer.unknown.__contains__).apply(len))
         expand_rows = SeqStep(put_decode, put_len, put_n_uniq)
+
+        #self.chunker = Chunker(size=5, to_col=VDC.WORD, from_col=VDC.WORD)
 
         def constrain(data) -> DataFrame:
             w = conf.data.word
@@ -81,7 +85,7 @@ class PreprocessorFactory:
         filter_out_bad_data = SeqStep(enough_uniq, enough_count)
         self.group = Grouper()
 
-        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, pad_word, put_kind_tokens_specs, expand_rows, filter_out_bad_data)
+        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, pad_word, put_kind_safe, put_tokens_specs, expand_rows, filter_out_bad_data)
         ensure_dropped = SimpleStep(lambda df: df.drop(columns=[Cols.DECODE, Cols.N_UNIQ], errors='ignore'))
         augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word_kind, put_kind_tokens_specs, expand_rows, filter_out_bad_data,
                                  precond=_.constant(conf.data.augment.is_augmenting))

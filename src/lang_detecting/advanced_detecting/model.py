@@ -63,7 +63,7 @@ class Expert(nn.Module):
             x = self.hid_act(conv(x))  # B*ch x c_k x l_k
 
         x = x.reshape(B, ch, *x.shape[-2:])   # B x ch x c_k x l_k
-        # merge '(ch)unks' and '(l_k)ength'
+        #x = x.sum(dim=(-3, -1))
         x = self._weight_positional(x)  # B x o
         # Mask non-expert outputs
         x = x * self.output_mask + (self.output_mask - 1) * 1e9  # set masked to very negative value
@@ -101,7 +101,7 @@ class Expert(nn.Module):
         x = x.permute(0, 2, 1, 3)  # B x c_k x ch x l_k
         x = x.flatten(-2)  # B x c_k x (ch*l_k)
         chunk_o_length = x.shape[-1]
-        n_edge_vals = min(self.s_chunk_step, chunk_o_length // 2)
+        n_edge_vals = min(self.s_chunk_step // 2, chunk_o_length // 2)
         n_mid_vals = chunk_o_length - 2*n_edge_vals
         pos = self.positional / self.positional.sum()
         weights = torch.cat([pos[i].expand(n) for i, n in enumerate((n_edge_vals, n_mid_vals, n_edge_vals))]).to(dtype=x.dtype)
