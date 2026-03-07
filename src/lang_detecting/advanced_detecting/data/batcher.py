@@ -1,23 +1,16 @@
 from __future__ import annotations
 
-import random
-import time
-from collections import OrderedDict
-from functools import cached_property
-
 import pydash as _
 import torch
 from pandas import DataFrame
 from pydash import chain as c
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import Dataset
 
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import Cols, TensorBatch
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 from src.resouce_managing.valid_data import VDC
-from src.lang_detecting.advanced_detecting.conf import Conf
 
 
 class Batcher:
