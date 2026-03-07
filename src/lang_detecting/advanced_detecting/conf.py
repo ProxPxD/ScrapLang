@@ -1,3 +1,4 @@
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import OrderedDict, Sequence, Optional
 
@@ -21,7 +22,7 @@ class WordConstrain:
 @dataclass
 class Labels:
     all_names: tuple[str] = None  # Autofilled
-    used_count: OrderedDict[str, int] = None  # Autofilled
+    used_count: Counter[str] = None  # Autofilled
 
     @property
     def n_all(self) -> Optional[int]:
@@ -37,7 +38,7 @@ class Labels:
 
 @dataclass
 class Data:
-    min_record_n_thresh: int =2**5
+    min_record_n_thresh: int = 2**5
     valset: ValSet = field(default_factory=ValSet)
     augment: Augment = field(default_factory=Augment)
     word: WordConstrain = field(default_factory=WordConstrain)

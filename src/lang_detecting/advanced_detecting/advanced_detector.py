@@ -1,7 +1,7 @@
 import math
 import random
 import warnings
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from dataclasses import asdict
 from functools import cached_property
 from itertools import product
@@ -190,7 +190,7 @@ class AdvancedDetector:
         random.seed(self.conf.seed)
 
         df: DataFrame = self.preprocessing.init_preprocessor(self.valid_data_mgr.data)
-        self.conf.data.labels.used_count = OrderedDict(valmap(int, df.explode(VDC.LANG)[VDC.LANG].value_counts().to_dict()))
+        self.conf.data.labels.used_count = Counter(df[VDC.LANG].explode())
         train_df, val_df = self.splitter.split(self.preprocessing.group(df))
         train_df = self.preprocessing.train_preprocessor(train_df)
         val_df = self.preprocessing.val_preprocessor(val_df)
