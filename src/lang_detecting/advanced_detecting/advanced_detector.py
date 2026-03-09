@@ -260,12 +260,12 @@ class AdvancedDetector:
                 val_data[f'{PRED}_{thresh:.2f}'] = val_data[PROBS].apply(flow(c().map(lambda p: int(p > thresh)), self.tokenizer.detokenize_targets_as_onehot))
             base_thresh = self.conf.supervision.cm_threshes[0]
             base_thresh_name = f'{PRED}_{base_thresh:.2f}'
-            val_data = val_data[val_data.target != val_data[base_thresh_name]].sort_values(by=[TARGET, WORD])
-
-            probs_data = pd.DataFrame(val_data[PROBS].apply(c().map(lambda p: f'{p:.2f}')).tolist(), columns=self.conf.data.labels.all_names)
+            val_data = val_data[val_data.target != val_data[base_thresh_name]]
+            val_data = val_data.set_index([TARGET, WORD]).sort_index()
+            probs_data = pd.DataFrame(val_data[PROBS].apply(c().map(lambda p: f'{p:.2f}')).tolist(), columns=self.conf.data.labels.all_names, index=val_data.index)
             val_data = val_data.drop(columns=[KIND, PROBS])
-            self._logger.report_table(title='Validation Misclassifications', series='preds', iteration=epoch, table_plot=val_data.reset_index(drop=True))
-            self._logger.report_table(title='Validation Misclassifications', series='probs', iteration=epoch, table_plot=probs_data.reset_index(drop=True))
+            self._logger.report_table(title='Validation Misclassifications', series='preds', iteration=epoch, table_plot=val_data.reset_index(drop=False))
+            self._logger.report_table(title='Validation Misclassifications', series='probs', iteration=epoch, table_plot=probs_data.reset_index(drop=False))
         self.moe.train()
 
     def _manage_metrics(self, func_name: str, series: str, *args, **kwargs) -> None:
