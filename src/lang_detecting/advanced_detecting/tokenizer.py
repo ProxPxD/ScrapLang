@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Sequence
 
 from toolz import valmap
+import pydash as _
 
 from src.lang_detecting.advanced_detecting.model_io_mging import Class, \
     KindToVocab
@@ -44,7 +45,7 @@ class Tokenizer(ITokenizer):
     def tokenize(self, tokens: list[str]) -> Sequence[int]:
         return tuple([self.token2id.get(t, 0) if self.allow_unrecognized else self.token2id[t] for t in tokens])
 
-    def detokenize(self, ids: list[int]) -> Sequence[str]:
+    def detokenize(self, ids: list[int]) -> Sequence[str] | str:
         return tuple([self.id2token.get(i, self.unknown) if self.allow_unrecognized else self.id2token[i] for i in ids])
 
 
@@ -90,8 +91,15 @@ class MultiKindTokenizer(ITokenizer):
     def tokenize_target(self, target: str) -> Sequence[int]:
         return self.target_tokenizer([target])
 
-    def detokenize_target(self, target: int) -> Sequence[str]:
-        return self.target_tokenizer.detokenize([target])
+    def detokenize_target(self, target: int) -> str:
+        return self.target_tokenizer.detokenize([target])[0]
+
+    def detokenize_targets(self, targets: list[int]) -> tuple[str, ...]:
+        return tuple(_.map_(targets, self.detokenize_target))
+
+    def detokenize_targets_as_onehot(self, targets: list[int]) -> tuple[str, ...]:
+        targets = [i for i, is_target in enumerate(targets) if is_target]
+        return self.detokenize_targets(targets)
 
     def tokenize_spec_groups(self, word: str | Sequence[str], kind: str) -> Sequence[Sequence[int]]:
         return tuple([tuple([int(cond(c)) for (cond, func) in self.kind_to_spec[kind]]) for c in word])

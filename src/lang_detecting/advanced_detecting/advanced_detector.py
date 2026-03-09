@@ -1,13 +1,15 @@
 import math
 import random
 import warnings
-from collections import Counter, OrderedDict
+from collections import Counter
 from dataclasses import asdict
 from functools import cached_property
 from itertools import product
 from unittest.mock import MagicMock
 
 import numpy as np
+import pandas as pd
+import pydash as _
 
 from src.lang_detecting.advanced_detecting.data.batcher import Batcher
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
@@ -238,14 +240,29 @@ class AdvancedDetector:
         self.moe.eval()
         with torch.no_grad():
             val_loss = .0
+            val_data = pd.DataFrame(columns=[KIND:='kind', WORD:='words', TARGET:='target', PROBS:='probs'])
             for batch in batches:
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 logits: Tensor = self.moe(kinds, words, specs)
                 probs = torch.sigmoid(logits)
                 self._update_metrics(VAL, probs, targets)
                 val_loss += self.train_param_calc.compute_loss(logits, targets)
+                rows = zip(*[col.tolist() for col in (kinds, words, targets, probs)])
+                val_data = pd.concat([val_data, pd.DataFrame(rows, columns=val_data.columns)], ignore_index=True)
             retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, val_loss, epoch)
             self._board_metrics(VAL, epoch)
+
+            val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
+            val_data[WORD] = val_data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[WORD], row[KIND])).replace(Tokens.BOS, ''), axis=1)
+            val_data[TARGET] = val_data.apply(lambda row: self.tokenizer.detokenize_targets_as_onehot(row[TARGET]), axis=1)
+            for thresh in self.conf.supervision.cm_threshes:
+                val_data[f'{PROBS}_{thresh:.2f}'] = val_data[PROBS].apply(flow(c().map(lambda p: int(p > thresh)), self.tokenizer.detokenize_targets_as_onehot))
+            val_data = val_data.drop(columns=[KIND]).reset_index(drop=True).sort_values(by=[TARGET, WORD])
+            base_thresh = self.conf.supervision.cm_threshes[0]
+            base_thresh_name = f'{PROBS}_{base_thresh:.2f}'
+            val_data = val_data[val_data.target != val_data[base_thresh_name]]
+
+            self._logger.report_table(title='Validation Misclassifications', series='val', iteration=epoch, table_plot=val_data)
         self.moe.train()
 
     def _manage_metrics(self, func_name: str, series: str, *args, **kwargs) -> None:

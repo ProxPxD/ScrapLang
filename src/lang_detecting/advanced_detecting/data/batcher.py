@@ -30,13 +30,13 @@ class Batcher:
         return batches
 
     def _create_batch(self, batch: list[tuple]) -> TensorBatch:
-        kinds, tokens, specs, outputs = tuple(zip(*batch))
+        kinds, tokens, specs, targets = tuple(zip(*batch))
         tokenized_kinds = Tensor(_.map_(kinds, self.tokenizer.tokenize_kind)).int()
         tokenized_words = Tensor(tokens).int()
         tokenized_spec_groups = pad_sequence(_.map_(specs, torch.tensor), batch_first=True, padding_value=0).int().to_sparse()
-        tokenized_outputs = _.map_(outputs, c().map(self.tokenizer.tokenize_target))
+        tokenized_outputs = _.map_(targets, c().map(self.tokenizer.tokenize_target))
         one_hot_encoded_targets = torch.zeros(len(tokenized_outputs), self.tokenizer.n_target_tokens, dtype=torch.long)
-        for j, outputs in enumerate(tokenized_outputs):
-            one_hot_encoded_targets[j, outputs] = 1  # / len(outputs)
+        for j, targets in enumerate(tokenized_outputs):
+            one_hot_encoded_targets[j, targets] = 1  # / len(outputs)
         return tokenized_kinds, tokenized_words, tokenized_spec_groups, one_hot_encoded_targets
 
