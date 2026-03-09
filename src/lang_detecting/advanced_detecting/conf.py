@@ -73,9 +73,15 @@ class Train:
     accum_grad_bs: int = 2**9
 
 @dataclass
+class Supervision:
+    cm_threshes: Sequence[float] = (.5, .66, .80, .90, .95, .99)
+    metrics_thresh: float = .8
+
+@dataclass
 class Conf:
     seed: int = 9
     data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
     train: Train = field(default_factory=Train)
     weights: Weights = field(default_factory=Weights)
+    supervision: Supervision = field(default_factory=Supervision)

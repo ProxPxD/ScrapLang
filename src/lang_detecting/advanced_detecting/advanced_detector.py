@@ -108,7 +108,6 @@ class AdvancedDetector:
         self.writer = MagicMock()
         self.task = MagicMock()
         self.metrics = {}
-        self._cm_threshes = (.10, .66, .80, .90)
         self._cms: dict[str, dict[float, np.ndarray]] = {}
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
@@ -166,7 +165,7 @@ class AdvancedDetector:
                 for mode in ('macro',)
             }
             self.metrics[series]['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
-            self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self._cm_threshes}
+            self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.supervision.cm_threshes}
         if self.conf.data.labels.all_names:
             class_weights = self.train_param_calc.compute_weights().to(self.device)
             self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=class_weights.to(self.device), reduction='none')
@@ -263,7 +262,7 @@ class AdvancedDetector:
     def _update_metrics(self, series: str, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
-        self._manage_metrics('update', series, (probs > .80).long(), targets)
+        self._manage_metrics('update', series, (probs > self.conf.supervision.metrics_thresh).long(), targets)
         for thresh, cm in self._cms[series].items():
             np.int = int
             count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
