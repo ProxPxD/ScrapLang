@@ -199,10 +199,11 @@ class AdvancedDetector:
         self.init_for_training()
         if self.dev_training:
             comment = []
-            comment += [f'{len(self.conf.data.labels.all_names)}-label']
-            comment += [class_names_string := ', '.join(self.conf.data.labels.all_names)]
+            comment += [f'n-label: {len(self.conf.data.labels.all_names)}']
+            comment += ['all-labels: ' + (class_names_string := ', '.join(self.conf.data.labels.all_names))]
             self.writer.add_text(tag='Classes', text_string=class_names_string)
-            comment += [lang_counts := '\n'.join(f'{lang}: {count}' for lang, count in sorted(self.conf.data.labels.used_count.items(), key=c().get(1), reverse=True))]
+            comment += ['lang-count:']
+            comment += [lang_counts := '\n'.join(f'  {lang}: {count}' for lang, count in sorted(self.conf.data.labels.used_count.items(), key=c().get(1), reverse=True))]
             self.writer.add_text(tag='training info', text_string=lang_counts)
             self.task.set_comment('\n'.join(comment))
         for epoch in range(self.conf.train.epochs):
