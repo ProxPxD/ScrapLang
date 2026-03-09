@@ -255,14 +255,17 @@ class AdvancedDetector:
             val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
             val_data[WORD] = val_data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[WORD], row[KIND])).replace(Tokens.BOS, ''), axis=1)
             val_data[TARGET] = val_data.apply(lambda row: self.tokenizer.detokenize_targets_as_onehot(row[TARGET]), axis=1)
+            PRED = 'red'
             for thresh in self.conf.supervision.cm_threshes:
-                val_data[f'{PROBS}_{thresh:.2f}'] = val_data[PROBS].apply(flow(c().map(lambda p: int(p > thresh)), self.tokenizer.detokenize_targets_as_onehot))
-            val_data = val_data.drop(columns=[KIND]).reset_index(drop=True).sort_values(by=[TARGET, WORD])
+                val_data[f'{PRED}_{thresh:.2f}'] = val_data[PROBS].apply(flow(c().map(lambda p: int(p > thresh)), self.tokenizer.detokenize_targets_as_onehot))
             base_thresh = self.conf.supervision.cm_threshes[0]
-            base_thresh_name = f'{PROBS}_{base_thresh:.2f}'
-            val_data = val_data[val_data.target != val_data[base_thresh_name]]
+            base_thresh_name = f'{PRED}_{base_thresh:.2f}'
+            val_data = val_data[val_data.target != val_data[base_thresh_name]].sort_values(by=[TARGET, WORD])
 
-            self._logger.report_table(title='Validation Misclassifications', series='val', iteration=epoch, table_plot=val_data)
+            probs_data = pd.DataFrame(val_data[PROBS].apply(c().map(lambda p: f'{p:.2f}')).tolist(), columns=self.conf.data.labels.all_names)
+            val_data = val_data.drop(columns=[KIND, PROBS])
+            self._logger.report_table(title='Validation Misclassifications', series='preds', iteration=epoch, table_plot=val_data.reset_index(drop=True))
+            self._logger.report_table(title='Validation Misclassifications', series='probs', iteration=epoch, table_plot=probs_data.reset_index(drop=True))
         self.moe.train()
 
     def _manage_metrics(self, func_name: str, series: str, *args, **kwargs) -> None:
