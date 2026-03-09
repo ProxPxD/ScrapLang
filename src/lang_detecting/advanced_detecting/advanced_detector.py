@@ -255,7 +255,7 @@ class AdvancedDetector:
             val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
             val_data[WORD] = val_data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[WORD], row[KIND])).replace(Tokens.BOS, ''), axis=1)
             val_data[TARGET] = val_data.apply(lambda row: self.tokenizer.detokenize_targets_as_onehot(row[TARGET]), axis=1)
-            PRED = 'red'
+            PRED = 'pred'
             for thresh in self.conf.supervision.cm_threshes:
                 val_data[f'{PRED}_{thresh:.2f}'] = val_data[PROBS].apply(flow(c().map(lambda p: int(p > thresh)), self.tokenizer.detokenize_targets_as_onehot))
             base_thresh = self.conf.supervision.cm_threshes[0]
