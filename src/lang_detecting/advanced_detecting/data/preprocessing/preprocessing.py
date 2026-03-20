@@ -33,6 +33,10 @@ class PreprocessorFactory:
         self.val_preprocessor: Step | None = None
         self._create_preprocessors()
 
+    @property
+    def tokenizer(self) -> MultiKindTokenizer:
+        return self.resources.tokenizer
+
     def _create_preprocessors(self) -> None:
         """
         Naming Convention
@@ -60,7 +64,7 @@ class PreprocessorFactory:
         put_kind_tokens_specs = SeqStep(put_kind_safe, put_tokens_specs)
         put_decode = RowTransform(to_col=Cols.DECODE, func=lambda row: tokenizer.detokenize_input(row[Cols.TOKENS], row[Cols.KIND]))
         put_len = RowTransform(to_col=Cols.LEN, from_col=Cols.TOKENS, func=len)
-        put_n_uniq = RowTransform(to_col=Cols.N_UNIQ, from_col=Cols.DECODE, func=c().filter(tokenizer.unknown.__contains__).apply(len))
+        put_n_uniq = RowTransform(to_col=Cols.N_UNIQ, from_col=Cols.DECODE, func=c().filter(Tokens.UNK.__contains__).apply(len))
         expand_rows = SeqStep(put_decode, put_len, put_n_uniq)
 
         #self.chunker = Chunker(size=5, to_col=VDC.WORD, from_col=VDC.WORD)

@@ -60,9 +60,7 @@ class ModelIOMgr:
 
     @classmethod
     def enhance_tokens(cls, kind_to_vocab: KindToVocab, tokens: list[Vocab]) -> KindToVocab:
-        for kind, vocab in kind_to_vocab.items():
-            vocab.extend(tokens)
-        return kind_to_vocab
+        return OrderedDict([(kind, tokens + list(vocab)) for kind, vocab in kind_to_vocab.items()])
 
 class KindToMgr:
     @classmethod

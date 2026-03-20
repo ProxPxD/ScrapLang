@@ -23,7 +23,7 @@ import torch
 import torch.nn as nn
 from clearml.backend_api.session.defs import MissingConfigError
 from pandas import DataFrame
-from pydash import chain as c, flow
+from pydash import chain as c, flow, nth
 from toolz import valmap
 from torch import Tensor
 
@@ -94,11 +94,12 @@ class AdvancedDetector:
         kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
         self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
         kind_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
-        kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, [Tokens.BOS])
+        kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, [Tokens.PAD, Tokens.BOS, Tokens.UNK])
         self.kinds_to_vocab = kind_to_vocab
         targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
 
         self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
+        self.conf.expert.padding_idx = self.tokenizer.tokenize_common(Tokens.PAD)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf)
         self.splitter = Splitter(self.conf)

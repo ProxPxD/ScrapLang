@@ -2,18 +2,30 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import OrderedDict, Sequence, Optional
 
-@dataclass
+from sympy.core.cache import cached_property
+
+
+@dataclass(frozen=True)
 class Augment:
     is_augmenting: bool = True
     pre_augment_size: int = 5
     post_augment_size: int = pre_augment_size
 
-@dataclass
+@dataclass(frozen=True)
+class Chunking:
+    size: int = 2 ** 4
+    overlap: int = 3
+
+    @property
+    def stride(self) -> int:
+        return self.size - self.overlap
+
+@dataclass(frozen=True)
 class ValSet:
     size: float = .1
     min_n_label: int = 5
 
-@dataclass
+@dataclass(frozen=True)
 class WordConstrain:
     len_thresh: int = 5
     n_non_uniq: int = 7
@@ -39,6 +51,7 @@ class Labels:
 @dataclass
 class Data:
     min_record_n_thresh: int = 2**5
+    chunking: Chunking = field(default_factory=Chunking)
     valset: ValSet = field(default_factory=ValSet)
     augment: Augment = field(default_factory=Augment)
     word: WordConstrain = field(default_factory=WordConstrain)
@@ -47,16 +60,15 @@ class Data:
 
 @dataclass
 class ExpertConf:
-    # TODO remove chunk info
-    s_chunk: int = 7  # Suits well with the paddings to yield 3 in the last layer
-    s_chunk_step: int = s_chunk // 2 + 1
+    chunking: Chunking = field(default_factory=Chunking)
+    padding_idx: int = None  # Autofill
     emb_dim: int = 32
     kernels: Sequence[int] = (3, 3, 3)
-    hidden_channels: Sequence[int] = (32, 32)
-    paddings: Sequence[int] =  (0, 1, 1)
+    hidden_channels: Sequence[int] = (64, 64, 64)
+    paddings: Sequence[int] =  (0, 0, 0)
     leaky_relu_slop: float = 0.1
 
-@dataclass
+@dataclass(frozen=True)
 class Weights:
     prob_tau: float = .5
     entropy_tau: float = .5
@@ -64,12 +76,12 @@ class Weights:
     freq_bias: float = 1.1 # 1.1 # 1.1
     neg_bias: float = 4 # 4  # 3
 
-@dataclass
+@dataclass(frozen=True)
 class Train:
     epochs: int = 2**8  # 2**7
     lr: float = 1e-2  # 1e-5  # 1e-3
     weight_decay = 1e-5  # 1e-4
-    max_batch_size: Optional[int] = 2**12
+    max_batch_size: Optional[int] = 2**6
     accum_grad_bs: int = 2**9
 
 @dataclass

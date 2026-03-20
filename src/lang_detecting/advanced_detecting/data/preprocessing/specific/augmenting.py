@@ -27,14 +27,13 @@ class Augmenter(AbstractStep):
         return pd.concat(dfs).drop_duplicates([VDC.WORD, VDC.LANG])
 
     def _extract_patterns(self, df) -> tuple[list[list[str]], list[list[str]]]:
-        tokenizer = self.resources.tokenizer
         conf = self.resources.conf
         unknown_patterns = (
             c(df[Cols.DECODE].to_list())
-            .map(c().map_(flow(tokenizer.unknown.__eq__, int)))
+            .map(c().map_(flow(Tokens.UNK.__eq__, int)))
             .uniq()
         )
-        norm = c().uniq().filter(any).map(c().map(lambda t: tokenizer.unknown if t else ''))
+        norm = c().uniq().filter(any).map(c().map(lambda t: Tokens.UNK if t else ''))
         pre_patterns = unknown_patterns.commit().map(lambda p: p[:conf.data.augment.pre_augment_size]).value()
         post_patterns = unknown_patterns.map(lambda p: p[-conf.data.augment.post_augment_size:]).value()
         return norm(pre_patterns), norm(post_patterns)
