@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from functools import lru_cache
-from itertools import product, cycle
-from typing import ClassVar, Iterable, Optional, Any, TYPE_CHECKING, Sequence
+from itertools import cycle, product
+from typing import Any, ClassVar, Iterable, Optional, Sequence, TYPE_CHECKING
 
 import pydash as _
 from box import Box
 from pydash import chain as c
 
 from src.constants import preinitialized
-from src.context_domain import ColorSchema, Assume, GroupBy, InferVia, GatherData, Indirect, Mappings, UNSET, \
-    Color, color_names, RetrainOn
+from src.context_domain import Assume, Color, ColorSchema, GatherData, GroupBy, GroupByType, Indirect, InferVia, Mappings, RetrainOn, UNSET, Unsupported, color_names
 
 if TYPE_CHECKING:
     from src.conf import Conf
@@ -79,7 +78,10 @@ class ScrapIterator:
     def is_in_same_word_bundle_as_prev(self) -> bool:
         return self.prev_bundle != self.curr_bundle
 
-    @lru_cache()
+    def is_in_super_group(self) -> bool:
+        match self._context.groupby:
+            case 'lang': ...
+            case 'word': ...
     def is_in_poly_main_group(self) -> bool:
         if self._context.n_from_langs == 1:
             return len(self._context.words) > 1 and len(self._context.to_langs) > 1
@@ -182,7 +184,7 @@ class Context:
     test: bool = UNSET
 
     assume: Assume = UNSET  # TODO: remove
-    groupby: GroupBy = UNSET
+    groupby: GroupByType = UNSET
     indirect: Indirect = UNSET
     color: Box | Color = UNSET
     gather_data: GatherData = UNSET
@@ -257,6 +259,26 @@ class Context:
     def n_from_langs(self) -> int:
         return len(self.from_langs)
 
+    def is_multi_from_lang(self) -> bool:
+        return self.n_from_langs > 1
+
+    @property
+    def n_to_langs(self) -> int:
+        return len(self.to_langs)
+
+    def is_multi_to_lang(self) -> bool:
+        return self.n_to_langs > 1
+
+    @property
+    def n_words(self) -> int:
+        return len(self.words)
+
+    def is_multi_word(self) -> bool:
+        return self.n_words > 1
+
+    def is_translating(self) -> bool:
+        return bool(self.to_langs)
+
     @property
     def from_lang_word_bundles(self) -> Sequence[Sequence[str]]:
         return _.chunk(self.words, self.n_from_langs)
@@ -268,24 +290,24 @@ class Context:
     @property
     def n_all_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
         match self.groupby:
-            case 'lang': return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
-            case 'word': return self.n_from_langs * len(self.to_langs)
-            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+            case GroupBy.LANG.value: return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
+            case GroupBy.WORD.value: return self.n_from_langs * len(self.to_langs)
+            case _: raise Unsupported(self.groupby)
 
     @property
     def n_main_groups(self) -> int:
         match self.groupby:
-            case 'lang': return len(self.to_langs)
-            case 'word': return len(self.words)
-            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+            case GroupBy.LANG.value: return len(self.to_langs)
+            case GroupBy.WORD.value: return len(self.words)
+            case _: raise Unsupported(self.groupby)
 
     @property
     def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
         to_langs = self.to_langs or [None]
         match self.groupby:
-            case 'lang': return  ((t, w) for t, ws in product(to_langs, self.from_lang_word_bundles) for w in ws)
-            case 'word': return  ((t, w) for ws, t in product(self.from_lang_word_bundles, to_langs) for w in ws)
-            case _: raise ValueError(f'Unsupported groupby value: {self.groupby}!')
+            case GroupBy.LANG.value: return  ((t, w) for t, ws in product(to_langs, self.from_lang_word_bundles) for w in ws)
+            case GroupBy.WORD.value: return  ((t, w) for ws, t in product(self.from_lang_word_bundles, to_langs) for w in ws)
+            case _: raise Unsupported(self.groupby)
 
     @property
     def url_triples(self) -> Iterable[tuple[str, str]]:
