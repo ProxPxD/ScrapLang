@@ -57,6 +57,7 @@ class PreprocessorFactory:
             details: dict = sp(''.join(chars))[-1]['details']
             return next(iter(details.keys())) if details else None
         is_with_kind = ColFilter(col=Cols.KIND, mask_func=flow(DataFrame.isna, op.inv))
+        is_multilang_kind = ColFilter(lambda df: df.groupby(Cols.KIND)[VDC.LANG].transform('nunique') > 1)
         put_kind_safe = RowTransform(to_col=Cols.KIND, from_col=VDC.WORD, func=get_kind_save, post_func=is_with_kind, precond=lambda df: Cols.KIND not in df.columns)
         put_tokens = RowTransform(to_col=Cols.TOKENS, func=lambda row: tokenizer.tokenize_input(row[VDC.WORD], row[Cols.KIND]))
         put_specs = RowTransform(to_col=Cols.SPECS, func=lambda row: tokenizer.tokenize_spec_groups(row[VDC.WORD], row[Cols.KIND]))
@@ -89,7 +90,7 @@ class PreprocessorFactory:
         filter_out_bad_data = SeqStep(enough_uniq, enough_count)
         self.group = Grouper()
 
-        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, pad_word, put_kind_safe, put_tokens_specs, expand_rows, filter_out_bad_data)
+        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, pad_word, put_kind_safe, is_multilang_kind, put_tokens_specs, expand_rows, filter_out_bad_data)
         ensure_dropped = SimpleStep(lambda df: df.drop(columns=[Cols.DECODE, Cols.N_UNIQ], errors='ignore'))
         augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word_kind, put_kind_tokens_specs, expand_rows, filter_out_bad_data,
                                  precond=_.constant(conf.data.augment.is_augmenting))
