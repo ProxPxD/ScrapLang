@@ -1,5 +1,6 @@
+from abc import ABC
 from enum import StrEnum, Enum
-from typing import Any, Literal, Sequence
+from typing import Any, Iterable, Literal, Sequence
 
 from pydantic import RootModel
 from pydash import chain as c
@@ -18,10 +19,22 @@ class Unsupported(Exception):
 
 
 class SpecialEnum(StrEnum):
-    CONF = 'conf'
+    CONF = 'conf'  # TODO: Replace all with "auto"
     AUTO = 'auto'
 
-class GroupBy(StrEnum):
+class IVals(Enum):
+    @classmethod
+    @property
+    def choices(cls) -> list[str]:
+        return [member.value for member in cls]
+
+class IWithAuto(IVals):
+    @classmethod
+    @property
+    def choices_plus(cls) -> list[str]:
+        return cls.choices + list(SpecialEnum)
+
+class GroupBy(StrEnum, IWithAuto):
     LANG = 'lang'
     WORD = 'word'
 

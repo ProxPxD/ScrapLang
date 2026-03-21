@@ -9,7 +9,6 @@ ConfIndirect = Literal[*(indirect - {'conf'})]
 ConfAssume = Literal[*(assume - {'conf'})]
 ConfGatherData = Literal[*(gather_data - {'conf'})]
 ConfInferVia = Literal[*(infervia - {'conf'})]
-ConfGroupBy = GroupBy | Literal[SpecialEnum.AUTO]
 ConfRetrainOn = Literal[*(retrain_on - {'conf'})]
 
 
@@ -22,7 +21,7 @@ class Conf(BaseModel):
 
     assume: ConfAssume = UNSET
     color: ColorSchema = UNSET  # TODO: test both dict and straight string colors
-    groupby: ConfGroupBy = UNSET
+    groupby: GroupBy | SpecialEnum = UNSET
     indirect: ConfIndirect = UNSET
     langs: list[str] = UNSET
     mappings: Mappings = UNSET

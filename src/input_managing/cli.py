@@ -109,7 +109,7 @@ class CLI:
         cli_reasoning_group.add_argument('--retrain', '--train', action='store_true', default=UNSET, help='Retrain the AI first')
         # Display Modes
         display_group = parser.add_argument_group(title='Display Modes')
-        display_group.add_argument('--groupby', '-by', choices=tuple(GroupBy) + tuple(SpecialEnum), default=UNSET, help='What to group the result translations by')
+        display_group.add_argument('--groupby', '-by', choices=GroupBy.choices_plus, default=UNSET, help='What to group the result translations by')
         # Developer Modes (groupless)
         parser.add_argument('--debug', action='store_true', help=SUPPRESS)
         parser.add_argument('--test', action='store_true', help=SUPPRESS)
