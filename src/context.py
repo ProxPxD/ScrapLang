@@ -29,7 +29,7 @@ class Defaults:
     test: bool = False
 
     assume: str = 'lang'
-    groupby: str = 'word'
+    groupby: GroupBy = GroupBy.WORD
     infervia: str = 'last'
     retrain_on: RetrainOn = 'gather'
     retrain: bool = False
