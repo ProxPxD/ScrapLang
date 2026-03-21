@@ -10,7 +10,7 @@ from box import Box
 from pydash import chain as c
 
 from src.constants import preinitialized
-from src.context_domain import Assume, Color, ColorSchema, GatherData, GroupBy, Indirect, InferVia, Mappings, RetrainOn, UNSET, Unsupported, color_names
+from src.context_domain import Assume, Color, ColorSchema, GatherData, GroupBy, Indirect, InferVia, Mappings, RetrainOn, SpecialEnum, UNSET, Unsupported, color_names
 
 if TYPE_CHECKING:
     from src.conf import Conf
@@ -184,7 +184,7 @@ class Context:
     test: bool = UNSET
 
     assume: Assume = UNSET  # TODO: remove
-    groupby: GroupBy = UNSET
+    groupby: GroupBy | SpecialEnum = SpecialEnum.AUTO
     indirect: Indirect = UNSET
     color: Box | Color = UNSET
     gather_data: GatherData = UNSET
@@ -211,16 +211,16 @@ class Context:
 
     def __getattribute__(self, name: str) -> Any:
         try:
-            if (val := super().__getattribute__(name)) is not UNSET:
+            if (val := super().__getattribute__(name)) is not UNSET and val != SpecialEnum.AUTO:
                 return val
         except AttributeError as ar:
             if ar.args[0] != f"'{Context.__name__}' object has no attribute '{name}'":
                 raise ar
-        if (val := getattr(self._conf, name, UNSET)) is not UNSET:
+        if (val := getattr(self._conf, name, UNSET)) is not UNSET and val != SpecialEnum.AUTO:
             return val
-        if (val := getattr(Defaults, name, UNSET)) is not UNSET:
+        if (val := getattr(Defaults, name, UNSET)) is not UNSET and val != SpecialEnum.AUTO:
             return val
-        raise AttributeError(f'Attribute "{name}" not found')
+        raise AttributeError(f'Attribute "{name}" not found ({val})')
 
     def update(self, **kwargs) -> None:
         kwargs = Box({key: val for key, val in kwargs.items() if key not in self._to_filter})
