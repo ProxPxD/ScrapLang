@@ -3,9 +3,9 @@ from __future__ import annotations
 import shlex
 from contextlib import nullcontext
 from dataclasses import dataclass, field, replace
-from itertools import product, permutations
+from itertools import permutations, product
 from pathlib import Path
-from typing import Iterable, Any, Sequence, Collection, Optional
+from typing import Any, Collection, Iterable, Optional, Sequence
 
 import pydash as _
 import pytest
@@ -15,9 +15,9 @@ from more_itertools import windowed
 from pydash import chain as c
 
 from src.app_managing import AppMgr
-from src.context_domain import assume, indirect, gather_data, infervia, groupby
+from src.context_domain import GroupBy, SpecialEnum, assume, gather_data, indirect, infervia
 from testing.core import TCG
-from testing.proj.mocking import mocked_scrap, CallCollector, PageNotFound
+from testing.proj.mocking import CallCollector, PageNotFound, mocked_scrap
 from testing.proj.utils import remove_color
 
 SYSTEM_PATH = Path(__file__).parent
@@ -83,7 +83,11 @@ class SystemTCG(TCG):
         *[dict(assume=assume_val) for assume_val in assume],
         *[dict(gather_data=gather_data_val) for gather_data_val in gather_data],
         *[dict(infervia=infervia_val) for infervia_val in infervia],
-        *[dict(groupby=groupby_val) for groupby_val in groupby],
+        *[{enum.name: member.value}
+          for enum in [GroupBy]
+          for member in tuple(enum) + tuple(SpecialEnum)
+          if member != SpecialEnum.CONF
+        ],
         *[dict(color=color_conf) for color_conf in color_confs],
         *[dict(mappings=mapping) for mapping in mappings.values()]
     ] if next(iter(conf.values())) != 'conf']

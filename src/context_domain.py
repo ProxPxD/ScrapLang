@@ -16,17 +16,26 @@ class Unsupported(Exception):
             case _: msg = f'Unsupported {type(arg)} value: {arg}'
         super().__init__(msg)
 
+
+class SpecialEnum(StrEnum):
+    CONF = 'conf'
+    AUTO = 'auto'
+
 class GroupBy(StrEnum):
     LANG = 'lang'
     WORD = 'word'
-    CONF = 'conf'
+
+    @classmethod
+    @property
+    def name(cls) -> str:
+        return 'groupby'
+
 
 indirect = {'on', 'off', 'fail', 'conf'}
 assume = {'lang', 'word', 'no'}
 gather_data = {'all', 'ai', 'time', 'off', 'conf'}
 infervia = {'all', 'ai', 'time', 'last', 'off', 'conf'}
 retrain_on = {'gather', 'flag'}
-groupby = {gb.value for gb in tuple(GroupBy)}
 at = {'from', 'to', 'f', 't', 'none'}
 
 
@@ -35,7 +44,6 @@ Assume = Literal[*assume]
 GatherData = Literal[*gather_data]
 InferVia = Literal[*infervia]
 RetrainOn = Literal[*retrain_on]
-GroupByType = Literal[*groupby]
 Mappings = dict[str, list[dict[str, str]] | dict[str, str]]
 At = Literal[*at]
 

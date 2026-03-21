@@ -60,4 +60,4 @@ class ConfFileMgr:
         newly_ordered_saved = saved_used + saved_unused
         logging.debug(f'Saved used: {saved_used}\nOld Order: {self.conf.langs}\nNew Order: {newly_ordered_saved}')
         self.conf.langs = newly_ordered_saved
-        self._file_mgr.save(self.conf.model_dump(exclude_unset=True))
+        self._file_mgr.save(self.conf.model_dump(mode='json', exclude_unset=True))

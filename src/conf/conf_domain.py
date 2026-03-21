@@ -1,20 +1,25 @@
+from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, ConfigDict, Field, AliasChoices
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color, \
-    retrain_on
+from src.context_domain import ColorSchema, GroupBy, Mappings, SpecialEnum, UNSET, assume, gather_data, indirect, infervia, retrain_on
 
 ConfIndirect = Literal[*(indirect - {'conf'})]
 ConfAssume = Literal[*(assume - {'conf'})]
 ConfGatherData = Literal[*(gather_data - {'conf'})]
 ConfInferVia = Literal[*(infervia - {'conf'})]
-ConfGroupBy = Literal[*(groupby - {'conf'})]
+#ConfGroupBy = Literal[*(groupby - {'conf'})]
+ConfGroupBy = GroupBy | Literal[SpecialEnum.AUTO]
 ConfRetrainOn = Literal[*(retrain_on - {'conf'})]
 
 
 class Conf(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(
+        extra='forbid',
+        use_enum_values=False,
+        json_encoders = {Enum: lambda e: e.value},
+    )
 
     assume: ConfAssume = UNSET
     color: ColorSchema = UNSET  # TODO: test both dict and straight string colors

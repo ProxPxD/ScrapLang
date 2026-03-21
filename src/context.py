@@ -10,7 +10,7 @@ from box import Box
 from pydash import chain as c
 
 from src.constants import preinitialized
-from src.context_domain import Assume, Color, ColorSchema, GatherData, GroupBy, GroupByType, Indirect, InferVia, Mappings, RetrainOn, UNSET, Unsupported, color_names
+from src.context_domain import Assume, Color, ColorSchema, GatherData, GroupBy, Indirect, InferVia, Mappings, RetrainOn, UNSET, Unsupported, color_names
 
 if TYPE_CHECKING:
     from src.conf import Conf
@@ -184,7 +184,7 @@ class Context:
     test: bool = UNSET
 
     assume: Assume = UNSET  # TODO: remove
-    groupby: GroupByType = UNSET
+    groupby: GroupBy = UNSET
     indirect: Indirect = UNSET
     color: Box | Color = UNSET
     gather_data: GatherData = UNSET
