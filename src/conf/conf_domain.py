@@ -9,7 +9,6 @@ ConfIndirect = Literal[*(indirect - {'conf'})]
 ConfAssume = Literal[*(assume - {'conf'})]
 ConfGatherData = Literal[*(gather_data - {'conf'})]
 ConfInferVia = Literal[*(infervia - {'conf'})]
-#ConfGroupBy = Literal[*(groupby - {'conf'})]
 ConfGroupBy = GroupBy | Literal[SpecialEnum.AUTO]
 ConfRetrainOn = Literal[*(retrain_on - {'conf'})]
 
