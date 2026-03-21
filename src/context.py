@@ -290,23 +290,23 @@ class Context:
     @property
     def n_all_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
         match self.groupby:
-            case GroupBy.LANG.value: return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
-            case GroupBy.WORD.value: return self.n_from_langs * len(self.to_langs)
+            case GroupBy.LANG: return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
+            case GroupBy.WORD: return self.n_from_langs * len(self.to_langs)
             case _: raise Unsupported(self.groupby)
 
     @property
     def n_main_groups(self) -> int:
         match self.groupby:
-            case GroupBy.LANG.value: return len(self.to_langs)
-            case GroupBy.WORD.value: return len(self.words)
+            case GroupBy.LANG: return len(self.to_langs)
+            case GroupBy.WORD: return len(self.words)
             case _: raise Unsupported(self.groupby)
 
     @property
     def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
         to_langs = self.to_langs or [None]
         match self.groupby:
-            case GroupBy.LANG.value: return  ((t, w) for t, ws in product(to_langs, self.from_lang_word_bundles) for w in ws)
-            case GroupBy.WORD.value: return  ((t, w) for ws, t in product(self.from_lang_word_bundles, to_langs) for w in ws)
+            case GroupBy.LANG: return  ((t, w) for t, ws in product(to_langs, self.from_lang_word_bundles) for w in ws)
+            case GroupBy.WORD: return  ((t, w) for ws, t in product(self.from_lang_word_bundles, to_langs) for w in ws)
             case _: raise Unsupported(self.groupby)
 
     @property
