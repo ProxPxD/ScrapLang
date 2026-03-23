@@ -13,7 +13,7 @@ class Augment:
 
 @dataclass(frozen=True)
 class Chunking:
-    size: int = 2 ** 4
+    size: int = 2 ** 5
     overlap: int = 3
 
     @property

@@ -28,7 +28,7 @@ class Expert(nn.Module):
         self.n_specs = n_specs
 
         self.embed = nn.Embedding(n_tokens, conf.emb_dim-n_specs, padding_idx=conf.padding_idx)
-        channels = (conf.emb_dim, *conf.hidden_channels, n_labels)
+        channels = (conf.emb_dim, *conf.hidden_channels)
         kernels = list(padded(conf.kernels, 3, len(channels)-2)) + [1]
         paddings = list(padded(conf.paddings, 0, len(channels)-1))
         self.convs = nn.ModuleList([
@@ -40,8 +40,8 @@ class Expert(nn.Module):
             ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
         ])
         self.hid_act = nn.LeakyReLU(negative_slope=conf.leaky_relu_slop)
-        self.attn = nn.MultiheadAttention(embed_dim=channels[0], num_heads=1, batch_first=True)
-        self.out_act = nn.Sigmoid()
+        self.attn = nn.MultiheadAttention(embed_dim=channels[-1], num_heads=1, batch_first=True)
+        self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
         l_last_layer: int = self.s_chunk + sum(2*p - k + 1 for k, p in zip(kernels, paddings))
         self.positional = nn.Parameter(torch.tensor([0.4, 0.2, 0.4]))  # Beg, Mid, End
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
@@ -63,16 +63,17 @@ class Expert(nn.Module):
         x = self._pad(x, -2, 0)
         specs = self._pad(specs, -2, 0)
         x = torch.cat([x, specs[..., :self.n_specs]], dim=-1)  # B x L x e1
-        x = self.chunk_pad(x)  # B x ch x e1 x l_0
+        x = self.chunk(x)  # B x ch x e1 x l_0
         B, ch, C, L = x.shape
         x = x.reshape(B*ch, C, L)
         for conv in self.convs:
             x = self.hid_act(conv(x))  # B*ch x c_k x l_k
-        # x.permute()
-        # x = self.attn(x)  # B*ch x o x l_k
-        x = x.reshape(B, ch, *x.shape[-2:])   # B x ch x o x l_k
-        #x = x.sum(dim=(-3, -1))
-        x = self._weight_positional(x)  # B x o
+        x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
+        x, weights = self.attn(x, x, x)  # B*ch x l_k x c_k
+        *_, L, C = x.shape
+        x = x.reshape(B, ch*L, C)   # B x ch*l_k x c_k
+        x = self.post_attn_classifier(x)  # B x ch*l_k x o
+        x = torch.logsumexp(x, dim=-2)  # B x o
         # Mask non-expert outputs
         x = x * self.output_mask + (self.output_mask - 1) * 1e9  # set masked to very negative value
         return x
@@ -88,36 +89,9 @@ class Expert(nn.Module):
         tensor = F.pad(tensor, (*initial_zeroes, 0, n_to_pad), value=pad_val)
         return tensor
 
-    def chunk_pad(self, x: Tensor) -> Tensor:
+    def chunk(self, x: Tensor) -> Tensor:
         x = x.contiguous()
         x = x.unfold(dimension=1, size=self.s_chunk, step=self.stride)
-        return x
-
-    def old_chuno(self, x):
-        length_dim = -2
-        n = x.size(length_dim)
-        s_chunk, step = self.s_chunk, self.s_chunk_step
-        shift_space = n - s_chunk
-        n_fitting = shift_space // step + 1
-        x_front = x.unfold(dimension=length_dim, size=s_chunk, step=step)  # B x ch x e x (l_0')
-        front_end_idx = s_chunk + step * (n_fitting - 1) - 1
-        if front_end_idx < n - 1:
-            x_end = x[..., -s_chunk:, :].unsqueeze(-3).transpose(-2, -1)  # B x 1 x e x (l_0')
-            x_out = torch.cat([x_front, x_end], dim=length_dim-1)  # B x 1 x e x l_0
-        else:
-            x_out = x_front
-        return x_out  # B x ch x e x l_0
-
-    def _weight_positional(self, x: Tensor) -> Tensor:
-        x = x.permute(0, 2, 1, 3)  # B x c_k x ch x l_k
-        x = x.flatten(-2)  # B x c_k x (ch*l_k)
-        chunk_o_length = x.shape[-1]
-        n_edge_vals = min(self.s_chunk_step // 2, chunk_o_length // 2)
-        n_mid_vals = chunk_o_length - 2*n_edge_vals
-        pos = self.positional / self.positional.sum()
-        weights = torch.cat([pos[i].expand(n) for i, n in enumerate((n_edge_vals, n_mid_vals, n_edge_vals))]).to(dtype=x.dtype)
-        weights = weights / weights.sum()
-        x = (x * weights).sum(dim=-1)  # B x o
         return x
 
 
