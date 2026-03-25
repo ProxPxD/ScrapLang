@@ -85,12 +85,8 @@ class MetricSettings:
     avg: str = None
 
     @property
-    def avg_short(self) -> Optional[str]:
-        match self.avg:
-            case None: return None
-            case 'micro': return 'μ'
-            case 'macro': return 'Μ'
-            case _: raise ValueError('Unexpected avg setting')
+    def avg_prefix(self) -> Optional[str]:
+        return {'micro': 'μ', 'macro': 'Μ', None: None}[self.avg]
 
 @dataclass
 class MetricBundle:
@@ -333,12 +329,13 @@ class AdvancedDetector:
         for bundle in self.metrics[series]:
             val = bundle.metric.compute().item()
             settings: MetricSettings = bundle.settings
-            name, avg = settings.name, settings.avg
-            full_series = f'{series}' + (f'_{settings.avg_short}' if avg else '')
+            name, avg, avg_prefix = settings.name, settings.avg, settings.avg_prefix
+            avg_suffix = f'_{settings.avg_prefix}' if avg else ''
+            full_series = f'{series}{avg_suffix}'
             # self.writer.add_scalar(f'{series}/metric_{avg}/{name}'.lower(), val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', full_series, val, step)
-            if avg == 'micro':
-                retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', series, val, step)
+            if avg in {'micro', None}:
+                retry_on(self._logger.report_scalar, ConnectionError, 7, f':All μ-Metrics', f'{series}{avg_suffix}_{name}', val, step)
 
         self._board_confusion_matrices(series, step)
 
