@@ -5,7 +5,7 @@ from collections import Counter, namedtuple
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
 from itertools import product
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -83,6 +83,14 @@ SERIES_SEQ = (TRAIN:='Train', VAL:='Val')
 class MetricSettings:
     name: str
     avg: str = None
+
+    @property
+    def avg_short(self) -> Optional[str]:
+        match self.avg:
+            case None: return None
+            case 'micro': return 'μ'
+            case 'macro': return 'Μ'
+            case _: raise ValueError('Unexpected avg setting')
 
 @dataclass
 class MetricBundle:
@@ -324,8 +332,9 @@ class AdvancedDetector:
         self.metrics: dict[str, list[MetricBundle]]
         for bundle in self.metrics[series]:
             val = bundle.metric.compute().item()
-            name, avg = bundle.settings.name, bundle.settings.avg
-            full_series = f'{series}' + (f'_{avg}' if avg else '')
+            settings: MetricSettings = bundle.settings
+            name, avg = settings.name, settings.avg
+            full_series = f'{series}' + (f'_{settings.avg_short}' if avg else '')
             self.writer.add_scalar(f'{series}/metric/{avg}/{name}'.lower(), val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', full_series, val, step)
         self._board_confusion_matrices(series, step)
