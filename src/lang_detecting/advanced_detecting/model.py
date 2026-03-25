@@ -69,12 +69,13 @@ class Expert(nn.Module):
         for conv in self.convs:
             x = self.hid_act(conv(x))  # B*ch x c_k x l_k
         x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
+        x = self.norm(x)
         attn_delta, weights = self.attn(x, x, x)  # B*ch x l_k x c_k
-        x = self.norm(x + attn_delta)  # B*ch x l_k x c_k
+        x = x + attn_delta  # B*ch x l_k x c_k
         *_, L, C = x.shape
         x = x.reshape(B, ch*L, C)   # B x ch*l_k x c_k
         x = self.post_attn_classifier(x)  # B x ch*l_k x o
-        x = torch.logsumexp(x, dim=-2)  # B x o
+        x = x.mean(dim=-2)  # B x o
         # Mask non-expert outputs
         # x = x * self.output_mask + (self.output_mask - 1) * 1e9  # set masked to very negative value
         x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value

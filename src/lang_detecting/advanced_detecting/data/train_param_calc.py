@@ -50,7 +50,8 @@ class TrainParamCalc:
     def compute_loss(self, logits: Tensor, targets: Tensor) -> Tensor:
         eps = 1e-3
         loss = self.loss_func(logits, targets.float())
-        final_loss = loss.mean()
+        label_wise_loss = loss.mean(dim=-1)
+        final_loss = label_wise_loss.mean()
         return final_loss
         # m_neg = targets == 0
         # loss_weights = torch.ones_like(preds)

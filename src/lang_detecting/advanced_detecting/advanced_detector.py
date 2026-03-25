@@ -168,10 +168,7 @@ class AdvancedDetector:
                 for mode in ('macro',)
             }
             self.metrics[series]['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
-            self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.supervision.cm_threshes}
-        if self.conf.data.labels.all_names:
-            class_weights = self.train_param_calc.compute_weights().to(self.device)
-            self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=class_weights.to(self.device), reduction='none')
+            self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.train.supervision.cm_threshes}
 
     @property
     def dev_training(self) -> bool:
@@ -202,7 +199,11 @@ class AdvancedDetector:
         self.init_for_training()
         label_weights = self.train_param_calc.compute_weights().to(self.device)
         pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
-        self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=label_weights, pos_weight=pos_weights, reduction='none')
+        self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(
+            #weight=label_weights,
+            pos_weight=pos_weights,
+            reduction='none'
+        )
         if self.dev_training:
             comment = []
             comment += [f'n-label: {len(self.conf.data.labels.all_names)}']
@@ -212,12 +213,13 @@ class AdvancedDetector:
             comment += [lang_counts := '\n'.join(f'  {lang}: {count}' for lang, count in sorted(self.conf.data.labels.used_count.items(), key=c().get(1), reverse=True))]
             self.writer.add_text(tag='training info', text_string=lang_counts)
             self.task.set_comment('\n'.join(comment))
+        n_samples = sum(batch[0].shape[0] for batch in train_batches)
         for epoch in range(self.conf.train.epochs):
             self._reset_metrics()
             train_batches = self.train_param_calc.shuffle_batches(train_batches)
             n_records = 0
             epoch_loss = 0.0
-            for batch in tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.train.epochs}'):
+            for i, batch in enumerate(tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.train.epochs}')):
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 n_records += words.size(0)
                 logits: Tensor = self.moe(kinds, words, specs)
@@ -225,6 +227,8 @@ class AdvancedDetector:
                 # with torch.no_grad():
                 #     val_logits = self.moe()
                 probs = torch.sigmoid(logits)
+                if i == 0:
+                    print(epoch, probs.mean().cpu().item(), probs.max().cpu().item())
                 self._update_metrics(TRAIN, probs, targets)
                 loss = self.train_param_calc.compute_loss(logits, targets)
                 loss.backward()
@@ -237,7 +241,7 @@ class AdvancedDetector:
             if n_records:
                 optimizer.step()
             self._val(val_batches, epoch)
-            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', TRAIN, epoch_loss, epoch)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', TRAIN, 100 * epoch_loss / n_samples / self.conf.data.labels.n_used, epoch)
             self._board_metrics(TRAIN, epoch)
 
     def _val(self, batches: list[TensorBatch], epoch: int) -> None:
@@ -245,6 +249,7 @@ class AdvancedDetector:
         with torch.no_grad():
             val_loss = .0
             val_data = pd.DataFrame(columns=[KIND:='kind', WORD:='words', TARGET:='target', PROBS:='probs'])
+            n_samples = sum(batch[0].shape[0] for batch in batches)
             for batch in batches:
                 kinds, words, specs, targets = [t.to(self.device) for t in batch]
                 logits: Tensor = self.moe(kinds, words, specs)
@@ -253,23 +258,23 @@ class AdvancedDetector:
                 val_loss += self.train_param_calc.compute_loss(logits, targets)
                 rows = zip(*[col.tolist() for col in (kinds, words, targets, probs)])
                 val_data = pd.concat([val_data, pd.DataFrame(rows, columns=val_data.columns)], ignore_index=True)
-            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, val_loss, epoch)
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, 100 * val_loss / n_samples / self.conf.data.labels.n_used, epoch)
             self._board_metrics(VAL, epoch)
 
             val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
             val_data[WORD] = val_data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[WORD], row[KIND])).replace(Tokens.BOS, '').replace(Tokens.PAD, ''), axis=1)
             val_data[TARGET] = val_data.apply(lambda row: self.tokenizer.detokenize_targets_as_onehot(row[TARGET]), axis=1)
             PRED = 'pred'
-            for thresh in self.conf.supervision.cm_threshes:
+            for thresh in self.conf.train.supervision.cm_threshes:
                 val_data[f'{PRED}_{thresh:.2f}'] = val_data[PROBS].apply(flow(c().map(lambda p: int(p > thresh)), self.tokenizer.detokenize_targets_as_onehot))
-            base_thresh = self.conf.supervision.cm_threshes[0]
+            base_thresh = self.conf.train.supervision.metrics_thresh #self.conf.train.supervision.cm_threshes[0]
             base_thresh_name = f'{PRED}_{base_thresh:.2f}'
             val_data = val_data[val_data.target != val_data[base_thresh_name]]
             val_data = val_data.set_index([TARGET, WORD]).sort_index()
             probs_data = pd.DataFrame(val_data[PROBS].apply(c().map(lambda p: f'{p:.2f}')).tolist(), columns=self.conf.data.labels.all_names, index=val_data.index)
             val_data = val_data.drop(columns=[KIND, PROBS])
-            self._logger.report_table(title='Validation Misclassifications', series='preds', iteration=epoch, table_plot=val_data.reset_index(drop=False))
-            self._logger.report_table(title='Validation Misclassifications', series='probs', iteration=epoch, table_plot=probs_data.reset_index(drop=False))
+            self._logger.report_table(title='0 Validation Misclassifications', series='preds', iteration=epoch, table_plot=val_data.reset_index(drop=False))
+            self._logger.report_table(title='0 Validation Misclassifications', series='probs', iteration=epoch, table_plot=probs_data.reset_index(drop=False))
         self.moe.train()
 
     def _manage_metrics(self, func_name: str, series: str, *args, **kwargs) -> None:
@@ -287,7 +292,7 @@ class AdvancedDetector:
     def _update_metrics(self, series: str, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
-        self._manage_metrics('update', series, (probs > self.conf.supervision.metrics_thresh).long(), targets)
+        self._manage_metrics('update', series, (probs > self.conf.train.supervision.metrics_thresh).long(), targets)
         for thresh, cm in self._cms[series].items():
             np.int = int
             count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
@@ -319,7 +324,7 @@ class AdvancedDetector:
         for thresh, cm in self._cms[series].items():
             if HAS_CLEARML:
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'I NxN {thresh:.2f}', series=series, matrix=cm.tolist(),
+                         title=f'1 NxN {thresh:.2f}', series=series, matrix=cm.tolist(),
                          xlabels=[*all_names, '_'], ylabels=[*all_names, '_'])
         # OvR
         true_pos_dict = {}
@@ -330,7 +335,7 @@ class AdvancedDetector:
                 false_neg = cm.sum(axis=1) - true_pos
                 true_false = np.stack([true_pos, false_pos, false_neg], axis=0).T
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'II OvR {thresh:.2f}', series=series, matrix=true_false.tolist(),
+                         title=f'2 OvR {thresh:.2f}', series=series, matrix=true_false.tolist(),
                          xlabels=['True', 'False Pos', 'False Neg'], ylabels=[*all_names, '_'])
         for thresh, cm in self._cms[series].items():
             if HAS_CLEARML:
@@ -344,7 +349,7 @@ class AdvancedDetector:
                     [bottom, last_row, 0]
                 ]
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'III Micro {thresh:.2f}', series=series, matrix=tf,
+                         title=f'3 Micro {thresh:.2f}', series=series, matrix=tf,
                          xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
 
     @classmethod
