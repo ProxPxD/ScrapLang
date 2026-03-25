@@ -165,7 +165,7 @@ class AdvancedDetector:
             self.metrics[series] = {
                 f'{metric_class.__name__}': metric_class(**kwargs, average=mode).to(self.device)  # noinspection PyTypeChecker
                 for metric_class in [Accuracy, Precision, Recall, F1Score]
-                for mode in ('macro',)
+                for mode in ('macro', 'micro')
             }
             self.metrics[series]['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
             self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.train.supervision.cm_threshes}

@@ -39,7 +39,7 @@ class Expert(nn.Module):
                 padding=p,
             ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
         ])
-        self.hid_act = nn.LeakyReLU(negative_slope=conf.leaky_relu_slop)
+        self.hid_act = nn.SiLU()
         self.attn = nn.MultiheadAttention(embed_dim=channels[-1], num_heads=1, batch_first=True)
         self.norm = nn.LayerNorm(channels[-1])
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
