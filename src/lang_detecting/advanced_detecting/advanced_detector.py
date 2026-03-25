@@ -134,10 +134,10 @@ class AdvancedDetector:
                      key='RA0LL08K8QWF588QOBVB53FMVRIZ6P',
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
-                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=['autodelete']):
+                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=['autodel', 'autodelete']):
                     print(f'Deleting old task: {task.name}')
                     task.delete()
-                tags = ['autodelete']
+                tags = ['autodel']
                 match self.conf.data.augment.is_augmenting:
                     case True: tags.append('augmented')
                     case False: tags.append('non-augmented')
