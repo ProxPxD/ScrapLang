@@ -1,7 +1,7 @@
 import math
 import random
 import warnings
-from collections import Counter
+from collections import Counter, namedtuple
 from dataclasses import asdict
 from functools import cached_property
 from itertools import product
@@ -77,6 +77,7 @@ if HAS_TRAINING_SUPERVISION and not HAS_CLEARML and not HAS_TENSORBOARD:
     EXCEPTION = Exception(e_t, e_c)
 
 SERIES_SEQ = (TRAIN:='Train', VAL:='Val')
+MetricBundle = namedtuple('MetricBundle', ['metric', 'settings'])
 
 class AdvancedDetector:
     def __init__(self, context: Context, lang_script: DataFrame, valid_data_mgr: ValidDataMgr, conf: Conf):
@@ -161,13 +162,20 @@ class AdvancedDetector:
         kwargs = dict(task='multilabel', num_labels=self.conf.data.labels.n_all)
         self.metrics: dict[str, dict[str, Metric]] = {}
         for series in SERIES_SEQ:
+
             # noinspection PyTypeChecker
             self.metrics[series] = {
-                f'{metric_class.__name__}': metric_class(**kwargs, average=mode).to(self.device)  # noinspection PyTypeChecker
+                f'{metric_class.__name__}': MetricBundle(
+                    metric=metric_class(**kwargs, average=avg).to(self.device),
+                    settings=(avg,)
+                )
                 for metric_class in [Accuracy, Precision, Recall, F1Score]
-                for mode in ('macro', 'micro')
+                for avg in ('macro', 'micro')
             }
-            self.metrics[series]['MatthewsCorrCoef'] = MatthewsCorrCoef(**kwargs).to(self.device)
+            self.metrics[series]['MatthewsCorrCoef'] = MetricBundle(
+                metric=MatthewsCorrCoef(**kwargs).to(self.device),
+                settings=tuple(),
+            )
             self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.train.supervision.cm_threshes}
 
     @property
@@ -278,8 +286,8 @@ class AdvancedDetector:
         self.moe.train()
 
     def _manage_metrics(self, func_name: str, series: str, *args, **kwargs) -> None:
-        for metric in self.metrics[series].values():
-            getattr(metric, func_name)(*args, **kwargs)
+        for bundle in self.metrics[series].values():
+            getattr(bundle.metric, func_name)(*args, **kwargs)
 
     def _reset_metrics(self) -> None:
         if not self.dev_training:
@@ -301,11 +309,13 @@ class AdvancedDetector:
     def _board_metrics(self, series: str, step: int) -> None:
         if not self.dev_training:
             return
-        self.metrics: dict[str, Metric]
-        for name, metric in self.metrics[series].items():
-            val = metric.compute().item()
-            self.writer.add_scalar(f'{series}/metric/{name}'.lower(), val, step)
-            self._logger.report_scalar(f'Metric/{name}', series, val, step)
+        self.metrics: dict[str, MetricBundle]
+        for name, bundle in self.metrics[series].items():
+            val = bundle.metric.compute().item()
+            avg = _.get(bundle.settings, 0, None)
+            full_series = f'{series}' + (f'_{avg}' if avg else '')
+            self.writer.add_scalar(f'{series}/metric/{avg}/{name}'.lower(), val, step)
+            self._logger.report_scalar(f'Metric/{name}', full_series, val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', series, val, step)
         self._board_confusion_matrices(series, step)
 
