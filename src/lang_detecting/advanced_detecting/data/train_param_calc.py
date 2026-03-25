@@ -11,7 +11,7 @@ from torch import Tensor
 
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import TensorBatch
-
+from pydash import chain as c
 
 class TrainParamCalc:
     def __init__(self, conf: Conf, loss_func: nn.Module = None):
@@ -19,7 +19,6 @@ class TrainParamCalc:
         self.loss_func: Optional[nn.Module] = loss_func
 
     def compute_weights(self, bias: float = None) -> Tensor:
-        import pandas as pd
         bias = bias or self.conf.weights.freq_bias
         all_labels, used_label_count = self.conf.data.labels.all_names, self.conf.data.labels.used_count
         present_classes = sorted(used_label_count.keys())
@@ -32,6 +31,15 @@ class TrainParamCalc:
         weights = torch.ones(len(all_labels), dtype=raw_weights.dtype)
         weights[present_idxs] = raw_weights
         return weights
+
+    @classmethod
+    def compute_pos_weights(cls, train_batches) -> Tensor:
+        all_targets = torch.cat(_.map_(train_batches, c().get(-1)), dim=0)
+        pos_count = all_targets.sum(dim=0)
+        neg_count = all_targets.shape[0] - pos_count
+        pos_weights = neg_count / (pos_count + 1e-6)
+        pos_weights[pos_count == 0] = 0.0
+        return pos_weights
 
     def shuffle_batches(self, batches: list[TensorBatch]) -> list[TensorBatch]:
         rng = random.Random()

@@ -200,6 +200,9 @@ class AdvancedDetector:
         train_batches, val_batches = batch_all([train_df, val_df])
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.train.lr, weight_decay=self.conf.train.weight_decay)
         self.init_for_training()
+        label_weights = self.train_param_calc.compute_weights().to(self.device)
+        pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
+        self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(weight=label_weights, pos_weight=pos_weights, reduction='none')
         if self.dev_training:
             comment = []
             comment += [f'n-label: {len(self.conf.data.labels.all_names)}']
