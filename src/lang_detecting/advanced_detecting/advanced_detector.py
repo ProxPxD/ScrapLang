@@ -335,8 +335,11 @@ class AdvancedDetector:
             settings: MetricSettings = bundle.settings
             name, avg = settings.name, settings.avg
             full_series = f'{series}' + (f'_{settings.avg_short}' if avg else '')
-            self.writer.add_scalar(f'{series}/metric/{avg}/{name}'.lower(), val, step)
+            # self.writer.add_scalar(f'{series}/metric_{avg}/{name}'.lower(), val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', full_series, val, step)
+            if avg == 'micro':
+                retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', series, val, step)
+
         self._board_confusion_matrices(series, step)
 
     @cached_property
