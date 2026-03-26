@@ -84,7 +84,7 @@ class Supervision:
 @dataclass(frozen=True)
 class Train:
     supervision: Supervision = field(default_factory=Supervision)
-    epochs: int = 2**6  # 2**7
+    epochs: int = 2**7  # 2**7
     lr: float = 1e-2  # 1e-5  # 1e-3
     weight_decay = 1e-5  # 1e-4
     max_batch_size: Optional[int] = 2**6
