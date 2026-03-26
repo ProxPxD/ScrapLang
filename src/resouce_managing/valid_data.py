@@ -83,17 +83,16 @@ class ValidDataMgr:
                 return True
         return False
 
-    def is_arg_set_valid(self, kinds: Collection[str], lang_arg: str) -> Callable[[Outcome], bool]:
-        return lambda o: _.over_every([
-            c().get('kind').apply(kinds.__contains__),
-            c().get(f'args.{lang_arg}').apply(self.context.langs.__contains__),
-            lambda o: isinstance(o.results, Sized) and len(o.results) > 1 or isinstance(o.results, DataFrame)
-        ])(o)
-
+    def get_is_arg_set_valid(self, kinds: Collection[str], lang_arg: str) -> Callable[[Outcome], bool]:
+        def is_valid(o: Outcome):
+            is_outcome_valid = o.kind in kinds and _.get(o.args, lang_arg) in self.context.conf_langs
+            is_result_valid = isinstance(o.results, Sized) and len(o.results) > 1 or isinstance(o.results, DataFrame)
+            return is_outcome_valid and is_result_valid
+        return is_valid
     def _gather_for_lang_data(self, scrap_results: Iterable[Outcome]) -> Iterable[Sequence[str]]:
         kinds = (Kinds.DEFINITION, Kinds.INFLECTION,)
         args = (lang_arg:='lang', 'word')
-        for lang, word in c(scrap_results).filter(self.is_arg_set_valid(kinds, lang_arg)).map(c().get('args').at(*args)).value():
+        for lang, word in c(scrap_results).filter(self.get_is_arg_set_valid(kinds, lang_arg)).map(c().get('args').at(*args)).value():
             yield lang, word, False
             if word in self.context.words and self.context.is_mapped(word):
                 yield lang, self.context.get_unmmapped(word), True
@@ -101,7 +100,7 @@ class ValidDataMgr:
     def _gather_for_from_main_translations(self, scrap_results: Iterable[Outcome]) -> Iterable[Sequence[str]]:
         kinds = (Kinds.MAIN_TRANSLATION, )
         args = (lang_arg:='from_lang', 'word')
-        for lang, word in c(scrap_results).filter(self.is_arg_set_valid(kinds, lang_arg)).map(c().get('args').at(*args)).value():
+        for lang, word in c(scrap_results).filter(self.get_is_arg_set_valid(kinds, lang_arg)).map(c().get('args').at(*args)).value():
             yield lang, word, False
             if self.context.is_mapped(word):
                 yield lang, self.context.get_unmmapped(word), True
@@ -112,7 +111,7 @@ class ValidDataMgr:
         for outcome in wiki_outcomes:
             wiki: WiktioResult = outcome.results
             lang, word = _.at(outcome.args, 'lang', 'word')
-            if lang not in self.context.all_langs:
+            if lang not in self.context.all_context_langs:
                 continue
             for meaning in wiki.meanings:
                 for pronunciation in meaning.pronunciations or wiki.pronunciations:

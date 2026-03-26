@@ -252,7 +252,11 @@ class Context:
         self.color = Box(self.color)
 
     @property
-    def all_langs(self) -> list:
+    def conf_langs(self) -> list[str]:
+        return self._conf.langs
+
+    @property
+    def all_context_langs(self) -> list:
         return _.interleave(self.from_langs, self.to_langs)
 
     @property

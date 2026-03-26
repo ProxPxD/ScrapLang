@@ -87,6 +87,6 @@ class AppMgr:
             scrap_results = seekable(self.scrap_mgr.scrap(self.context))
             _.for_each(scrap_results, self.printer.print_result)
 
-        self.conf_mgr.update_lang_order(self.context.all_langs)
+        self.conf_mgr.update_lang_order(self.context.all_context_langs)
         scrap_results.seek(0)
         self.data_gatherer.gather_valid_data(scrap_results, self.input_mgr.processor)
