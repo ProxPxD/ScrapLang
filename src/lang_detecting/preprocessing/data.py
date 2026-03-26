@@ -9,6 +9,7 @@ from pandas import DataFrame
 from pydash import chain as c, flow
 
 from src.constants import preinitialized
+from src.lang_detecting.advanced_detecting.conf import Data, WordConstrain
 from src.resouce_managing.file import FileMgr
 from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
@@ -45,8 +46,8 @@ class DataProcessor:
         :param data: [lang: str, word: str]
         :return:
         """
-        lang_to_words = data[~data[VDC.IS_MAPPED]].groupby(VDC.LANG)
-        lang_script = lang_to_words[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index()
+        m_unmapped = ~data[VDC.IS_MAPPED]
+        lang_script = data[m_unmapped].groupby(VDC.LANG)[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index()
         lang_script.rename(columns={VDC.WORD: LSC.CHARS, VDC.LANG: LSC.LANG}, inplace=True)
         lang_script[LSC.SCRIPTS] = lang_script[LSC.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
         return lang_script

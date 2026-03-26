@@ -106,8 +106,9 @@ class AdvancedDetector:
             'Cyrl': [(str.isupper, str.lower)],
         }
 
-        kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script)
-        self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
+        # TODO: Order up the model_io generation and model creation
+        kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script, self.valid_data_mgr.data)
+        # self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
         kind_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
         kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, [Tokens.PAD, Tokens.BOS, Tokens.UNK])
         self.kinds_to_vocab = kind_to_vocab
@@ -116,7 +117,8 @@ class AdvancedDetector:
         self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.conf.expert.padding_idx = self.tokenizer.tokenize_common(Tokens.PAD)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf)
+        # TODO: Think of passing kinds_to_target
+        self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf, kinds_to_targets=kinds_to_targets)
         self.splitter = Splitter(self.conf)
         self.batcher = Batcher(self.conf, self.tokenizer)
         self.train_param_calc = TrainParamCalc(self.conf)

@@ -15,6 +15,7 @@ from src.lang_detecting.advanced_detecting.data.preprocessing.core.transforming 
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.augmenting import Augmenter
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.chunker import Chunker
 from src.lang_detecting.advanced_detecting.data.preprocessing.specific.grouper import Grouper
+from src.lang_detecting.advanced_detecting.model_io_mging import KindToTargets
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer, Tokens
 from src.resouce_managing.valid_data import VDC
 
@@ -23,11 +24,13 @@ class PreprocessorFactory:
     def __init__(self,
             tokenizer: MultiKindTokenizer,
             conf: Conf,
+            kinds_to_targets: KindToTargets,
         ):
         """
         put - adds a column
         """
         self.resources = Resources(tokenizer=tokenizer, conf=conf)
+        self.kind_to_targets = kinds_to_targets
         self.init_preprocessor: Step | None = None
         self.train_preprocessor: Step | None = None
         self.val_preprocessor: Step | None = None
@@ -46,6 +49,8 @@ class PreprocessorFactory:
         tokenizer, conf = self.resources.tokenizer, self.resources.conf
 
         is_not_mapped = ColFilter(col=VDC.IS_MAPPED, mask_func=lambda col: ~col, precond=lambda df: VDC.IS_MAPPED in df.columns)
+        targets = _.flatten(self.kind_to_targets.values())
+        is_valid_target = ColFilter(col=VDC.LANG, mask_func=lambda col: col.isin(targets))
         uniq_lang_word = ColFilter(output_cols=[VDC.LANG, VDC.WORD])
         uniq_lang_word_kind = ColFilter(output_cols=[VDC.LANG, VDC.WORD, Cols.KIND])
         ensure_word_seq = RowTransform(col=VDC.WORD, func=tuple)
@@ -90,7 +95,7 @@ class PreprocessorFactory:
         filter_out_bad_data = SeqStep(enough_uniq, enough_count)
         self.group = Grouper()
 
-        self.init_preprocessor = SeqStep(is_not_mapped, uniq_lang_word, pad_word, put_kind_safe, is_multilang_kind, put_tokens_specs, expand_rows, filter_out_bad_data)
+        self.init_preprocessor = SeqStep(is_not_mapped, is_valid_target, uniq_lang_word, pad_word, put_kind_safe, is_multilang_kind, put_tokens_specs, expand_rows, filter_out_bad_data)
         ensure_dropped = SimpleStep(lambda df: df.drop(columns=[Cols.DECODE, Cols.N_UNIQ], errors='ignore'))
         augment_filter = SeqStep(Augmenter(resources=resources), uniq_lang_word_kind, put_kind_tokens_specs, expand_rows, filter_out_bad_data,
                                  precond=_.constant(conf.data.augment.is_augmenting))

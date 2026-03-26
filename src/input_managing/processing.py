@@ -14,6 +14,7 @@ from toolz import itemmap
 
 from src.context import Context
 from src.input_managing.outstemming import Outstemmer
+from src.lang_detecting.advanced_detecting.model_io_mging import ModelIOMgr
 from src.lang_detecting.detecting import Detector
 from src.lang_detecting.preprocessing.data import DataProcessor
 
@@ -25,6 +26,7 @@ class InputProcessor:
         self.context = context
         self.outstemmer = Outstemmer()
         self.data_processor = data_processor
+        self.model_io_mgr = ModelIOMgr()
         self.detector = Detector(self.context, self.data_processor.lang_script, valid_data_mgr=self.data_processor.valid_data_mgr) if self.data_processor.lang_script_mgr else None
 
     def process(self, parsed: Namespace) -> Namespace:
@@ -149,7 +151,7 @@ class InputProcessor:
         return parsed
 
     def retrain_detector(self) -> None:
-        self.data_processor.generate_script_summary()
+        self.model_io_mgr.generate_model_io(self.data_processor.lang_script, self.data_processor.valid_data_mgr.data)
         if not self.detector.advanced_detector:
             raise ValueError('Advanced detector requires torch lib to work')
         logging.debug('Retraining model')
