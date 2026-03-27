@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import Optional, Any, Callable
 
@@ -12,6 +14,7 @@ from box import Box
 from pandas import DataFrame
 from pandas.errors import EmptyDataError
 from pydantic import BaseModel, RootModel
+import src.context_domain as context_domain
 
 UNSET = object()
 
@@ -54,11 +57,13 @@ class FileMgr:
             case _: raise ValueError(f'Unsupported file format: {path}')
 
     @classmethod
-    def _to_dict(cls, content) -> dict:
+    def _to_dict(cls, content: Any) -> dict:
         match content:
-            case BaseModel() | RootModel(): return content.model_dump()
-            case Box(): return content.to_dict()
-            case _: return dict(content)
+            case BaseModel() | RootModel(): dicted = content.model_dump()
+            case Box(): dicted = content.to_dict()
+            case _: dicted = dict(content)
+        dicted = {key: val for key, val in dicted.items() if val is not context_domain.UNSET}
+        return dicted
 
     @classmethod
     def load_file(cls, path: str | Path, func: Callable[[Any], Any] | type = None) -> Box | dict | Any:
@@ -111,8 +116,13 @@ class FileMgr:
     @classmethod
     def save_yaml(cls, path: str | Path, conf: dict) -> None:
         import yaml
-        with open(path, 'w+') as f:
-            yaml.safe_dump(cls._to_dict(conf), f, default_flow_style=None, allow_unicode=True, encoding='utf-8', width=120)
+        with tempfile.NamedTemporaryFile('w', dir=path.parent, delete=False, encoding='utf-8') as tmp:
+            tmp_path = tmp.name
+            new_data = cls._to_dict(conf)
+            yaml.safe_dump(new_data, tmp, default_flow_style=None, allow_unicode=True, width=120)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        os.replace(tmp_path, path)
 
     @classmethod
     def save_toml(cls, path: str | Path, conf: dict) -> None:
