@@ -39,9 +39,9 @@ class Expert(nn.Module):
                 padding=p,
             ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
         ])
-        self.hid_act = nn.SiLU()
+        self.hid_act = nn.LeakyReLU()
         self.attn = nn.MultiheadAttention(embed_dim=channels[-1], num_heads=1, batch_first=True)
-        self.norm = nn.LayerNorm(channels[-1])
+        self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
         l_last_layer: int = self.s_chunk + sum(2*p - k + 1 for k, p in zip(kernels, paddings))
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
@@ -69,17 +69,14 @@ class Expert(nn.Module):
         for conv in self.convs:
             x = self.hid_act(conv(x))  # B*ch x c_k x l_k
         x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
-        x = self.norm(x)
-        attn_delta, weights = self.attn(x, x, x)  # B*ch x l_k x c_k
-        x = x + attn_delta  # B*ch x l_k x c_k
-        #x = attn_delta  # B*ch x l_k x c_k
         *_, L, C = x.shape
-        x = x.reshape(B, ch*L, C)   # B x ch*l_k x c_k
-        x = self.post_attn_classifier(x)  # B x ch*l_k x o
-        x = x.mean(dim=-2)  # B x o
-        #x = torch.logsumexp(x, dim=-2)  # B x o
+        x = self.norm(x)
+        attn_mask, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
+        gate = torch.tanh(attn_mask)
+        x = (x * (1 + gate)).reshape(B, ch*L, C) # B x ch*l_k x c_k
+        x = torch.logsumexp(x, dim=-2)  # B x c_k
+        x = self.post_attn_classifier(x)  # B x o
         # Mask non-expert outputs
-        # x = x * self.output_mask + (self.output_mask - 1) * 1e9  # set masked to very negative value
         x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value
         return x
 
