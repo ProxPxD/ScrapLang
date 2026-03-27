@@ -27,7 +27,7 @@ class ValSet:
 
 @dataclass(frozen=True)
 class WordConstrain:
-    len_thresh: int = 5
+    len_thresh: int = 4
     n_non_uniq: int = 7
     len_to_uniq_ratio: float = 2.0
 
