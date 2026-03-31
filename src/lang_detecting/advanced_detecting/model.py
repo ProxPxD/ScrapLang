@@ -24,14 +24,14 @@ class Expert(nn.Module):
             n_specs: int = 0,
         ):
         super().__init__()
-        n_tokens, n_labels, n_layers = len(vocab), len(all_classes), len(conf.paddings)
+        n_tokens, n_labels = len(vocab), len(all_classes)
         self.s_chunk = conf.chunking.size
         self.stride = conf.chunking.stride
         self.n_specs = n_specs
 
         self.embed = nn.Embedding(n_tokens, conf.emb_dim - n_specs, padding_idx=conf.padding_idx)
         channels = (conf.emb_dim, *conf.hidden_channels)
-        kernels = list(padded(conf.kernels, 3, len(channels) - 2)) + [1]
+        kernels = [*list(padded(conf.kernels, 3, len(channels) - 2)), 1]
         paddings = list(padded(conf.paddings, 0, len(channels) - 1))
         self.conv_dropout = nn.Dropout(p=conf.p_conv_dropout)
         self.dropout = nn.Dropout(p=conf.p_dropout)
@@ -41,8 +41,7 @@ class Expert(nn.Module):
                 out_channels=co,
                 kernel_size=k,
                 padding=p,
-            )
-            for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
+            ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
         ])
         self.hid_act = nn.LeakyReLU()
         self.attn = nn.MultiheadAttention(
@@ -53,13 +52,10 @@ class Expert(nn.Module):
         )
         self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
-        l_last_layer: int = self.s_chunk + sum(
-            2 * p - k + 1 for k, p in zip(kernels, paddings)
-        )
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
 
-    def forward(self, words: Tensor, specs: Tensor):
+    def forward(self, words: Tensor, specs: Tensor) -> Tensor:
         """
         B - Batch size
         L - Length of the word with boundary padding
@@ -70,11 +66,10 @@ class Expert(nn.Module):
         """
         # words: B x L
         # specs: B x L x n_spec
-        assert 0 <= words.min() and words.max() < self.embed.num_embeddings, (
-            words.min().item(),
-            words.max().item(),
-            self.embed.num_embeddings,
-        )
+        if words.min() < 0 or words.max() >= self.embed.num_embeddings:
+            v_min, v_max, n_embed = words.min().item(), words.max().item(), self.embed.num_embeddings
+            raise ValueError(f'{v_min=}, {v_max=}, {n_embed=}')
+
         x = self.dropout(self.embed(words))  # B x L x e0
         x = self._pad(x, -2, 0)
         specs = self._pad(specs, -2, 0)
@@ -94,9 +89,7 @@ class Expert(nn.Module):
         x = torch.logsumexp(x, dim=-2)  # B x c_k
         x = self.post_attn_classifier(x)  # B x o
         # Mask non-expert outputs
-        x = x.masked_fill(
-            self.output_mask == 0, -1e9
-        )  # set masked to very negative value
+        x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value
         return x
 
     def _pad(self, tensor: Tensor, dim: int = -1, pad_val: int = 0) -> Tensor:
@@ -117,14 +110,14 @@ class Expert(nn.Module):
 
 
 class Moe(nn.Module):
-    def __init__(
-        self,
-        kinds_to_vocabs: KindToVocab,
-        kinds_to_targets: KindToTargets,
-        kind_to_specs: dict[str, Sequence[Callable]],
-        conf: Conf,
-    ):
-        assert kinds_to_vocabs.keys() == kinds_to_targets.keys()
+    def __init__(self,
+            kinds_to_vocabs: KindToVocab,
+            kinds_to_targets: KindToTargets,
+            kind_to_specs: dict[str, Sequence[Callable]],
+            conf: Conf,
+        ):
+        if kinds_to_vocabs.keys() == kinds_to_targets.keys():
+            raise ValueError(f'Incompatible kinds to vocab/targets mapping: {list(kinds_to_targets.keys())} {list(kinds_to_targets.keys())}')
         super().__init__()
         all_targets = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()  # type: ignore[arg-type]
         self.n_classes = len(all_targets)
