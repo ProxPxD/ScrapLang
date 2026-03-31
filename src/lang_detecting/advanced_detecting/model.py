@@ -1,12 +1,14 @@
 import math
-from typing import Callable, Sequence
+from collections.abc import Sequence
+from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from more_itertools import repeat_last, windowed
+from more_itertools import windowed
 from more_itertools.more import padded
-from pydash import chain as c, flow
+from pydash import chain as c
+from pydash import flow
 from torch import Tensor
 
 from src.lang_detecting.advanced_detecting.conf import Conf, ExpertConf
@@ -15,7 +17,7 @@ from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToTa
 
 class Expert(nn.Module):
     def __init__(self,
-            vocab: Vocab,
+            vocab: list[Vocab],
             targets: list[Class],
             all_classes: list[Class],
             conf: ExpertConf,
@@ -27,23 +29,33 @@ class Expert(nn.Module):
         self.stride = conf.chunking.stride
         self.n_specs = n_specs
 
-        self.embed = nn.Embedding(n_tokens, conf.emb_dim-n_specs, padding_idx=conf.padding_idx)
+        self.embed = nn.Embedding(n_tokens, conf.emb_dim - n_specs, padding_idx=conf.padding_idx)
         channels = (conf.emb_dim, *conf.hidden_channels)
-        kernels = list(padded(conf.kernels, 3, len(channels)-2)) + [1]
-        paddings = list(padded(conf.paddings, 0, len(channels)-1))
+        kernels = list(padded(conf.kernels, 3, len(channels) - 2)) + [1]
+        paddings = list(padded(conf.paddings, 0, len(channels) - 1))
+        self.conv_dropout = nn.Dropout(p=conf.p_conv_dropout)
+        self.dropout = nn.Dropout(p=conf.p_dropout)
         self.convs = nn.ModuleList([
             nn.Conv1d(
                 in_channels=ci,
                 out_channels=co,
                 kernel_size=k,
                 padding=p,
-            ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
+            )
+            for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
         ])
         self.hid_act = nn.LeakyReLU()
-        self.attn = nn.MultiheadAttention(embed_dim=channels[-1], num_heads=1, batch_first=True)
+        self.attn = nn.MultiheadAttention(
+            embed_dim=channels[-1],
+            num_heads=1,
+            batch_first=True,
+            dropout=conf.p_dropout,
+        )
         self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
-        l_last_layer: int = self.s_chunk + sum(2*p - k + 1 for k, p in zip(kernels, paddings))
+        l_last_layer: int = self.s_chunk + sum(
+            2 * p - k + 1 for k, p in zip(kernels, paddings)
+        )
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
 
@@ -58,26 +70,33 @@ class Expert(nn.Module):
         """
         # words: B x L
         # specs: B x L x n_spec
-        assert 0 <= words.min() and words.max() < self.embed.num_embeddings, (words.min().item(), words.max().item(), self.embed.num_embeddings)
-        x = self.embed(words)  # B x L x e0
+        assert 0 <= words.min() and words.max() < self.embed.num_embeddings, (
+            words.min().item(),
+            words.max().item(),
+            self.embed.num_embeddings,
+        )
+        x = self.dropout(self.embed(words))  # B x L x e0
         x = self._pad(x, -2, 0)
         specs = self._pad(specs, -2, 0)
-        x = torch.cat([x, specs[..., :self.n_specs]], dim=-1)  # B x L x e1
+        x = torch.cat([x, specs[..., : self.n_specs]], dim=-1)  # B x L x e1
         x = self.chunk(x)  # B x ch x e1 x l_0
         B, ch, C, L = x.shape
-        x = x.reshape(B*ch, C, L)
+        x = x.reshape(B * ch, C, L)
         for conv in self.convs:
-            x = self.hid_act(conv(x))  # B*ch x c_k x l_k
+            x = self.hid_act(self.conv_dropout(conv(x)))  # B*ch x c_k x l_k
         x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
         *_, L, C = x.shape
-        x = self.norm(x)
-        attn_mask, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
-        gate = torch.tanh(attn_mask)
-        x = (x * (1 + gate)).reshape(B, ch*L, C) # B x ch*l_k x c_k
+        x_norm = self.norm(x)
+        attn_mask, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
+        attn_mask = self.norm(attn_mask)
+        gate = 2 * torch.sigmoid(0.1 * attn_mask)
+        x = (x * gate).reshape(B, ch * L, C)  # B x ch*l_k x c_k
         x = torch.logsumexp(x, dim=-2)  # B x c_k
         x = self.post_attn_classifier(x)  # B x o
         # Mask non-expert outputs
-        x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value
+        x = x.masked_fill(
+            self.output_mask == 0, -1e9
+        )  # set masked to very negative value
         return x
 
     def _pad(self, tensor: Tensor, dim: int = -1, pad_val: int = 0) -> Tensor:
@@ -85,7 +104,7 @@ class Expert(nn.Module):
         n_chunks = math.ceil(s_unpadded / self.s_chunk)
         overlap = self.s_chunk - self.stride
         overlap_offset = overlap if n_chunks > 1 else 0
-        n_to_pad = (self.s_chunk * n_chunks - overlap_offset - s_unpadded)
+        n_to_pad = self.s_chunk * n_chunks - overlap_offset - s_unpadded
         from_end = -(dim if dim < 0 else dim - len(tensor.shape))
         initial_zeroes = (0, 0) * (from_end - 1)
         tensor = F.pad(tensor, (*initial_zeroes, 0, n_to_pad), value=pad_val)
@@ -98,18 +117,19 @@ class Expert(nn.Module):
 
 
 class Moe(nn.Module):
-    def __init__(self,
-            kinds_to_vocabs: KindToVocab,
-            kinds_to_targets: KindToTargets,
-            kind_to_specs: dict[str, Sequence[Callable]],
-            conf: Conf,
-        ):
+    def __init__(
+        self,
+        kinds_to_vocabs: KindToVocab,
+        kinds_to_targets: KindToTargets,
+        kind_to_specs: dict[str, Sequence[Callable]],
+        conf: Conf,
+    ):
         assert kinds_to_vocabs.keys() == kinds_to_targets.keys()
         super().__init__()
-        all_targets = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()
+        all_targets = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()  # type: ignore[arg-type]
         self.n_classes = len(all_targets)
         self.experts = nn.ModuleList([
-            Expert(vocabs, targets, all_targets, conf=conf.expert, n_specs=kind_to_specs.get(kind, 0))
+            Expert(vocabs, targets, all_targets, conf=conf.expert, n_specs=kind_to_specs.get(kind, 0),)
             for (kind, vocabs), targets in zip(kinds_to_vocabs.items(), kinds_to_targets.values())
         ])
 

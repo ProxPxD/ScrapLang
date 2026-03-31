@@ -67,6 +67,8 @@ class ExpertConf:
     hidden_channels: Sequence[int] = (64, 64, 64)
     paddings: Sequence[int] =  (0, 0, 0)
     leaky_relu_slop: float = 0.1
+    p_dropout = .1
+    p_conv_dropout = p_dropout
 
 @dataclass(frozen=True)
 class Weights:

@@ -1,7 +1,7 @@
 import math
 import random
 import warnings
-from collections import Counter, namedtuple
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
 from itertools import product
@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd
-import pydash as _
 
 from src.lang_detecting.advanced_detecting.data.batcher import Batcher
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
@@ -24,7 +23,7 @@ import torch
 import torch.nn as nn
 from clearml.backend_api.session.defs import MissingConfigError
 from pandas import DataFrame
-from pydash import chain as c, flow, nth
+from pydash import chain as c, flow
 from toolz import valmap
 from torch import Tensor
 
