@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable, Self
 
-import pydash as _
 from pandas import DataFrame
-from pydash import chain as c, flow
+from pydash import chain as c
+from pydash import flow
 
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.step import AbstractStep
 
 
 class ColFilter(AbstractStep):
-    def __init__(self, mask_func: Callable = None, col: str = None, output_cols: list[str] = None, precond: Callable[[DataFrame], bool] = c().identity(True), **kwargs):
+    def __init__(self, mask_func: Callable = None, col: str = None, output_cols: list[str] = None, precond: Callable[[DataFrame], bool] = c().identity(True), **kwargs: Any):  # noqa: FBT003
         self.precond = precond
         self.func = mask_func
         self.col = col
@@ -36,11 +36,11 @@ class ColFilter(AbstractStep):
     def _decol_func(self) -> Callable:
         return self.func if not self.col else lambda df: self.func(df[self.col])
 
-    def __and__(self, other) -> ColFilter:
+    def __and__(self, other: Self) -> Self:
         return ColFilter(mask_func=flow(self, other))
 
-    def __or__(self, other) -> ColFilter:
-        return ColFilter(mask_func=lambda df: self._decol_func(df) | other._decol_func(df))
+    def __or__(self, other: Self) -> Self:
+        return ColFilter(mask_func=lambda df: self._decol_func(df) | other._decol_func(df))  # noqa: SLF001
 
-    def __invert__(self):
+    def __invert__(self) -> Self:
         return ColFilter(mask_func=lambda df: ~self._decol_func(df))

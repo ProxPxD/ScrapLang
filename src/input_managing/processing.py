@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -5,23 +7,24 @@ from argparse import Namespace
 from collections.abc import Callable
 from functools import reduce
 from itertools import cycle
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import pydash as _
 from box import Box
 from pydash import chain as c
-from toolz import itemmap
 
-from src.context import Context
 from src.input_managing.outstemming import Outstemmer
 from src.lang_detecting.advanced_detecting.model_io_mging import ModelIOMgr
 from src.lang_detecting.detecting import Detector
-from src.lang_detecting.preprocessing.data import DataProcessor
+
+if TYPE_CHECKING:
+    from src.context import Context
+    from src.lang_detecting.preprocessing.data import DataProcessor
 
 
 class InputProcessor:
     def __init__(self, context: Context,
-                 data_processor: DataProcessor = None,
+            data_processor: DataProcessor = None,
         ):
         self.context = context
         self.outstemmer = Outstemmer()
@@ -42,13 +45,13 @@ class InputProcessor:
 
     def _word_outstemming(self, parsed: Namespace) -> Namespace:
         parsed.words = self.outstemmer.join_outstem_syntax(parsed.words)
-        # TODO: Add test for veryfying that the same word in outstemming do not appear
+        # TODO: Add test for verifying that the same word in outstemming do not appear
         # TODO: Add test for allowing the same word for different from_langs
         parsed.words = _.flat_map(parsed.words, self.outstemmer.outstem)
         return parsed
 
     def _fill_args(self, parsed: Namespace) -> Namespace:
-        # TODO: Refactor to have it cleaner which filling is needed - when from, when to-lang? (see all occurencese of: orig_from_langs)
+        # TODO: Refactor to have it cleaner which filling is needed - when from, when to-lang? (see all occurrences of: orig_from_langs)
         msg, func = self._is_filling_needless_and_get_map_parsed(parsed)
         if msg:
             logging.debug(msg)
@@ -57,8 +60,8 @@ class InputProcessor:
         parsed = self._fill_last_used(parsed)
         return parsed
 
-    def _is_filling_needless_and_get_map_parsed(self, parsed: Namespace) -> tuple[Optional[str | bool], Optional[Callable[[Namespace], Namespace]]]:
-        # TODO: add test for verifying argument fullfilling if only from_lang is specified
+    def _is_filling_needless_and_get_map_parsed(self, parsed: Namespace) -> tuple[str | bool | None, Callable[[Namespace], Namespace] | None]:
+        # TODO: add test for verifying argument fulfilling if only from_lang is specified
         if parsed.orig_from_langs or parsed.orig_to_langs:
             return 'There exist from- and to- langs, not filling', None
         if parsed.set or parsed.add or parsed.delete:
@@ -68,10 +71,11 @@ class InputProcessor:
         if isinstance(parsed.loop, bool) or self.context.loop is True:
             # TODO: verify if it's enough and that replacement is not needed later, test "-r" in loop
             # TODO: test loop
-            retrieve_context_langs = lambda parsed: c(dict(
-                from_langs=parsed.from_langs or self.context.from_langs,
-                to_langs=parsed.to_langs or self.context.to_langs,
-            ).items()).map(lambda name_langs: setattr(parsed, name_langs[0], name_langs[1])).value() and parsed
+            def retrieve_context_langs(inner_parsed: Namespace) -> Namespace:
+                for lang_kind in ('from_langs', 'to_langs'):
+                    val = getattr(inner_parsed, lang_kind, None) or getattr(self.context.from_langs, lang_kind)
+                    setattr(inner_parsed, lang_kind, val)
+                return inner_parsed
             return 'Just managing the loop, not filling', retrieve_context_langs
         return False, None
 
@@ -92,7 +96,7 @@ class InputProcessor:
         parsed.from_langs = [inferred_lang]
         return parsed
 
-    def _is_infer_needless(self, parsed: Namespace) -> Optional[str]:
+    def _is_infer_needless(self, parsed: Namespace) -> str | None:
         if parsed.orig_from_langs:
             return 'From lang explicitly specified, not inferring'
         if parsed.reverse:  # TODO: add test for reversing!
@@ -104,12 +108,12 @@ class InputProcessor:
     def _fill_last_used(self, parsed: Namespace) -> Namespace:
         used = _.filter_(parsed.from_langs + parsed.to_langs)
         pot_defaults = [lang for lang in self.context.langs if lang not in used]; logging.debug(f'Potential defaults: {pot_defaults}')
-        if len(self.context.langs) < (n_needed := int(not parsed.from_langs) + int(not parsed.to_langs)):
+        n_needed = int(not parsed.from_langs) + int(not parsed.to_langs)
+        if len(self.context.langs) < n_needed:
             raise ValueError(f'Config has not enough defaults! Needed {n_needed}, but possible to choose only: {pot_defaults}')
         # Do not require to translate on definition or inflection
-        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio or parsed.grammar):
-            if parsed.at.startswith('n'):
-                n_needed -= 1
+        if not parsed.to_langs and (parsed.definition or parsed.inflection or parsed.wiktio or parsed.grammar) and parsed.at.startswith('n'):
+            n_needed -= 1
         to_fill = pot_defaults[:n_needed]; logging.debug(f'Chosen defaults: {to_fill}')
         if not parsed.from_langs and to_fill:
             from_lang = to_fill.pop(0); logging.debug(f'Filling from_lang with "{from_lang}"')
@@ -137,16 +141,17 @@ class InputProcessor:
         whole_lang_mapping: Box
         mapped_words = []
         for from_lang, word in zip(cycle(self.context.from_langs or parsed.from_langs), parsed.words):
-            if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or whole_lang_mapping and not whole_lang_mapping[0]:
+            if not (whole_lang_mapping := self.context.mappings.get(from_lang)) or (whole_lang_mapping and not whole_lang_mapping[0]):
                 mapped_words.append(word)
                 continue
             logging.debug(f'Applying mapping for "{from_lang}" with map:\n{json.dumps(whole_lang_mapping, indent=4, ensure_ascii=False)}')
+            mapped_word = word
             for single_mapping in whole_lang_mapping:
                 patts, repls = zip(*sorted(single_mapping.items(), key=c().get(0).size(), reverse=True))
                 whole_lang_mapping: list = list(map(lambda patt, repl: (re.compile(patt), repl), patts, repls))
                 logging.debug(f'from_lang_map: {whole_lang_mapping}')
-                word = reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
-            mapped_words.append(word)
+                mapped_word = reduce(lambda w, patt_repl: patt_repl[0].sub(patt_repl[1], w), whole_lang_mapping, word)
+            mapped_words.append(mapped_word)
         parsed.words = mapped_words
         return parsed
 

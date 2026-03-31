@@ -1,9 +1,8 @@
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, ConfigDict, Field, AliasChoices
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from src.context_domain import indirect, assume, gather_data, infervia, groupby, ColorSchema, Mappings, UNSET, Color, \
-    retrain_on
+from src.context_domain import UNSET, ColorSchema, Mappings, assume, gather_data, groupby, indirect, infervia, retrain_on
 
 ConfIndirect = Literal[*(indirect - {'conf'})]
 ConfAssume = Literal[*(assume - {'conf'})]

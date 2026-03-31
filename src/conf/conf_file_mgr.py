@@ -3,13 +3,16 @@ from __future__ import annotations
 import logging
 from argparse import Namespace
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pydash as _
 
-from src.resouce_managing.file import FileMgr
-from src.resouce_managing.valid_data import ValidDataMgr
 from src import context_domain
 from src.conf import Conf
+from src.resouce_managing.file import FileMgr
+
+if TYPE_CHECKING:
+    from src.resouce_managing.valid_data import ValidDataMgr
 
 
 class ConfFileMgr:
@@ -58,6 +61,10 @@ class ConfFileMgr:
         saved_used = _.filter_(used_langs, self.conf.langs.__contains__)
         saved_unused = _.reject(self.conf.langs, saved_used.__contains__)
         newly_ordered_saved = saved_used + saved_unused
-        logging.debug(f'Saved used: {saved_used}\nOld Order: {self.conf.langs}\nNew Order: {newly_ordered_saved}')
+        logging.debug('\n'.join((
+            f'Saved used: {saved_used}',
+            f'Old Order: {self.conf.langs}',
+            f'New Order: {newly_ordered_saved}',
+        )))
         self.conf.langs = newly_ordered_saved
         self._file_mgr.save(self.conf.model_dump(exclude_unset=True))

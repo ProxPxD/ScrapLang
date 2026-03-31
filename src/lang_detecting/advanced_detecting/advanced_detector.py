@@ -287,7 +287,7 @@ class AdvancedDetector:
             self._board_metrics(VAL, epoch)
 
             val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
-            val_data[WORD] = val_data.apply(lambda row: ''.join(self.tokenizer.detokenize_input(row[WORD], row[KIND])).replace(Tokens.BOS, '').replace(Tokens.PAD, ''), axis=1)
+            val_data[WORD] = val_data.apply(lambda row: ''.join(self.tokenizer.detokenize_word(row[WORD], row[KIND])).replace(Tokens.BOS, '').replace(Tokens.PAD, ''), axis=1)
             val_data[TARGET] = val_data.apply(lambda row: self.tokenizer.detokenize_targets_as_onehot(row[TARGET]), axis=1)
             PRED = 'pred'
             for thresh in self.conf.train.supervision.cm_threshes:

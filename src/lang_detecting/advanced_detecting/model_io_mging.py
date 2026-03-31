@@ -1,13 +1,11 @@
 import logging
 import operator as op
-from abc import ABC
 from collections import OrderedDict
+from collections.abc import Collection
 from itertools import combinations
-from typing import Collection, Callable
 
 from pandas import DataFrame
 from pydash import chain as c
-import pydash as _
 from pydash import flow, spread
 
 from src.constants import Paths
@@ -27,13 +25,13 @@ TokenizedKindToGroupedVocab = OrderedDict[Kind, OrderedDict[str, list[int]]]
 
 
 class ModelIOMgr:
-    def __init__(self):
+    def __init__(self) -> None:
         self.model_io = FileMgr(Paths.MODEL_IO_FILE, create_if_not=True)
         self.data_conf = Data()
 
     @classmethod
-    def filter_any_shared_chars(cls, chars_group: Collection[str]):
-        combineds = c(chars_group).apply(lambda cs: combinations(map(set, cs), 2))
+    def filter_any_shared_chars(cls, chars_group: Collection[str]) -> str:
+        combineds = c(chars_group).apply(lambda cs: combinations(map(set, cs), 2)) # type: ignore[arg-type]
         any_shareds = combineds.map(spread(op.and_))
         all_any_shareds = any_shareds.reduce(lambda a, b: a | b, set())
         as_strs = all_any_shareds.to_list().sort().join()
@@ -54,15 +52,15 @@ class ModelIOMgr:
         #script_lang
         lang_script = lang_script[lang_script[VDC.LANG].isin(qualified_langs)]
         script_lang = lang_script.explode(LSC.SCRIPTS).rename(columns={LSC.SCRIPTS: LSC.SCRIPT})
-        sclc = script_common_langs_chars = (script_lang.groupby(LSC.SCRIPT, as_index=False).agg({
-            LSC.LANG: flow(sorted, list),
-            LSC.CHARS: self.filter_any_shared_chars
+        sclc = script_common_langs_chars = (script_lang.groupby(LSC.SCRIPT, as_index=False).agg({  # noqa: F841
+            LSC.LANG: flow(sorted, list),  # type: ignore[arg-type]
+            LSC.CHARS: self.filter_any_shared_chars,
         }).rename(columns={LSC.LANG: LSC.LANGS}))
         sclc = sclc[(sclc[LSC.LANGS].map(len) > 1) & (sclc[LSC.CHARS].map(len) > 0)].reset_index(drop=True)
         shary_script = OrderedDict([
             (row[LSC.SCRIPT], OrderedDict([
                 (LSC.LANGS, row[LSC.LANGS]),
-                (LSC.CHARS, ''.join(row[LSC.CHARS]))
+                (LSC.CHARS, ''.join(row[LSC.CHARS])),
             ])) for idx, row in sclc.iterrows()
         ])
         return shary_script
@@ -71,7 +69,7 @@ class ModelIOMgr:
         kinds_to_vocab_classes = colutils.order_dict_to_dict(kinds_to_vocab_classes)
         old_script_langs = self.model_io.load()
         if old_script_langs != kinds_to_vocab_classes:
-            logging.debug(f'Updating model IO')
+            logging.debug('Updating model IO')
             self.model_io.save(kinds_to_vocab_classes) # TODO: Uncomment after retraining functionality
             # raise ValueError("Model requires retraining and that's unsupported and unhandled for now")
 

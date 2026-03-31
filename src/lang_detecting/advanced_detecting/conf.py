@@ -1,8 +1,7 @@
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import OrderedDict, Sequence, Optional
-
-from sympy.core.cache import cached_property
+from typing import Optional
 
 
 @dataclass(frozen=True)

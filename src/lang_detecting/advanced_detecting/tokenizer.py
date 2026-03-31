@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Callable, Sequence
+from typing import TYPE_CHECKING, Callable
 
-from toolz import valmap
 import pydash as _
+from toolz import valmap
 
-from src.lang_detecting.advanced_detecting.model_io_mging import Class, \
-    KindToVocab
+if TYPE_CHECKING:
+    from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToVocab
 
 CondMap = tuple[Callable, Callable]
 KindToSpecs = dict[str, Sequence[CondMap]]
@@ -24,14 +25,14 @@ class Tokens:  # Req lowercase
 
 class ITokenizer(ABC):
     @abstractmethod
-    def tokenize(self, word: str | Sequence[str], *args):
+    def tokenize(self, word: str | Sequence[str]) -> list[int]:
         ...
 
-    def __call__(self, word: str | Sequence[str], *args):
-        return self.tokenize(word, *args)
+    def __call__(self, word: str | Sequence[str]) -> list[int]:
+        return self.tokenize(word)
 
-    def __getitem__(self, word: str | Sequence[str], *args):
-        return self.tokenize(word, *args)
+    def __getitem__(self, word: str | Sequence[str]) -> list[int]:
+        return self.tokenize(word)
 
 
 class Tokenizer(ITokenizer):
@@ -51,7 +52,7 @@ class Tokenizer(ITokenizer):
     def n_tokens(self) -> int:
         return len(self.token2id)
 
-    def tokenize(self, tokens: list[str]) -> Sequence[int]:
+    def tokenize(self, tokens: str | Sequence[str]) -> Sequence[int]:
         return tuple([self.token2id.get(t, self.unk_id) if self.is_allowed_unknown() else self.token2id[t] for t in tokens])
 
     def detokenize(self, ids: list[int]) -> Sequence[str] | str:
@@ -66,7 +67,7 @@ class GroupTokenizer(ITokenizer):
         return tuple([int(c in self.group) for c in word])
 
 
-class MultiKindTokenizer(ITokenizer):
+class MultiKindTokenizer:
     def __init__(self,
             kinds_to_vocabs: KindToVocab,
             targets: list[Class] = None,
@@ -82,22 +83,22 @@ class MultiKindTokenizer(ITokenizer):
     def n_target_tokens(self) -> int:
         return self.target_tokenizer.n_tokens
 
-    def tokenize_input(self, input: str | Sequence[str], kind: str) -> Sequence[int]:
+    def tokenize_word(self, word: str | Sequence[str], kind: str) -> Sequence[int]:
         specs = self.kind_to_spec.get(kind, [])
-        input = [(func(ch) if cond(ch) else ch) for ch in input for (cond, func) in specs]
-        return self.kind_tokenizers[kind](input)
+        word = [(func(ch) if cond(ch) else ch) for ch in word for (cond, func) in specs]
+        return self.kind_tokenizers[kind](word)
 
-    def detokenize_input(self, ids: list[int], kind: str) -> Sequence[str]:
+    def detokenize_word(self, ids: list[int], kind: str) -> Sequence[str]:
         return self.kind_tokenizers[kind].detokenize(ids)
 
     def tokenize_kind(self, kind: str) -> int:
         return self.kind2id[kind]
 
     def tokenize_common(self, val: str) -> int:
-        return self.tokenize_input([val], self.detokenize_kind(0))[0]
+        return self.tokenize_word([val], self.detokenize_kind(0))[0]
 
-    def detokenize_kind(self, id: int) -> str:
-        return self.id2kind.get(id, Tokens.UNK)
+    def detokenize_kind(self, kind_id: int) -> str:
+        return self.id2kind.get(kind_id, Tokens.UNK)
 
     def tokenize_target(self, target: str) -> Sequence[int]:
         return self.target_tokenizer([target])
@@ -113,10 +114,7 @@ class MultiKindTokenizer(ITokenizer):
         return self.detokenize_targets(targets)
 
     def detokenize_common(self, val: int) -> str:
-        return self.detokenize_input([val], self.detokenize_kind(0))[0]
+        return self.detokenize_word([val], self.detokenize_kind(0))[0]
 
     def tokenize_spec_groups(self, word: str | Sequence[str], kind: str) -> Sequence[Sequence[int]]:
         return tuple([tuple([2*int(cond(c)) - 1 for (cond, func) in self.kind_to_spec[kind]]) for c in word])
-
-    def tokenize(self, word: str | Sequence[str], kind: str, targets: str | Sequence[str]):
-        return self.tokenize_input(word, kind), self.tokenize_kind(kind), self.tokenize_target(targets), self.tokenize_spec_groups(word, kind)

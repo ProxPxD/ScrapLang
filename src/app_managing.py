@@ -1,25 +1,27 @@
+from __future__ import annotations
+
 import shlex
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Callable, Any
+from typing import Any, Callable
 
-import pydash as _
 from more_itertools.more import seekable
+from pydash import chain as c
 from requests import Session
 
 from src.conf import ConfFileMgr
 from src.context import Context
 from src.exceptions import ScrapLangException
 from src.input_managing import InputMgr
+from src.input_managing.data_gathering import DataGatherer
 from src.lang_detecting.preprocessing.data import DataProcessor
 from src.logutils import setup_logging
 from src.migration_managing import MigrationManager
 from src.printer import Printer
-from src.input_managing.data_gathering import DataGatherer
 from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
-from pydash import chain as c
 
 
 class AppMgr:
@@ -83,9 +85,10 @@ class AppMgr:
             self.run_scrap()
 
     def run_scrap(self) -> None:
-        with self.connect():
+        with self.connect():  # noqa: ArgumentSelfUnfilled
             scrap_results = seekable(self.scrap_mgr.scrap(self.context))
-            _.for_each(scrap_results, self.printer.print_result)
+            for scrap_result in scrap_results:
+                self.printer.print_result(scrap_result)
 
         self.conf_mgr.update_lang_order(self.context.all_langs)
         scrap_results.seek(0)

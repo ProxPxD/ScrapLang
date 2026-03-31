@@ -3,13 +3,11 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-import pydash as _
 from GlotScript import sp
 from pandas import DataFrame
-from pydash import chain as c, flow
+from pydash import flow
 
 from src.constants import preinitialized
-from src.lang_detecting.advanced_detecting.conf import Data, WordConstrain
 from src.resouce_managing.file import FileMgr
 from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
@@ -41,14 +39,15 @@ class DataProcessor:
         lang_script = self.lang_script_mgr.content
         return lang_script if lang_script is not None else self.generate_script_summary()
 
-    def _generate_script_summary(self, data: DataFrame) -> DataFrame:
+    @classmethod
+    def _generate_script_summary(cls, data: DataFrame) -> DataFrame:
         """
         :param data: [lang: str, word: str]
         :return:
         """
         m_unmapped = ~data[VDC.IS_MAPPED]
-        lang_script = data[m_unmapped].groupby(VDC.LANG)[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index()
-        lang_script.rename(columns={VDC.WORD: LSC.CHARS, VDC.LANG: LSC.LANG}, inplace=True)
+        lang_script = data[m_unmapped].groupby(VDC.LANG)[VDC.WORD].apply(flow(''.join, str.lower, set, sorted, ''.join)).reset_index()  # type: ignore[arg-type]
+        lang_script = lang_script.rename(columns={VDC.WORD: LSC.CHARS, VDC.LANG: LSC.LANG})
         lang_script[LSC.SCRIPTS] = lang_script[LSC.CHARS].apply(lambda w: set(sp(''.join(w))[-1]['details'].keys()))
         return lang_script
 
