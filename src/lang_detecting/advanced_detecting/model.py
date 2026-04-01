@@ -116,7 +116,7 @@ class Moe(nn.Module):
             kind_to_specs: dict[str, Sequence[Callable]],
             conf: Conf,
         ):
-        if kinds_to_vocabs.keys() == kinds_to_targets.keys():
+        if kinds_to_vocabs.keys() != kinds_to_targets.keys():
             raise ValueError(f'Incompatible kinds to vocab/targets mapping: {list(kinds_to_targets.keys())} {list(kinds_to_targets.keys())}')
         super().__init__()
         all_targets = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()  # type: ignore[arg-type]
