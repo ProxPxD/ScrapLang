@@ -84,7 +84,7 @@ class Expert(nn.Module):
         x_norm = self.norm(x)
         attn_mask, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
         attn_mask = self.norm(attn_mask)
-        gate = 2 * torch.sigmoid(0.1 * attn_mask)
+        gate = 2 * torch.sigmoid(attn_mask)
         x = (x * gate).reshape(B, ch * L, C)  # B x ch*l_k x c_k
         x = torch.logsumexp(x, dim=-2)  # B x c_k
         x = self.post_attn_classifier(x)  # B x o

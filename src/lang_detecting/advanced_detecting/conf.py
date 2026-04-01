@@ -68,6 +68,7 @@ class ExpertConf:
     leaky_relu_slop: float = 0.1
     p_dropout = .1
     p_conv_dropout = p_dropout
+    tokenizer = None  # TODO: temp
 
 @dataclass(frozen=True)
 class Weights:

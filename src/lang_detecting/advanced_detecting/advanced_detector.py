@@ -115,6 +115,7 @@ class AdvancedDetector:
 
         self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.conf.expert.padding_idx = self.tokenizer.tokenize_common(Tokens.PAD)
+        self.conf.expert.tokenizer = self.tokenizer
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # TODO: Think of passing kinds_to_target
         self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf, kinds_to_targets=kinds_to_targets)
