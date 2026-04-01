@@ -67,7 +67,7 @@ class ExpertConf:
     paddings: Sequence[int] =  (0, 0, 0)
     leaky_relu_slop: float = 0.1
     p_dropout = .1
-    p_conv_dropout = p_dropout
+    p_conv_dropout = .25
     tokenizer = None  # TODO: temp
 
 @dataclass(frozen=True)

@@ -78,10 +78,12 @@ class Expert(nn.Module):
         B, ch, C, L = x.shape
         x = x.reshape(B * ch, C, L)
         for conv in self.convs:
-            x = self.hid_act(self.conv_dropout(conv(x)))  # B*ch x c_k x l_k
+            x = conv(x)
+            x = self.conv_dropout(self.hid_act(x))  # B*ch x c_k x l_k
         x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
         *_, L, C = x.shape
-        x_norm = self.norm(x)
+        x_norm = x
+        #x_norm = self.norm(x)
         attn_mask, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
         attn_mask = self.norm(attn_mask)
         gate = 2 * torch.sigmoid(attn_mask)

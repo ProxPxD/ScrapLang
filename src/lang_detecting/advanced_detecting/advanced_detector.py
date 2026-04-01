@@ -155,7 +155,7 @@ class AdvancedDetector:
                 for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=tags_to_delete):
                     print(f'Deleting old task: {task.name}')
                     task.delete()
-                tags = ['autodel']
+                tags = self.tags
                 match self.conf.data.augment.is_augmenting:
                     case True: tags.append('augmented')
                     case False: tags.append('non-augmented')
@@ -195,6 +195,11 @@ class AdvancedDetector:
                 for avg in ('macro', 'micro')
             ]
             self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.train.supervision.cm_threshes}
+
+    @property
+    def tags(self) -> list[str]:
+        tags = ['autodel']
+        return tags
 
     @property
     def dev_training(self) -> bool:
