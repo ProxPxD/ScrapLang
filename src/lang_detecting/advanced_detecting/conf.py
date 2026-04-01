@@ -49,7 +49,7 @@ class Labels:
 
 @dataclass
 class Data:
-    min_record_n_thresh: int = 2**5
+    min_n_samples: int = 2**5
     chunking: Chunking = field(default_factory=Chunking)
     valset: ValSet = field(default_factory=ValSet)
     augment: Augment = field(default_factory=Augment)

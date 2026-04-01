@@ -46,7 +46,7 @@ class ModelIOMgr:
         m_unmapped = ~data[VDC.IS_MAPPED]
         m_long_enough = data[VDC.WORD].str.len() >= self.data_conf.word.len_thresh
         lang_to_words = data[m_unmapped & m_long_enough].reset_index()
-        m_enough_words = lang_to_words.groupby(VDC.LANG)[VDC.WORD].transform('count') >= self.data_conf.min_record_n_thresh
+        m_enough_words = lang_to_words.groupby(VDC.LANG)[VDC.WORD].transform('count') >= self.data_conf.min_n_samples
         qualified_langs = set(lang_to_words[m_enough_words][VDC.LANG])
 
         #script_lang

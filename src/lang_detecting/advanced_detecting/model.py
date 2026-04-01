@@ -25,6 +25,10 @@ class Expert(nn.Module):
         ):
         super().__init__()
         n_tokens, n_labels = len(vocab), len(all_classes)
+        self.funcs = {
+            (LOGSUMEXP:='logsumexp'): torch.logsumexp,
+            'relu': torch.relu,
+        }
         self.s_chunk = conf.chunking.size
         self.stride = conf.chunking.stride
         self.n_specs = n_specs
@@ -50,10 +54,15 @@ class Expert(nn.Module):
             batch_first=True,
             dropout=conf.p_dropout,
         )
+        self.post_attn_pool_name = LOGSUMEXP
         self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
+
+    @property
+    def post_attn_pool(self) -> Callable:
+        return self.funcs[self.post_attn_pool_name]
 
     def forward(self, words: Tensor, specs: Tensor) -> Tensor:
         """
@@ -88,7 +97,7 @@ class Expert(nn.Module):
         attn_mask = self.norm(attn_mask)
         gate = 2 * torch.sigmoid(attn_mask)
         x = (x * gate).reshape(B, ch * L, C)  # B x ch*l_k x c_k
-        x = torch.logsumexp(x, dim=-2)  # B x c_k
+        x = self.post_attn_pool(x, dim=-2)  # B x c_k
         x = self.post_attn_classifier(x)  # B x o
         # Mask non-expert outputs
         x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value
@@ -123,7 +132,7 @@ class Moe(nn.Module):
         super().__init__()
         all_targets = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted)).value()  # type: ignore[arg-type]
         self.n_classes = len(all_targets)
-        self.experts = nn.ModuleList([
+        self.experts: nn.ModuleList[Expert] = nn.ModuleList([
             Expert(vocabs, targets, all_targets, conf=conf.expert, n_specs=kind_to_specs.get(kind, 0),)
             for (kind, vocabs), targets in zip(kinds_to_vocabs.items(), kinds_to_targets.values())
         ])

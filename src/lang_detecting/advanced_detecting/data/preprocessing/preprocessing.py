@@ -91,7 +91,7 @@ class PreprocessorFactory:
 
         def enough_count_func(data: DataFrame) -> Series[Any]:
             class_counts = data[VDC.LANG].value_counts()
-            numerous_enough = class_counts[class_counts >= conf.data.min_record_n_thresh].index
+            numerous_enough = class_counts[class_counts >= conf.data.min_n_samples].index
             return data[VDC.LANG].isin(numerous_enough)
 
         enough_count = ColFilter(mask_func=enough_count_func)

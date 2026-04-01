@@ -16,6 +16,7 @@ from src.lang_detecting.advanced_detecting.data.preprocessing import Preprocesso
 from src.lang_detecting.advanced_detecting.data.preprocessing.core.consts import TensorBatch
 from src.lang_detecting.advanced_detecting.data.splitter import Splitter
 from src.lang_detecting.advanced_detecting.data.train_param_calc import TrainParamCalc
+from src.lang_detecting.advanced_detecting.tagger import Tagger
 
 np.int = int
 
@@ -23,7 +24,8 @@ import torch
 import torch.nn as nn
 from clearml.backend_api.session.defs import MissingConfigError
 from pandas import DataFrame
-from pydash import chain as c, flow
+from pydash import chain as c
+from pydash import flow
 from toolz import valmap
 from torch import Tensor
 
@@ -41,13 +43,15 @@ warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resource
 EXCEPTION = None
 try:
     # noinspection PyUnresolvedReferences
-    from tqdm import tqdm
-    # noinspection PyUnresolvedReferences
-    from torchmetrics import ConfusionMatrix, Metric, Accuracy, Precision, Recall, F1Score, MatthewsCorrCoef, SensitivityAtSpecificity
     # noinspection PyUnresolvedReferences
     import matplotlib.pyplot as plt
+
     # noinspection PyUnresolvedReferences
     from mlcm import mlcm
+
+    # noinspection PyUnresolvedReferences
+    from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MatthewsCorrCoef, Metric, Precision, Recall, SensitivityAtSpecificity
+    from tqdm import tqdm
     HAS_TRAINING_SUPERVISION = True
 except ImportError as e:
     EXCEPTION = e
@@ -127,6 +131,7 @@ class AdvancedDetector:
         self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
         self.writer = MagicMock()
         self.task = MagicMock()
+        self.tagger = Tagger(conf=conf, moe=self.moe)
         self.metrics = {}
         self._cms: dict[str, dict[float, np.ndarray]] = {}
         self._cm_kind_every: int = 2 ** 5
@@ -151,22 +156,12 @@ class AdvancedDetector:
                      key='RA0LL08K8QWF588QOBVB53FMVRIZ6P',
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
-                tags_to_delete = ['autodel']
-                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=tags_to_delete):
+                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=self.tagger.deltags()):
                     print(f'Deleting old task: {task.name}')
                     task.delete()
-                tags = self.tags
-                match self.conf.data.augment.is_augmenting:
-                    case True: tags.append('augmented')
-                    case False: tags.append('non-augmented')
-                match math.log2(self.conf.train.epochs):
-                    case exp if exp <= 8: tags.append('lil')
-                    case exp if 8 < exp <= 9: tags.append('mid')
-                    case exp if 9 < exp <= 10: tags.append('mid-big')
-                    case exp if 10 < exp: tags.append('big')
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=tags, reuse_last_task_id=False, auto_connect_arg_parser=False
+                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
