@@ -28,6 +28,7 @@ class Expert(nn.Module):
         self.funcs = {
             (LOGSUMEXP:='logsumexp'): torch.logsumexp,
             'relu': torch.relu,
+            (SUM:='sum'): torch.sum,
         }
         self.s_chunk = conf.chunking.size
         self.stride = conf.chunking.stride
@@ -47,14 +48,14 @@ class Expert(nn.Module):
                 padding=p,
             ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
         ])
-        self.hid_act = nn.LeakyReLU()
+        self.hid_act = nn.Tanh()
         self.attn = nn.MultiheadAttention(
             embed_dim=channels[-1],
             num_heads=1,
             batch_first=True,
             dropout=conf.p_dropout,
         )
-        self.post_attn_pool_name = LOGSUMEXP
+        self.post_attn_pool_name = SUM
         self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
@@ -87,15 +88,15 @@ class Expert(nn.Module):
         B, ch, C, L = x.shape
         x = x.reshape(B * ch, C, L)
         for conv in self.convs:
-            x = conv(x)
-            x = self.conv_dropout(self.hid_act(x))  # B*ch x c_k x l_k
+            x = self.hid_act(conv(x))
+            x = self.conv_dropout(x)  # B*ch x c_k x l_k
         x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
         *_, L, C = x.shape
-        x_norm = x
-        #x_norm = self.norm(x)
+        #x_norm = x
+        x_norm = self.norm(x)
         attn_mask, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
         attn_mask = self.norm(attn_mask)
-        gate = 2 * torch.sigmoid(attn_mask)
+        gate = torch.sigmoid(attn_mask)
         x = (x * gate).reshape(B, ch * L, C)  # B x ch*l_k x c_k
         x = self.post_attn_pool(x, dim=-2)  # B x c_k
         x = self.post_attn_classifier(x)  # B x o
