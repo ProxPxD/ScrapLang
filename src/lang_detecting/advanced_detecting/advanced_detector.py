@@ -157,7 +157,7 @@ class AdvancedDetector:
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
                 for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=self.tagger.deltags()):
-                    print(f'Deleting old task: {task.name}')
+                    print(f'Deleting old task: {task.name}(id={task.id})')
                     task.delete()
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
