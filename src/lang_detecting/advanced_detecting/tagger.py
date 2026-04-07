@@ -1,6 +1,6 @@
 import re
 from math import floor, log2, log10
-from typing import Sequence, TYPE_CHECKING, Callable, Collection
+from typing import TYPE_CHECKING, Callable, Collection, Sequence
 
 import pydash as _
 from pydash import chain as c
@@ -79,13 +79,13 @@ class Tagger:
     def _min_n_samples(self) -> TagS:
         return f'min_n_samples/{self.conf.data.min_n_samples}'
 
-    def _conv_norm_reduce_dims(self) -> TagS:
+    def _conv_norm_reduce_dims_tag(self) -> TagS:
         reduce_dims: Sequence[int] = tuple(self.conf.expert.conv_norm_dims)
         tag_name = 'conv_norm'
-        match len(reduce_dims):
-            case 2: tag_val = 'instance'
-            case 1 if reduce_dims[0] == -1: tag_val = 'unknown'
-            case 1 if reduce_dims[0] == -2: tag_val = 'batch'
-            case 1 if reduce_dims[0] == -3: tag_val = 'layer'
+        match set(reduce_dims):
+            case set((-2, -3)): tag_val = 'instance'
+            case set((-1,)): tag_val = f'unknown_{"_".join(reduce_dims)}'
+            case set((-2,)): tag_val = 'batch'
+            case set((-3)): tag_val = 'layer'
             case _: raise ValueError('Unpredicted Norm')
         return f'{tag_name}/{tag_val}'
