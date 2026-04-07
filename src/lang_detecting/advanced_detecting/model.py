@@ -1,8 +1,7 @@
 import math
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from typing import Callable
 
-import pydash as _
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,10 +16,10 @@ from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToTa
 
 
 class MaskedLayerNorm(nn.Module):
-    def __init__(self, normalized_shape: int | tuple, eps: float = 1e-5, *, affine: bool = True, reduce_dims: Sequence[int] = None):
+    def __init__(self, normalized_shape: int | tuple, eps: float = 1e-5, *, affine: bool = True, reduce_dims: int | Collection[int] = None):
         super().__init__()
         self.norm = nn.LayerNorm(normalized_shape, eps=eps, elementwise_affine=affine)
-        self.reduce_dims = reduce_dims or (-2, -1)
+        self.reduce_dims = tuple(reduce_dims) or (-2, -1)
 
     def forward(self, x: Tensor, mask: Tensor) -> Tensor:
         broadcast_dims = [d_x for d_x, d_m in zip(x.shape, mask.shape) if d_x - d_m]

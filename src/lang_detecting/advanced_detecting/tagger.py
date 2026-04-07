@@ -83,9 +83,9 @@ class Tagger:
         reduce_dims: Sequence[int] = tuple(self.conf.expert.conv_norm_dims)
         tag_name = 'conv_norm'
         match set(reduce_dims):
-            case set((-2, -3)): tag_val = 'instance'
-            case set((-1,)): tag_val = f'unknown_{"_".join(reduce_dims)}'
-            case set((-2,)): tag_val = 'batch'
-            case set((-3)): tag_val = 'layer'
+            case s if s == {-2, -3}: tag_val = 'instance'
+            case s if s == {-1}: tag_val = f'unknown_{"_".join(reduce_dims)}'
+            case s if s == {-2}: tag_val = 'batch'
+            case s if s == {-3}: tag_val = 'layer'
             case _: raise ValueError('Unpredicted Norm')
         return f'{tag_name}/{tag_val}'

@@ -1,7 +1,7 @@
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Collection, Optional
 
 
 @dataclass(frozen=True)
@@ -68,7 +68,7 @@ class ExpertConf:
     leaky_relu_slop: float = 0.1
     p_dropout = .1
     p_conv_dropout = .1
-    conv_norm_dims: Sequence[int] = (-2, -3,)
+    conv_norm_dims: Collection[int] = (-2, -3,)
     tokenizer = None  # TODO: temp
 
 @dataclass(frozen=True)
