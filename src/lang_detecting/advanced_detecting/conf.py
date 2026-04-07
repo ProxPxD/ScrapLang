@@ -68,7 +68,7 @@ class ExpertConf:
     leaky_relu_slop: float = 0.1
     p_dropout = .1
     p_conv_dropout = .1
-    conv_norm_dims: Collection[int] = (-2, -3,)
+    conv_norm_dims: Collection[int] = (-1, -2,) #(-2, -3,)
     tokenizer = None  # TODO: temp
 
 @dataclass(frozen=True)

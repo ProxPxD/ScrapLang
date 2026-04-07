@@ -84,8 +84,11 @@ class Tagger:
         tag_name = 'conv_norm'
         match set(reduce_dims):
             case s if s == {-2, -3}: tag_val = 'instance'
-            case s if s == {-1}: tag_val = f'unknown_{"_".join(reduce_dims)}'
+            case s if s == {-1}: tag_val = 'unknown_l'
             case s if s == {-2}: tag_val = 'batch'
             case s if s == {-3}: tag_val = 'layer'
-            case _: raise ValueError('Unpredicted Norm')
+            case _:
+                dims: str = c(reduce_dims).map_(lambda d: {-1: 'l', -2: 'c', -3: 'b'}[d]).join('_').value()
+                tag_val = f'unkown_{dims}'
+            # case _: raise ValueError('Unpredicted Norm')
         return f'{tag_name}/{tag_val}'
