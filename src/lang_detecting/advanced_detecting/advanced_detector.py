@@ -1,13 +1,15 @@
 import math
 import random
+import string
 import warnings
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
-from itertools import product
+from itertools import chain, product
 from typing import Any, Optional
 from unittest.mock import MagicMock
 
+import pydash as _
 import numpy as np
 import pandas as pd
 
@@ -156,12 +158,14 @@ class AdvancedDetector:
                      key='RA0LL08K8QWF588QOBVB53FMVRIZ6P',
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
-                for task in Task.get_tasks(project_name='ScrapLang', task_name='Train', tags=self.tagger.deltags()):
+                trash = Task.get_tasks(project_name='Trash')
+                rest = Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
+                for task in chain(trash, rest):
                     print(f'Deleting old task: {task.name}(id={task.id})')
                     task.delete()
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False
+                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -190,11 +194,6 @@ class AdvancedDetector:
                 for avg in ('macro', 'micro')
             ]
             self._cms[series] = {th: np.zeros((self.conf.data.labels.n_all + 1, self.conf.data.labels.n_all + 1), dtype=int) for th in self.conf.train.supervision.cm_threshes}
-
-    @property
-    def tags(self) -> list[str]:
-        tags = ['autodel']
-        return tags
 
     @property
     def dev_training(self) -> bool:
