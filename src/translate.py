@@ -11,7 +11,7 @@ def main():
         from src.app_managing import AppMgr
         from src.constants import Paths
 
-        n_exec = 29 if '--train' in sys.argv and '--dev' in sys.argv else 1
+        n_exec = 4 if '--train' in sys.argv and '--dev' in sys.argv else 1
         n_exec = 1
         for i in range(n_exec):
             if n_exec > 1:

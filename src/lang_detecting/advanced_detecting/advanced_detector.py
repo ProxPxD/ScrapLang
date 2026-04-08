@@ -123,6 +123,8 @@ class AdvancedDetector:
         self.conf.expert.padding_idx = self.tokenizer.tokenize_common(Tokens.PAD)
         self.conf.expert.tokenizer = self.tokenizer
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # TODO: Remove the test settings
+        # self.conf.expert.conv_norm_dims = (-1, -2, -3)
         # TODO: Think of passing kinds_to_target
         self.preprocessing = PreprocessorFactory(tokenizer=self.tokenizer, conf=self.conf, kinds_to_targets=kinds_to_targets)
         self.splitter = Splitter(self.conf)
@@ -130,7 +132,7 @@ class AdvancedDetector:
         self.train_param_calc = TrainParamCalc(self.conf)
         # noinspection PyTypeChecker
         self.conf.data.labels.all_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
-        self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
+        self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf)
         self.writer = MagicMock()
         self.task = MagicMock()
         self.tagger = Tagger(conf=conf, moe=self.moe)
@@ -159,13 +161,13 @@ class AdvancedDetector:
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
                 trash = Task.get_tasks(project_name='Trash')
-                rest = Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
+                rest = [] # Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
                 for task in chain(trash, rest):
                     print(f'Deleting old task: {task.name}(id={task.id})')
                     task.delete()
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    project_name='ScrapLang', task_name='Test_b_l__128', task_type=Task.TaskTypes.training,
+                    tags=self.tagger.tags + ['test/mid-batch'], reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -175,6 +177,7 @@ class AdvancedDetector:
                     raise RuntimeError('Dev mode run failed to initialize ClearML') from mce
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
+        self.moe.to(self.device)
         kwargs = dict(task='multilabel', num_labels=self.conf.data.labels.n_all)
         self.metrics: dict[str, list[MetricBundle]] = {}
         for series in SERIES_SEQ:
