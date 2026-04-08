@@ -122,7 +122,7 @@ class AdvancedDetector:
         self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
         self.conf.expert.padding_idx = self.tokenizer.tokenize_common(Tokens.PAD)
         self.conf.expert.tokenizer = self.tokenizer
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = None
         # TODO: Remove the test settings
         # self.conf.expert.conv_norm_dims = (-1, -2, -3)
         # TODO: Think of passing kinds_to_target
@@ -177,6 +177,8 @@ class AdvancedDetector:
                     raise RuntimeError('Dev mode run failed to initialize ClearML') from mce
         if HAS_TENSORBOARD:
             self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
+        if self.device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.moe.to(self.device)
         kwargs = dict(task='multilabel', num_labels=self.conf.data.labels.n_all)
         self.metrics: dict[str, list[MetricBundle]] = {}
