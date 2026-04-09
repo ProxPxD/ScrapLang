@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 import pydash as _
 import torch
@@ -49,11 +49,22 @@ class Batcher:
         tokenized_kinds = torch.tensor(_.map_(kinds, self.tokenizer.tokenize_kind)).int()
         tokenized_tokens = self.pad_seq(tokens, pad_val=self.pad_token)
         tokenized_spec_groups = self.pad_seq(specs, pad_val=-1).to_sparse()
-        tokenized_outputs = _.map_(targets, c().map(self.tokenizer.tokenize_target))
-        one_hot_encoded_targets = torch.zeros(len(tokenized_outputs), self.tokenizer.n_target_tokens, dtype=torch.long)
-        for j, targets in enumerate(tokenized_outputs):
-            one_hot_encoded_targets[j, targets] = 1
-        return tokenized_kinds, tokenized_tokens, tokenized_spec_groups, one_hot_encoded_targets
+        t_targets, m_taget_kind = self._create_targets(targets, tokenized_kinds)
+        return tokenized_kinds, tokenized_tokens, tokenized_spec_groups, t_targets, m_taget_kind
+
+    def _create_targets(self, targets: list, tokenized_kinds: Tensor) -> tuple[Tensor, Tensor]:
+        tokenized_targets = _.map_(targets, c().map(self.tokenizer.tokenize_target_plural))
+        t_targets = self._one_hot(tokenized_targets)
+        l_kind_targets = _.map_(tokenized_kinds.tolist(), self.tokenizer.get_tokenized_targets_for_kind)
+        m_taget_kind = self._one_hot(l_kind_targets)
+        return t_targets, m_taget_kind
+
+    def _one_hot(self, tensor: list, dim: int = None) -> Tensor:
+        dim = dim or self.tokenizer.n_target_tokens
+        one_hot = torch.zeros(len(tensor), dim, dtype=torch.long)
+        for j, targets in enumerate(tensor):
+            one_hot[j, targets] = 1
+        return one_hot
 
     @classmethod
     def pad_seq(cls, to_tensors: list, pad_val: int = 0) -> Tensor:

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from torch import Tensor
 
-TensorBatch = tuple[Tensor, Tensor, Tensor, Tensor]
+TensorBatch = tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
 
 
 @dataclass(frozen=True)

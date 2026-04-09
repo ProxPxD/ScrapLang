@@ -15,9 +15,9 @@ from src.lang_detecting.preprocessing.data import LSC
 from src.resouce_managing.file import FileMgr
 from src.resouce_managing.valid_data import VDC
 
-Kind = Vocab = Class = str
+Kind = Vocab = Target = str
 KindToVocab = OrderedDict[Kind, list[Vocab]]
-KindToTargets = OrderedDict[Kind, list[Class]]
+KindToTargets = OrderedDict[Kind, list[Target]]
 KindToTokensTargets = OrderedDict[Kind, KindToVocab | KindToTargets]
 SpecialGroup = OrderedDict[str, Vocab]  # Default
 KindToSpecialGroup = OrderedDict[Kind, SpecialGroup]

@@ -2,25 +2,28 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, Callable
 
 import pydash as _
+from pydash import chain as c
 from toolz import valmap
 
 if TYPE_CHECKING:
-    from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToVocab
+    from src.lang_detecting.advanced_detecting.model_io_mging import KindToTargets, KindToVocab
 
 CondMap = tuple[Callable, Callable]
 KindToSpecs = dict[str, Sequence[CondMap]]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Tokens:  # Req lowercase
-    BOS = '<bos>'  # Boundary of Sequence
-    PAD = '<pad>'  # Padding
-    UNK = '<?>'    # Unknown
+    BOS: str = '<bos>'  # Boundary of Sequence
+    PAD: str = '<pad>'  # Padding
+    UNK: str = '<?>'    # Unknown
+
+ENHANCE_TOKENS = list(asdict(Tokens()).values())
 
 
 class ITokenizer(ABC):
@@ -70,25 +73,33 @@ class GroupTokenizer(ITokenizer):
 class MultiKindTokenizer:
     def __init__(self,
             kinds_to_vocabs: KindToVocab,
-            targets: list[Class] = None,
+            kinds_to_targets: KindToTargets = None,
             kind_to_specs: KindToSpecs = None,
         ):
         self.kind2id = {k: i for i, k in enumerate(kinds_to_vocabs.keys())}
         self.id2kind: dict[int, str] = dict(map(reversed, self.kind2id.items()))
         self.kind_tokenizers: dict[str, Tokenizer] = valmap(Tokenizer, kinds_to_vocabs)
-        self.target_tokenizer = Tokenizer(targets)
+        self.kinds_to_targets = kinds_to_targets
+        self.target_tokenizer = Tokenizer(c(kinds_to_targets.values()).flatten().sorted_uniq().value())
         self.kind_to_spec: KindToSpecs = kind_to_specs or {}
 
     @property
     def n_target_tokens(self) -> int:
         return self.target_tokenizer.n_tokens
 
+    def get_tokenized_targets_for_kind(self, kind: str | int) -> list[int]:
+        kind: str = self.detokenize_kind(kind) if isinstance(kind, int) else kind
+        kind_targets: list[str] = self.kinds_to_targets[kind]
+        return _.map_(kind_targets, self.tokenize_target)
+
     def tokenize_word(self, word: str | Sequence[str], kind: str) -> Sequence[int]:
+        kind = self.detokenize_kind(kind) if isinstance(kind, int) else kind
         specs = self.kind_to_spec.get(kind, [])
         word = [(func(ch) if cond(ch) else ch) for ch in word for (cond, func) in specs]
         return self.kind_tokenizers[kind](word)
 
-    def detokenize_word(self, ids: list[int], kind: str) -> Sequence[str]:
+    def detokenize_word(self, ids: list[int], kind: str | int) -> Sequence[str]:
+        kind = self.detokenize_kind(kind) if isinstance(kind, int) else kind
         return self.kind_tokenizers[kind].detokenize(ids)
 
     def tokenize_kind(self, kind: str) -> int:
@@ -100,7 +111,10 @@ class MultiKindTokenizer:
     def detokenize_kind(self, kind_id: int) -> str:
         return self.id2kind.get(kind_id, Tokens.UNK)
 
-    def tokenize_target(self, target: str) -> Sequence[int]:
+    def tokenize_target(self, target: str) -> int:
+        return self.target_tokenizer([target])[0]
+
+    def tokenize_target_plural(self, target: str) -> Sequence[int]:
         return self.target_tokenizer([target])
 
     def detokenize_target(self, target: int) -> str:

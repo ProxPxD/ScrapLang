@@ -80,6 +80,7 @@ class Tagger:
         return f'min_n_samples/{self.conf.data.min_n_samples}'
 
     def _conv_norm_reduce_dims_tag(self) -> TagS:
+        return None
         reduce_dims: Sequence[int] = tuple(self.conf.expert.conv_norm_dims)
         tag_name = 'conv_norm'
         match set(reduce_dims):
@@ -92,3 +93,10 @@ class Tagger:
                 tag_val = f'unkown_{dims}'
             # case _: raise ValueError('Unpredicted Norm')
         return f'{tag_name}/{tag_val}'
+
+    def _smoothing_tag(self) -> TagS:
+        smoothing = self.conf.train.smoothing
+        if not smoothing.is_on:
+            return None
+        alpha = str(int(smoothing.alpha*100))
+        return f'smoothing/{alpha}'

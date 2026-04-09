@@ -47,6 +47,13 @@ class TrainParamCalc:
         rng.shuffle(batches)
         return batches
 
+    def smooth_targets(self, targets: Tensor, m_target_kinds: Tensor) -> Tensor:
+        if self.conf.train.smoothing.is_on:
+            n_targets = self.conf.data.labels.n_used
+            alpha = self.conf.train.smoothing.alpha
+            targets = ((1 - alpha) * targets.float() + alpha / n_targets) * m_target_kinds
+        return targets
+
     def compute_loss(self, logits: Tensor, targets: Tensor) -> Tensor:
         eps = 1e-3
         loss = self.loss_func(logits, targets.float())

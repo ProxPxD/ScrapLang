@@ -1,6 +1,6 @@
 import math
-from collections.abc import Collection, Sequence
-from typing import Callable
+from collections.abc import Sequence
+from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
@@ -12,29 +12,55 @@ from pydash import flow
 from torch import Tensor
 
 from src.lang_detecting.advanced_detecting.conf import Conf, ExpertConf
-from src.lang_detecting.advanced_detecting.model_io_mging import Class, KindToTargets, KindToVocab, Vocab
+from src.lang_detecting.advanced_detecting.model_io_mging import KindToTargets, KindToVocab, Target, Vocab
 
 
 class MaskedLayerNorm(nn.Module):
-    def __init__(self, normalized_shape: int | tuple, eps: float = 1e-5, *, affine: bool = True, reduce_dims: int | Collection[int] = None):
+    def __init__(self, normalized_shape: int | Sequence[int], *, eps: float = 1e-5, affine: bool = True, dim: int | Sequence[int] = None):
         super().__init__()
         self.norm = nn.LayerNorm(normalized_shape, eps=eps, elementwise_affine=affine)
-        self.reduce_dims = tuple(reduce_dims) or (-2, -1)
+        dim = dim or list(range(-len(self.norm.normalized_shape), 0))
+        dim = [dim] if isinstance(dim, int) else list(dim)
+        if len(dim) != len(self.norm.normalized_shape):
+            raise ValueError(f'Dimensions have to agree: {dim}, {list(self.norm.normalized_shape)}')
+        self._dims: list[int] = dim
+        self._perm: Optional[list[int]] = None
+        self._inv_perm: Optional[list[int]] = None
+
+    @property
+    def _over_dims(self) -> list[int]:
+        return list(range(-len(self._dims), 0))
+
+    @property
+    def _n_norm_dims(self) -> int:
+        return len(self._dims)
 
     def forward(self, x: Tensor, mask: Tensor) -> Tensor:
-        broadcast_dims = [d_x for d_x, d_m in zip(x.shape, mask.shape) if d_x - d_m]
-        mask_scalar = math.prod(broadcast_dims)
-        sum_x = torch.sum(x * mask, dim=self.reduce_dims, keepdim=True)
-        count = mask_scalar * mask.sum(dim=self.reduce_dims, keepdim=True).clamp(min=1)
+        if self._perm is None:
+            orig_dims = range(x.ndim)
+            target_dims = sorted([d % x.ndim for d in self._dims])
+            other_dims = sorted(set(orig_dims) - set(target_dims))
+            self._perm = other_dims + target_dims
+            self._inv_perm = c(list(enumerate(self._perm))).sort(key=lambda t: t[1]).map(lambda t: t[0]).value()
+
+        x = x.permute(self._perm)
+        mask = mask.permute(self._perm)
+        count = self._get_adjusted_count(x, mask)
+        sum_x = torch.sum(x * mask, dim=self._over_dims, keepdim=True)
         mean = sum_x / count
 
-        var_sum = torch.sum((x - mean)**2 * mask, dim=self.reduce_dims, keepdim=True)
+        var_sum = ((x - mean)**2 * mask).sum(dim=self._over_dims, keepdim=True)
         var = var_sum / count
 
         x_norm = (x - mean) / torch.sqrt(var + self.norm.eps)
         if self.norm.elementwise_affine:
             x_norm = x_norm * self.norm.weight + self.norm.bias
+        x_norm = x_norm.permute(self._inv_perm)
+        mask = mask.permute(self._inv_perm)
         return x_norm * mask
+
+    def _get_adjusted_count(self, x: Tensor, mask: Tensor) -> Tensor:
+        return (torch.ones(x.shape).to(x.device)*mask).sum(dim=self._over_dims, keepdim=True).clamp(min=1)
 
 
 class Expert(nn.Module):
@@ -44,8 +70,8 @@ class Expert(nn.Module):
 
     def __init__(self,
             vocab: list[Vocab],
-            targets: list[Class],
-            all_classes: list[Class],
+            targets: list[Target],
+            all_classes: list[Target],
             conf: ExpertConf,
             n_specs: int = 0,
         ):
@@ -55,7 +81,9 @@ class Expert(nn.Module):
             (LOGSUMEXP:='logsumexp'): torch.logsumexp,
             'relu': torch.relu,
             (SUM:='sum'): torch.sum,
-            (SUM_NORM:='sum_norm'): lambda x, **kwargs: self.norm(torch.sum(x, **kwargs))
+            (SUM_NORM:='sum_norm'): lambda x, **kwargs: self.norm(torch.sum(x, **kwargs)),
+            (MEAN:='mean'): torch.mean,
+            (GATE:='gate'): None,
         }
         self.s_chunk = conf.chunking.size
         self.stride = conf.chunking.stride
@@ -79,7 +107,7 @@ class Expert(nn.Module):
         for k, p in zip(kernels, paddings):
             l_k_s.append(l_k_s[-1]-k+2*p + 1)
         self.conv_norms = nn.ModuleList([
-            MaskedLayerNorm((co, l_k), reduce_dims=conf.conv_norm_dims) for co, l_k in zip(channels[1:], l_k_s[1:])
+            MaskedLayerNorm(co, dim=-2) for co, l_k in zip(channels[1:], l_k_s[1:])
         ])
         self.hid_act = nn.GELU()
         self.attn = nn.MultiheadAttention(
@@ -88,8 +116,10 @@ class Expert(nn.Module):
             batch_first=True,
             dropout=conf.p_dropout,
         )
-        self.post_attn_pool_name = SUM_NORM
+        self.attn_norm = MaskedLayerNorm(channels[-1], dim=-1)
+        self.post_attn_pool_name = SUM
         self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
+        self.norm_attn = MaskedLayerNorm(channels[-1])
         self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
@@ -123,15 +153,16 @@ class Expert(nn.Module):
             effective_mask = mask.repeat(B, 1).unsqueeze(1)
             x = norm(x, effective_mask)
         #x = self.conv_dropout(x)
-        x = x.permute(0, 2, 1)  # B*ch x l_k x c_k
-        *_, L, C = x.shape
+        *_, C, L = x.shape
+        x = x.permute(0, 2, 1).reshape(B, ch*L, C)
+        mask = mask.reshape(ch*L)
+        effective_mask = mask.repeat(B, 1).unsqueeze(2)
         x_norm = x
-        #x_norm = self.norm(x)
-        attn_mask, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
-        attn_mask = self.norm(attn_mask)
-        gate = torch.sigmoid(attn_mask)
-        x = (x * gate).reshape(B, ch * L, C)  # B x ch*l_k x c_k
-        x = self.post_attn_pool(x, dim=-2)  # B x c_k
+        #x_attn_norm = self.norm_attn(x, effective_mask)
+        attn_out, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
+        attn_out = self.attn_norm(attn_out, effective_mask)
+        x_attn = x + attn_out
+        x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k
         x = self.post_attn_classifier(x)  # B x o
         # Mask non-expert outputs
         x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value

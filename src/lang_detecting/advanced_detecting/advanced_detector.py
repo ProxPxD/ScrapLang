@@ -1,6 +1,5 @@
 import math
 import random
-import string
 import warnings
 from collections import Counter
 from dataclasses import asdict, dataclass, field
@@ -9,7 +8,6 @@ from itertools import chain, product
 from typing import Any, Optional
 from unittest.mock import MagicMock
 
-import pydash as _
 import numpy as np
 import pandas as pd
 
@@ -37,7 +35,7 @@ from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToMgr, KindToTokensTargets, ModelIOMgr
 from src.lang_detecting.advanced_detecting.retry import retry_on
-from src.lang_detecting.advanced_detecting.tokenizer import KindToSpecs, MultiKindTokenizer, Tokens
+from src.lang_detecting.advanced_detecting.tokenizer import ENHANCE_TOKENS, KindToSpecs, MultiKindTokenizer, Tokens
 from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
 warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
@@ -115,11 +113,8 @@ class AdvancedDetector:
         kinds_to_tokens_targets: KindToTokensTargets = self.model_io_mgr.extract_kinds_to_vocab_classes(lang_script, self.valid_data_mgr.data)
         # self.model_io_mgr.update_model_io_if_needed(kinds_to_tokens_targets)
         kind_to_vocab, kinds_to_targets = KindToMgr.separate_kinds_tos(kinds_to_tokens_targets)
-        kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, [Tokens.PAD, Tokens.BOS, Tokens.UNK])
-        self.kinds_to_vocab = kind_to_vocab
-        targets = c(kinds_to_targets.values()).flatten().sorted_uniq().value()
-
-        self.tokenizer = MultiKindTokenizer(kind_to_vocab, targets, kind_to_specs=kind_to_specs)
+        self.kind_to_vocab = self.model_io_mgr.enhance_tokens(kind_to_vocab, ENHANCE_TOKENS)
+        self.tokenizer = MultiKindTokenizer(self.kind_to_vocab, kinds_to_targets, kind_to_specs=kind_to_specs)
         self.conf.expert.padding_idx = self.tokenizer.tokenize_common(Tokens.PAD)
         self.conf.expert.tokenizer = self.tokenizer
         self.device = None
@@ -132,7 +127,7 @@ class AdvancedDetector:
         self.train_param_calc = TrainParamCalc(self.conf)
         # noinspection PyTypeChecker
         self.conf.data.labels.all_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
-        self.moe = Moe(kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf)
+        self.moe = Moe(self.kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf)
         self.writer = MagicMock()
         self.task = MagicMock()
         self.tagger = Tagger(conf=conf, moe=self.moe)
@@ -161,13 +156,14 @@ class AdvancedDetector:
                      secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
                 )
                 trash = Task.get_tasks(project_name='Trash')
-                rest = [] # Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
+                rest = Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
                 for task in chain(trash, rest):
                     print(f'Deleting old task: {task.name}(id={task.id})')
                     task.delete()
+                alpha = str(int(self.conf.train.smoothing.alpha*100))
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name='Test_b_l__128', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags + ['test/mid-batch'], reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    project_name='ScrapLang', task_name='Test', task_type=Task.TaskTypes.training,
+                    tags=self.tagger.tags + [], reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -232,7 +228,7 @@ class AdvancedDetector:
         self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(
             #weight=label_weights,
             pos_weight=pos_weights,
-            reduction='none'
+            reduction='none',
         )
         if self.dev_training:
             comment = []
@@ -250,7 +246,8 @@ class AdvancedDetector:
             n_records = 0
             epoch_loss = 0.0
             for i, batch in enumerate(tqdm(train_batches, desc=f'Epoch {epoch+1}/{self.conf.train.epochs}')):
-                kinds, words, specs, targets = [t.to(self.device) for t in batch]
+                kinds, words, specs, o_targets, m_target_kinds = [t.to(self.device) for t in batch]
+                targets = self.train_param_calc.smooth_targets(o_targets, m_target_kinds)
                 n_records += words.size(0)
                 logits: Tensor = self.moe(kinds, words, specs)
                 # self.moe.eval()
@@ -259,7 +256,7 @@ class AdvancedDetector:
                 probs = torch.sigmoid(logits)
                 # if i == 0:
                 #     print(epoch, probs.mean().cpu().item(), probs.max().cpu().item())
-                self._update_metrics(TRAIN, probs, targets)
+                self._update_metrics(TRAIN, probs, o_targets)
                 loss = self.train_param_calc.compute_loss(logits, targets)
                 loss.backward()
                 epoch_loss += loss.item()
@@ -281,12 +278,13 @@ class AdvancedDetector:
             val_data = pd.DataFrame(columns=[KIND:='kind', WORD:='words', TARGET:='target', PROBS:='probs'])
             n_samples = sum(batch[0].shape[0] for batch in batches)
             for batch in batches:
-                kinds, words, specs, targets = [t.to(self.device) for t in batch]
+                kinds, words, specs, o_targets, m_target_kinds = [t.to(self.device) for t in batch]
+                targets = self.train_param_calc.smooth_targets(o_targets, m_target_kinds)
                 logits: Tensor = self.moe(kinds, words, specs)
                 probs = torch.sigmoid(logits)
-                self._update_metrics(VAL, probs, targets)
+                self._update_metrics(VAL, probs, o_targets)
                 val_loss += self.train_param_calc.compute_loss(logits, targets)
-                rows = zip(*[col.tolist() for col in (kinds, words, targets, probs)])
+                rows = zip(*[col.tolist() for col in (kinds, words, o_targets, probs)])
                 val_data = pd.concat([val_data, pd.DataFrame(rows, columns=val_data.columns)], ignore_index=True)
             retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, 100 * val_loss / n_samples / self.conf.data.labels.n_used, epoch)
             self._board_metrics(VAL, epoch)
