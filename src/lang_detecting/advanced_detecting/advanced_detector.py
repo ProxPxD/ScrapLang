@@ -162,8 +162,8 @@ class AdvancedDetector:
                     task.delete()
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name='Test', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags + [], reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
+                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))

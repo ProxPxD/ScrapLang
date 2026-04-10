@@ -107,7 +107,7 @@ class Expert(nn.Module):
         for k, p in zip(kernels, paddings):
             l_k_s.append(l_k_s[-1]-k+2*p + 1)
         self.conv_norms = nn.ModuleList([
-            MaskedLayerNorm(co, dim=-2) for co, l_k in zip(channels[1:], l_k_s[1:])
+            MaskedLayerNorm((co,), dim=(-2, )) for co, l_k in zip(channels[1:], l_k_s[1:])
         ])
         self.hid_act = nn.GELU()
         self.attn = nn.MultiheadAttention(
@@ -157,9 +157,7 @@ class Expert(nn.Module):
         x = x.permute(0, 2, 1).reshape(B, ch*L, C)
         mask = mask.reshape(ch*L)
         effective_mask = mask.repeat(B, 1).unsqueeze(2)
-        x_norm = x
-        #x_attn_norm = self.norm_attn(x, effective_mask)
-        attn_out, _ = self.attn(x_norm, x_norm, x_norm)  # B*ch x l_k x c_k
+        attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
         attn_out = self.attn_norm(attn_out, effective_mask)
         x_attn = x + attn_out
         x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k

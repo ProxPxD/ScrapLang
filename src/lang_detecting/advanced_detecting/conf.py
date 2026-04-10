@@ -68,7 +68,7 @@ class ExpertConf:
     leaky_relu_slop: float = 0.1
     p_dropout = .1
     p_conv_dropout = .1
-    conv_norm_dims: Collection[int] = (-2,) # {-3: 'b', -2: 'c', -1: 'l'}
+    # conv_norm_dims: Collection[int] = (-2,) # {-3: 'b', -2: 'c', -1: 'l'}
     tokenizer = None  # TODO: temp
 
 @dataclass(frozen=True)
@@ -92,7 +92,7 @@ class Smoothing:
 @dataclass(frozen=True)
 class Train:
     supervision: Supervision = field(default_factory=Supervision)
-    epochs: int = 2**7  # 2**7
+    epochs: int = 2**9  # 2**7
     lr: float = 1e-2  # 1e-5  # 1e-3
     weight_decay = 1e-5  # 1e-4
     max_batch_size: Optional[int] = 2**6
