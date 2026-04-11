@@ -5,7 +5,7 @@ import warnings
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
-from itertools import chain, product
+from itertools import chain
 from typing import Any, Iterable, Iterator, Optional
 from unittest.mock import MagicMock
 
@@ -20,7 +20,7 @@ from src.lang_detecting.advanced_detecting.data.splitter import Splitter
 from src.lang_detecting.advanced_detecting.data.train_param_calc import TrainParamCalc
 from src.lang_detecting.advanced_detecting.tagger import Tagger
 
-np.int = int
+np.int = int  # noqa: NPY001
 
 import torch
 import torch.nn as nn
@@ -43,7 +43,7 @@ from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
 try:
     from tqdm import tqdm
-except ImportError as e:
+except ImportError as e: # noqa: F841
     class tqdm:  # noqa: N801
         def __init__(self, seq: Iterable, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
             self.seq: Iterable = seq
@@ -52,7 +52,7 @@ except ImportError as e:
             return iter(self.seq)
 
 
-EXCEPTION = None
+EXCEPTION: Optional[Exception] = None
 try:
     # noinspection PyUnresolvedReferences
     import matplotlib.pyplot as plt
@@ -61,21 +61,13 @@ try:
     from mlcm import mlcm
 
     # noinspection PyUnresolvedReferences
-    from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MatthewsCorrCoef, Metric, Precision, Recall, SensitivityAtSpecificity
+    from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MatthewsCorrCoef, Metric, Precision, Recall
     HAS_TRAINING_SUPERVISION = True
-except ImportError as e:
-    EXCEPTION = e
+except ImportError:
+    Metric = Accuracy = Precision = Recal = F1Score = MagicMock
     HAS_TRAINING_SUPERVISION = False
 
-e_t = e_c = None
-try:
-    # noinspection PyUnresolvedReferences
-    from torch.utils.tensorboard import SummaryWriter
-    HAS_TENSORBOARD = True
-except ImportError as e_t:
-    HAS_TENSORBOARD = False
-    SummaryWriter = MagicMock
-
+e_c = None
 HAS_CLEARML = False
 try:
     # noinspection PyUnresolvedReferences
@@ -83,12 +75,12 @@ try:
     HAS_CLEARML = True
     # noinspection PyUnresolvedReferences
     import flatten_dict
-except ImportError as e_c:
+except ImportError as e_c:  # noqa: F841
     Logger = Task = flatten_dict = MagicMock
 
-if HAS_TRAINING_SUPERVISION and not (HAS_CLEARML or HAS_TENSORBOARD):
+if HAS_TRAINING_SUPERVISION and not HAS_CLEARML:
     # noinspection PyUnboundLocalVariable
-    EXCEPTION = Exception(e_t, e_c)
+    EXCEPTION = Exception(e_c)
 
 
 warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
@@ -106,7 +98,7 @@ class MetricSettings:
 
 @dataclass
 class MetricBundle:
-    metric: Any =  None
+    metric: Metric =  None
     settings: MetricSettings = field(default_factory=MetricSettings)
 
 class AdvancedDetector:
@@ -141,7 +133,6 @@ class AdvancedDetector:
         # noinspection PyTypeChecker
         self.conf.data.labels.all_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(self.kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf)
-        self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
         self.task: Optional[Task] = None
         self.tagger = Tagger(conf=conf, moe=self.moe)
         self.metrics = {}
@@ -191,10 +182,7 @@ class AdvancedDetector:
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
 
             except MissingConfigError as mce:
-                if not HAS_TENSORBOARD:
-                    raise RuntimeError('Dev mode run failed to initialize ClearML') from mce
-        if HAS_TENSORBOARD:
-            self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
+                raise RuntimeError('Dev mode run failed to initialize ClearML') from mce
         if self.device is None:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.moe.to(self.device)
@@ -262,11 +250,9 @@ class AdvancedDetector:
         if self.dev_training:
             comment = []
             comment += [f'n-label: {len(self.conf.data.labels.all_names)}']
-            comment += ['all-labels: ' + (class_names_string := ', '.join(self.conf.data.labels.all_names))]
-            self.writer.add_text(tag='Classes', text_string=class_names_string)
+            comment += ['all-labels: ' + (', '.join(self.conf.data.labels.all_names))]
             comment += ['lang-count:']
-            comment += [lang_counts := '\n'.join(f'  {lang}: {count}' for lang, count in sorted(self.conf.data.labels.used_count.items(), key=c().get(1), reverse=True))]
-            self.writer.add_text(tag='training info', text_string=lang_counts)
+            comment += ['\n'.join(f'  {lang}: {count}' for lang, count in sorted(self.conf.data.labels.used_count.items(), key=c().get(1), reverse=True))]
             self.task.set_comment('\n'.join(comment))
         n_samples = sum(batch[0].shape[0] for batch in train_batches)
         for epoch in range(self.conf.train.epochs):
@@ -346,14 +332,13 @@ class AdvancedDetector:
         for series in SERIES_SEQ:
             self._manage_metrics('reset', series)
             for cm in self._cms[series].values():
-                cm *= 0
+                cm *= 0  # noqa: PLW2901
 
     def _update_metrics(self, series: str, probs: Tensor, targets: Tensor) -> None:
         if not self.dev_training:
             return
         self._manage_metrics('update', series, (probs > self.conf.train.supervision.metrics_thresh).long(), targets)
         for thresh, cm in self._cms[series].items():
-            np.int = int
             count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
             cm += count_matrix  # noqa: PLW2901
 
@@ -411,31 +396,9 @@ class AdvancedDetector:
                 last_col, last_row, bottom = cm[0:C, C].sum(), cm[C, 0:C].sum(), cm[C, C].item()
                 tf = [
                     [tp, off_diag, last_col],
-                    [bottom, last_row, 0]
+                    [bottom, last_row, 0],
                 ]
                 retry_on(self._logger.report_confusion_matrix, ConnectionError, n_tries=7, **kwargs,
-                         title=f'3 Micro {thresh:.2f}', series=series, matrix=tf,
-                         xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'])
-
-    @classmethod
-    def plot_confusion_matrix(cls, conf_mat, class_names):
-        fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
-        im = ax.imshow(conf_mat, interpolation='nearest')
-
-        ax.figure.colorbar(im, ax=ax)
-        ax.set(
-            xticks=np.arange(len(class_names)), yticks=np.arange(len(class_names)),
-            xticklabels=class_names, yticklabels=class_names,
-            ylabel='True label', xlabel='Predicted label',
-        )
-
-        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
-
-        thresh = conf_mat.max() / 2
-        n_classes = conf_mat.shape[0]
-        for i, j in product(range(n_classes), repeat=2):
-            ax.text(j, i, conf_mat[i, j], ha='center', va='center', color='white' if conf_mat[i, j] > thresh else 'black')
-        ax.xaxis.set_ticks_position('top')
-        ax.xaxis.set_label_position('top')
-        fig.tight_layout()
-        return fig
+                    title=f'3 Micro {thresh:.2f}', series=series, matrix=tf,
+                    xlabels=['Pred Pos', 'Pred Neg', 'Pred None'], ylabels=['Act Pos', 'Act Neg'],
+                )
