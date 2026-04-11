@@ -1,3 +1,4 @@
+import math
 import re
 from math import floor, log2, log10
 from typing import TYPE_CHECKING, Callable, Collection
@@ -24,9 +25,9 @@ TagS = None | str | Collection[str]
 
 @curry
 def decom(base: int, n: float) -> tuple[int, int, int]:
-    exp = floor(log10(n))
+    exp = floor(math.log(n, base))
     coef = n / base**exp
-    return coef, base, exp
+    return int(coef), base, exp
 
 def depercent(n: float) -> int:
     return int(n*100)
@@ -54,7 +55,6 @@ class Tagger:
     @property
     def tags(self) -> list[str]:
         tag_funcs: list[Callable[[], TagS]] = [getattr(self, name) for name in dir(self) if self.TAG_FUNC_PAT.fullmatch(name)]
-        # tag_funcs.insert(0, self.deltags)
         tags = str_flat([func() for func in tag_funcs])
         return tags
 
