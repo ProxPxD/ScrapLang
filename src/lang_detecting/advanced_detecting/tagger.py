@@ -24,22 +24,28 @@ def str_flat(array: Collection | str) -> list[str]:
 TagS = None | str | Collection[str]
 
 @curry
-def decom(base: int, n: float) -> tuple[int, int, int]:
+def decom(base: int, n: float) -> tuple[int, int]:
     exp = floor(math.log(n, base))
     coef = n / base**exp
-    return int(coef), base, exp
+    return int(coef), exp
 
 def depercent(n: float) -> int:
     return int(n*100)
 
-@curry
-def deexp(base: int, n: float) -> str:
-    coef, base, exp = decom(base, n)
-    return f'{coef}_e{base}_{exp}'
-
-deexp10 = deexp(10)
-deexp2 = deexp(2)
-
+def get_decom_tag(*, base: int = 10, add_coef: bool = False, add_base: bool = True, skip_10: bool = True) -> Callable[[int], str]:
+    def decom_tag(n: float) -> str:
+        coef, exp = decom(base, n)
+        is_skipping_10 = base == 10 and skip_10
+        match add_base, is_skipping_10:
+            case (True, False): base_str = f'{base}^'
+            case (True, True): base_str = 'e'
+            case _: base_str = ''
+        match add_coef, is_skipping_10:
+            case (True, False): coef_str = f'{coef}*'
+            case (True, True): coef_str = f'{coef}'
+            case _: coef_str = ''
+        return f'{coef_str}{base_str}{exp}'
+    return decom_tag
 
 class Tagger:
     TAG_FUNC_PAT = re.compile(r'^_\w+_tags?$')
@@ -102,10 +108,10 @@ class Tagger:
 
     def _train_tags(self) -> TagS:
         params = dict(
-            lr=[deexp10, float],
-            weight_decay=[deexp10, float],
-            gamma=[depercent, float],
-            epochs=[int],
+            lr=[get_decom_tag(add_coef=True), float],
+            weight_decay=[get_decom_tag(), float],
+            gamma=[float],
+            epochs=[get_decom_tag(base=2), int],
         )
         return [
             f'{param}/{trans(getattr(self.conf.train, param))}'
