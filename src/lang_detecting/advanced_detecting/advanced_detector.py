@@ -157,7 +157,12 @@ class AdvancedDetector:
                 )
                 trash = Task.get_tasks(project_name='Trash')
                 rest = Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
-                for task in chain(trash, rest):
+                NODEL_TAG = 'nodel'
+                to_dels = chain(trash, rest)
+                safe_to_dels = [task for task in to_dels if NODEL_TAG not in task.get_tags()]
+                for task in safe_to_dels:
+                    if NODEL_TAG in task.get_tags():
+                        raise RuntimeError('Tried to remove #nodel tasks which should not be possible! FIX LOGIC!')
                     print(f'Deleting old task: {task.name}(id={task.id})')
                     task.delete()
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
