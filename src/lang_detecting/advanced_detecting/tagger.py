@@ -1,6 +1,6 @@
 import math
 import re
-from math import floor, log2, log10
+from math import floor, log2
 from typing import TYPE_CHECKING, Callable, Collection
 
 import pydash as _
@@ -102,12 +102,13 @@ class Tagger:
 
     def _train_tags(self) -> TagS:
         params = dict(
-            lr=deexp10,
-            weight_decay=deexp10,
-            gamma=depercent,
-            epochs=deexp2,
+            lr=[deexp10, float],
+            weight_decay=[deexp10, float],
+            gamma=[depercent, float],
+            epochs=[int],
         )
         return [
             f'{param}/{trans(getattr(self.conf.train, param))}'
-            for param, trans in params.items()
+            for param, trans_s in params.items()
+            for trans in _.to_list(trans_s)
         ]
