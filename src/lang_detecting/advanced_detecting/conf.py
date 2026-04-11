@@ -1,7 +1,7 @@
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Collection, Optional
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class WordConstrain:
 @dataclass
 class Labels:
     all_names: tuple[str] = None  # Autofilled
-    used_count: Counter[str] = None  # Autofilled
+    used_count: Counter = None  # Autofilled
 
     @property
     def n_all(self) -> Optional[int]:
@@ -92,11 +92,11 @@ class Smoothing:
 @dataclass(frozen=True)
 class Train:
     supervision: Supervision = field(default_factory=Supervision)
-    epochs: int = 2**9  # 2**7
+    epochs: int = 2**9
     lr: float = 1e-3
     gamma: float = .98
     weight_decay = 1e-5  # 1e-4
-    max_batch_size: Optional[int] = 2**6
+    max_batch_size: Optional[int] = 2**7
     accum_grad_bs: int = 2**9
     smoothing: Smoothing = field(default_factory=Smoothing)
 
