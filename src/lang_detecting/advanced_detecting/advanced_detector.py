@@ -153,7 +153,7 @@ class AdvancedDetector:
                      web_host='http://127.0.0.1:7004',
                      files_host='http://127.0.0.1:7005',
                      key='RA0LL08K8QWF588QOBVB53FMVRIZ6P',
-                     secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',
+                     secret='aks1mQ-w_7Wwa0-a8nFhOwcDNFYKP8dKZvFa-wMvytzlMJ0UZLiRfQBWlT-4nFRj5Vk',  # noqa: S106
                 )
                 trash = Task.get_tasks(project_name='Trash')
                 rest = Task.get_tasks(project_name='ScrapLang', task_name=None, tags=self.tagger.deltags())
@@ -169,7 +169,7 @@ class AdvancedDetector:
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    tags=self.tagger.tags + [NODEL_TAG], reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -265,6 +265,7 @@ class AdvancedDetector:
                 self._update_metrics(TRAIN, probs, o_targets)
                 loss = self.train_param_calc.compute_loss(logits, targets)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.moe.parameters(), max_norm=1.0)
                 epoch_loss += loss.item()
 
                 if n_records >= self.conf.train.accum_grad_bs:
