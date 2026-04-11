@@ -41,11 +41,19 @@ from src.lang_detecting.advanced_detecting.retry import retry_on
 from src.lang_detecting.advanced_detecting.tokenizer import ENHANCE_TOKENS, KindToSpecs, MultiKindTokenizer, Tokens
 from src.resouce_managing.valid_data import VDC, ValidDataMgr
 
-warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
+try:
+    from tqdm import tqdm
+except ImportError as e:
+    class tqdm:  # noqa: N801
+        def __init__(self, seq: Iterable, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
+            self.seq: Iterable = seq
+
+        def __iter__(self) -> Iterator:
+            return iter(self.seq)
+
 
 EXCEPTION = None
 try:
-    # noinspection PyUnresolvedReferences
     # noinspection PyUnresolvedReferences
     import matplotlib.pyplot as plt
 
@@ -54,15 +62,8 @@ try:
 
     # noinspection PyUnresolvedReferences
     from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MatthewsCorrCoef, Metric, Precision, Recall, SensitivityAtSpecificity
-    from tqdm import tqdm
     HAS_TRAINING_SUPERVISION = True
 except ImportError as e:
-    class tqdm:  # noqa: N801
-        def __init__(self, seq: Iterable, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
-            self.seq: Iterable = seq
-
-        def __iter__(self) -> Iterator:
-            return iter(self.seq)
     EXCEPTION = e
     HAS_TRAINING_SUPERVISION = False
 
@@ -84,12 +85,13 @@ try:
     import flatten_dict
 except ImportError as e_c:
     Logger = Task = flatten_dict = MagicMock
-    if HAS_CLEARML:
-        EXCEPTION = e_c
 
-if HAS_TRAINING_SUPERVISION and not HAS_CLEARML and not HAS_TENSORBOARD:
+if HAS_TRAINING_SUPERVISION and not (HAS_CLEARML or HAS_TENSORBOARD):
     # noinspection PyUnboundLocalVariable
     EXCEPTION = Exception(e_t, e_c)
+
+
+warnings.filterwarnings('ignore', category=UserWarning, message=r'.*pkg_resources is deprecated.*Setuptools')
 
 SERIES_SEQ = (TRAIN:='Train', VAL:='Val')
 
