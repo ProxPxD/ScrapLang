@@ -161,14 +161,15 @@ class AdvancedDetector:
                 to_dels = chain(trash, rest)
                 safe_to_dels = [task for task in to_dels if NODEL_TAG not in task.get_tags()]
                 for task in safe_to_dels:
-                    if NODEL_TAG in task.get_tags():
-                        raise RuntimeError('Tried to remove #nodel tasks which should not be possible! FIX LOGIC!')
                     print(f'Deleting old task: {task.name}(id={task.id})')
-                    task.delete()
+                    if SAFE_DEL_FLAG := NODEL_TAG not in task.get_tags():
+                        task.delete()
+                    else:
+                        raise RuntimeError("YOU IDIOT! FIX THE LOGIC! you don't want to autodelete ALL the tasks")
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
                 self.task = Task.init(
                     project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags + [NODEL_TAG], reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
