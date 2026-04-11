@@ -197,7 +197,7 @@ class AdvancedDetector:
                 )
                 for metric_class in [
                     Accuracy,
-                    #MatthewsCorrCoef,
+                    MatthewsCorrCoef,
                 ]
             ] + [
                 MetricBundle(
