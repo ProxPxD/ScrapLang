@@ -1,12 +1,9 @@
 import re
 from math import floor, log2, log10
-from typing import TYPE_CHECKING, Callable, Collection, Sequence
+from typing import TYPE_CHECKING, Callable, Collection
 
 import pydash as _
 from pydash import chain as c
-import operator as op
-from pydash import flow
-
 from pydash import flow
 from toolz import curry
 
