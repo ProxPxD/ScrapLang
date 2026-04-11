@@ -1,5 +1,6 @@
 import math
 import random
+import string
 import warnings
 from collections import Counter
 from dataclasses import asdict, dataclass, field
@@ -10,6 +11,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd
+import pydash as _
 
 from src.lang_detecting.advanced_detecting.data.batcher import Batcher
 from src.lang_detecting.advanced_detecting.data.preprocessing import PreprocessorFactory
@@ -28,6 +30,7 @@ from pydash import chain as c
 from pydash import flow
 from toolz import valmap
 from torch import Tensor
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.constants import Paths
 from src.context import Context
@@ -167,9 +170,12 @@ class AdvancedDetector:
                     else:
                         raise RuntimeError("YOU IDIOT! FIX THE LOGIC! you don't want to autodelete ALL the tasks")
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
+                random.seed(None)
+                suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
+                random.seed(self.conf.seed)
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name='Train', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags + [NODEL_TAG], reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    project_name='ScrapLang', task_name=f'SchCos_{suffix}', task_type=Task.TaskTypes.training,
+                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -228,6 +234,10 @@ class AdvancedDetector:
         batch_all = c().map(self.batcher.batch_data_up)
         train_batches, val_batches = batch_all([train_df, val_df])
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.train.lr, weight_decay=self.conf.train.weight_decay)
+        self.task.add_tags(f'optimizer/{_.snake_case(optimizer.__class__.__name__)}')
+        scheduler = CosineAnnealingLR(optimizer, T_max=self.conf.train.epochs)
+        # scheduler = ExponentialLR(optimizer, gamma=self.conf.train.gamma)
+        self.task.add_tags(f'scheduler/{_.snake_case(scheduler.__class__.__name__.removesuffix("LR"))}')
         self.init_for_training()
         label_weights = self.train_param_calc.compute_weights().to(self.device)
         pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
@@ -274,6 +284,7 @@ class AdvancedDetector:
                     n_records = 0
             if n_records:
                 optimizer.step()
+            scheduler.step()
             self._val(val_batches, epoch)
             retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', TRAIN, 100 * epoch_loss / n_samples / self.conf.data.labels.n_used, epoch)
             self._board_metrics(TRAIN, epoch)
