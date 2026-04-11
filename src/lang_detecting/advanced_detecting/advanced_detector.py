@@ -6,7 +6,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
 from itertools import chain, product
-from typing import Any, Optional
+from typing import Any, Iterable, Iterator, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -30,7 +30,7 @@ from pydash import chain as c
 from pydash import flow
 from toolz import valmap
 from torch import Tensor
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ExponentialLR
 
 from src.constants import Paths
 from src.context import Context
@@ -57,6 +57,12 @@ try:
     from tqdm import tqdm
     HAS_TRAINING_SUPERVISION = True
 except ImportError as e:
+    class tqdm:  # noqa: N801
+        def __init__(self, seq: Iterable, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
+            self.seq: Iterable = seq
+
+        def __iter__(self) -> Iterator:
+            return iter(self.seq)
     EXCEPTION = e
     HAS_TRAINING_SUPERVISION = False
 
@@ -67,6 +73,7 @@ try:
     HAS_TENSORBOARD = True
 except ImportError as e_t:
     HAS_TENSORBOARD = False
+    SummaryWriter = MagicMock
 
 HAS_CLEARML = False
 try:
@@ -76,6 +83,7 @@ try:
     # noinspection PyUnresolvedReferences
     import flatten_dict
 except ImportError as e_c:
+    Logger = Task = flatten_dict = MagicMock
     if HAS_CLEARML:
         EXCEPTION = e_c
 
@@ -131,8 +139,8 @@ class AdvancedDetector:
         # noinspection PyTypeChecker
         self.conf.data.labels.all_names = c(kinds_to_targets.values()).flatten().apply(flow(set, sorted, tuple)).value()
         self.moe = Moe(self.kind_to_vocab, kinds_to_targets, valmap(len, kind_to_specs), conf=self.conf)
-        self.writer = MagicMock()
-        self.task = MagicMock()
+        self.writer = SummaryWriter(log_dir=Paths.DETECTION_LOG_DIR)
+        self.task: Optional[Task] = None
         self.tagger = Tagger(conf=conf, moe=self.moe)
         self.metrics = {}
         self._cms: dict[str, dict[float, np.ndarray]] = {}
@@ -238,8 +246,8 @@ class AdvancedDetector:
         train_batches, val_batches = batch_all([train_df, val_df])
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.train.lr, weight_decay=self.conf.train.weight_decay)
         self.task.add_tags(f'optimizer/{_.snake_case(optimizer.__class__.__name__)}')
-        scheduler = CosineAnnealingLR(optimizer, T_max=self.conf.train.epochs)
-        # scheduler = ExponentialLR(optimizer, gamma=self.conf.train.gamma)
+        # scheduler = CosineAnnealingLR(optimizer, T_max=self.conf.train.epochs)
+        scheduler = ExponentialLR(optimizer, gamma=self.conf.train.gamma)
         self.task.add_tags(f'scheduler/{_.snake_case(scheduler.__class__.__name__.removesuffix("LR"))}')
         self.init_for_training()
         label_weights = self.train_param_calc.compute_weights().to(self.device)
