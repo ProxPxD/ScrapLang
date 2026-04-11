@@ -140,7 +140,7 @@ class AdvancedDetector:
         self.init_for_training()
 
     def init_for_training(self) -> None:
-        if self.context.dev and not HAS_TRAINING_SUPERVISION or EXCEPTION:
+        if (self.context.dev and not HAS_TRAINING_SUPERVISION) or EXCEPTION:
             raise RuntimeError('Dev mode run without tensorboard, torchmetrics, tqdm or matplotlib or mlcm or either tensorboard or clearml and flatten_dict installed') from EXCEPTION
         if not self.dev_training:
             return
@@ -195,13 +195,16 @@ class AdvancedDetector:
             self.metrics[series] = [
                 MetricBundle(
                     metric=metric_class(**kwargs).to(self.device),
-                    settings=MetricSettings(name=metric_class.__name__,)
+                    settings=MetricSettings(name=metric_class.__name__,),
                 )
-                for metric_class in [Accuracy, MatthewsCorrCoef]
+                for metric_class in [
+                    Accuracy,
+                    #MatthewsCorrCoef,
+                ]
             ] + [
                 MetricBundle(
                     metric=metric_class(**kwargs, average=avg).to(self.device),
-                    settings=MetricSettings(name=metric_class.__name__, avg=avg)
+                    settings=MetricSettings(name=metric_class.__name__, avg=avg),
                 )
                 for metric_class in [Precision, Recall, F1Score]
                 for avg in ('macro', 'micro')
@@ -342,7 +345,7 @@ class AdvancedDetector:
         for thresh, cm in self._cms[series].items():
             np.int = int
             count_matrix, percentage_matrix = mlcm.cm(targets.cpu().numpy(), (probs > thresh).long().cpu().numpy(), print_note=False)
-            cm += count_matrix
+            cm += count_matrix  # noqa: PLW2901
 
     def _board_metrics(self, series: str, step: int) -> None:
         if not self.dev_training:
