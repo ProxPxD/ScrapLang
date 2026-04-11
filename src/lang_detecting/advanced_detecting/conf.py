@@ -93,7 +93,8 @@ class Smoothing:
 class Train:
     supervision: Supervision = field(default_factory=Supervision)
     epochs: int = 2**9  # 2**7
-    lr: float = 1e-2  # 1e-5  # 1e-3
+    lr: float = 1e-3
+    gamma: float = .98
     weight_decay = 1e-5  # 1e-4
     max_batch_size: Optional[int] = 2**6
     accum_grad_bs: int = 2**9
