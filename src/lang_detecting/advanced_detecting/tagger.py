@@ -4,7 +4,11 @@ from typing import TYPE_CHECKING, Callable, Collection, Sequence
 
 import pydash as _
 from pydash import chain as c
+import operator as op
 from pydash import flow
+
+from pydash import flow
+from toolz import curry
 
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.model import Moe
@@ -21,6 +25,23 @@ def str_flat(array: Collection | str) -> list[str]:
 
 TagS = None | str | Collection[str]
 
+@curry
+def decom(base: int, n: float) -> tuple[int, int, int]:
+    exp = floor(log10(n))
+    coef = n / base**exp
+    return coef, base, exp
+
+def depercent(n: float) -> int:
+    return int(n*100)
+
+@curry
+def deexp(base: int, n: float) -> str:
+    coef, base, exp = decom(base, n)
+    return f'{coef}_e{base}_{exp}'
+
+deexp10 = deexp(10)
+deexp2 = deexp(2)
+
 
 class Tagger:
     TAG_FUNC_PAT = re.compile(r'^_\w+_tags?$')
@@ -36,7 +57,7 @@ class Tagger:
     @property
     def tags(self) -> list[str]:
         tag_funcs: list[Callable[[], TagS]] = [getattr(self, name) for name in dir(self) if self.TAG_FUNC_PAT.fullmatch(name)]
-        tag_funcs.insert(0, self.deltags)
+        # tag_funcs.insert(0, self.deltags)
         tags = str_flat([func() for func in tag_funcs])
         return tags
 
@@ -72,27 +93,8 @@ class Tagger:
         tags = [f'{pref}/{_.snake_case(kind)}' for pref, kind in pref_kind]
         return tags
 
-    def _lr_tag(self) -> TagS:
-        exp = log10(self.conf.train.lr)
-        return f'lr/{str(self.conf.train.lr)[2:]}'
-
     def _min_n_samples(self) -> TagS:
         return f'min_n_samples/{self.conf.data.min_n_samples}'
-
-    def _conv_norm_reduce_dims_tag(self) -> TagS:
-        return None
-        reduce_dims: Sequence[int] = tuple(self.conf.expert.conv_norm_dims)
-        tag_name = 'conv_norm'
-        match set(reduce_dims):
-            case s if s == {-2, -3}: tag_val = 'instance'
-            case s if s == {-1}: tag_val = 'unknown_l'
-            case s if s == {-2}: tag_val = 'batch'
-            case s if s == {-3}: tag_val = 'layer'
-            case _:
-                dims: str = c(reduce_dims).map_(lambda d: {-1: 'l', -2: 'c', -3: 'b'}[d]).join('_').value()
-                tag_val = f'unkown_{dims}'
-            # case _: raise ValueError('Unpredicted Norm')
-        return f'{tag_name}/{tag_val}'
 
     def _smoothing_tag(self) -> TagS:
         smoothing = self.conf.train.smoothing
@@ -100,3 +102,15 @@ class Tagger:
             return None
         alpha = str(int(smoothing.alpha*100))
         return f'smoothing/{alpha}'
+
+    def _train_tags(self) -> TagS:
+        params = dict(
+            lr=deexp10,
+            weight_decay=deexp10,
+            gamma=depercent,
+            epochs=deexp2,
+        )
+        return [
+            f'{param}/{trans(getattr(self.conf.train, param))}'
+            for param, trans in params.items()
+        ]
