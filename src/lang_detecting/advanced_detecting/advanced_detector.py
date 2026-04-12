@@ -175,7 +175,7 @@ class AdvancedDetector:
                 suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
                 random.seed(self.conf.seed)
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'SchCos_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'SchExp99_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
@@ -235,11 +235,11 @@ class AdvancedDetector:
         batch_all = c().map(self.batcher.batch_data_up)
         train_batches, val_batches = batch_all([train_df, val_df])
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.train.lr, weight_decay=self.conf.train.weight_decay)
-        self.task.add_tags(f'optimizer/{_.snake_case(optimizer.__class__.__name__)}')
         # scheduler = CosineAnnealingLR(optimizer, T_max=self.conf.train.epochs)
         scheduler = ExponentialLR(optimizer, gamma=self.conf.train.gamma)
-        self.task.add_tags(f'scheduler/{_.snake_case(scheduler.__class__.__name__.removesuffix("LR"))}')
         self.init_for_training()
+        self.task.add_tags(f'optimizer/{_.snake_case(optimizer.__class__.__name__)}')
+        self.task.add_tags(f'scheduler/{_.snake_case(scheduler.__class__.__name__.removesuffix("LR"))}')
         label_weights = self.train_param_calc.compute_weights().to(self.device)
         pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
         self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(
