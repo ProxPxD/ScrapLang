@@ -81,7 +81,7 @@ class Expert(nn.Module):
             (LOGSUMEXP:='logsumexp'): torch.logsumexp,
             'relu': torch.relu,
             (SUM:='sum'): torch.sum,
-            (SUM_NORM:='sum_norm'): lambda x, **kwargs: self.norm(torch.sum(x, **kwargs)),
+            (SUM_NORM:='sum_norm'): lambda x, *args, **kwargs: self.attn_norm(torch.sum(x, **kwargs), *args),
             (MEAN:='mean'): torch.mean,
             (GATE:='gate'): None,
         }
@@ -116,11 +116,16 @@ class Expert(nn.Module):
             batch_first=True,
             dropout=conf.p_dropout,
         )
-        self.attn_norm = MaskedLayerNorm(channels[-1], dim=-1)
+        C = channels[-1]
+        self.attn_norm = MaskedLayerNorm(C, dim=-1)
         self.post_attn_pool_name = SUM
-        self.norm = nn.LayerNorm(channels[-1], eps=1e-3)
-        self.norm_attn = MaskedLayerNorm(channels[-1])
-        self.post_attn_classifier = nn.Linear(channels[-1], n_labels)
+        self.norm = nn.LayerNorm(C, eps=1e-3)
+        # self.ffn = nn.Sequential(
+        #     nn.Linear(C, 2*C),
+        #     nn.GELU(),
+        #     nn.Linear(2*C, n_labels),
+        # )
+        self.ffn = nn.Linear(C, n_labels)
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
         self.tokenizer = conf.tokenizer
@@ -152,16 +157,16 @@ class Expert(nn.Module):
             mask = F.max_pool1d(mask.float(), conv.kernel_size, conv.stride, conv.padding).int()
             effective_mask = mask.repeat(B, 1).unsqueeze(1)
             x = norm(x, effective_mask)
-        #x = self.conv_dropout(x)
         *_, C, L = x.shape
         x = x.permute(0, 2, 1).reshape(B, ch*L, C)
         mask = mask.reshape(ch*L)
-        effective_mask = mask.repeat(B, 1).unsqueeze(2)
+        effective_mask =mask.repeat(B, 1)
         attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
-        attn_out = self.attn_norm(attn_out, effective_mask)
+        # attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
+        attn_out = self.attn_norm(attn_out, effective_mask.unsqueeze(2))
         x_attn = x + attn_out
         x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k
-        x = self.post_attn_classifier(x)  # B x o
+        x = self.ffn(x)  # B x o
         # Mask non-expert outputs
         x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value
         return x

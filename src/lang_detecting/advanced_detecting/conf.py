@@ -74,7 +74,7 @@ class ExpertConf:
 @dataclass(frozen=True)
 class Weights:
     c_pos: float = 1
-    freq_bias: float = 0.5
+    freq_bias: float = 1
 
 @dataclass
 class Supervision:

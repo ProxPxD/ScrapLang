@@ -192,7 +192,7 @@ class AdvancedDetector:
                     suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
                 c = self.conf; t = c.train; w = c.weights
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'Freq{w.freq_bias}_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'Freq{w.freq_bias}_P{w.c_pos}_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
@@ -262,7 +262,7 @@ class AdvancedDetector:
         print('Label Weights:', label_weights.tolist())
         pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
         self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(
-            weight=label_weights,
+            # weight=label_weights,
             pos_weight=pos_weights,
             reduction='none',
         )
