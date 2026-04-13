@@ -1,3 +1,4 @@
+import contextlib
 import math
 import random
 import string
@@ -6,9 +7,9 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from functools import cached_property
 from itertools import chain
-from typing import Any, Iterable, Iterator, Optional
+from typing import Any, ContextManager, Generator, Iterable, Iterator, Optional
 from unittest.mock import MagicMock
-
+from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 import pydash as _
@@ -104,9 +105,10 @@ class MetricBundle:
 class AdvancedDetector:
     def __init__(self, context: Context, lang_script: DataFrame, valid_data_mgr: ValidDataMgr, conf: Conf):
         self.context =  context
+        self.conf = conf
+        self.set_seed(self.conf.seed)
         self.model_io_mgr = ModelIOMgr()
         self.valid_data_mgr = valid_data_mgr
-        self.conf = conf
 
         # noinspection SpellCheckingInspection
         kind_to_specs: KindToSpecs = {
@@ -140,6 +142,21 @@ class AdvancedDetector:
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
+    @classmethod
+    def set_seed(cls, seed: None | int) -> None:
+        if seed is None:
+            random.seed(seed)
+            torch.seed()
+        else:
+            random.seed(seed)
+            torch.random.manual_seed(seed)
+
+    @contextmanager
+    def tmp_seed(self, seed: None | int = None) -> Generator[None, Any, None]:
+        self.set_seed(seed)
+        yield
+        self.set_seed(self.conf.seed)
+
     def init_for_training(self) -> None:
         if (self.context.dev and not HAS_TRAINING_SUPERVISION) or EXCEPTION:
             raise RuntimeError('Dev mode run without tensorboard, torchmetrics, tqdm or matplotlib or mlcm or either tensorboard or clearml and flatten_dict installed') from EXCEPTION
@@ -171,11 +188,10 @@ class AdvancedDetector:
                     else:
                         raise RuntimeError("YOU IDIOT! FIX THE LOGIC! you don't want to autodelete ALL the tasks")
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
-                random.seed(None)
-                suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
-                random.seed(self.conf.seed)
+                with self.tmp_seed(None):
+                    suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'SchExp99_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'SchCos_lily_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
@@ -225,7 +241,7 @@ class AdvancedDetector:
 
     def _retrain_model(self) -> None:
         self.task: Task
-        random.seed(self.conf.seed)
+        self.set_seed(self.conf.seed)
 
         df: DataFrame = self.preprocessing.init_preprocessor(self.valid_data_mgr.data)
         self.conf.data.labels.used_count = Counter(df[VDC.LANG].explode())
@@ -235,8 +251,8 @@ class AdvancedDetector:
         batch_all = c().map(self.batcher.batch_data_up)
         train_batches, val_batches = batch_all([train_df, val_df])
         optimizer = torch.optim.AdamW(self.moe.parameters(), lr=self.conf.train.lr, weight_decay=self.conf.train.weight_decay)
-        # scheduler = CosineAnnealingLR(optimizer, T_max=self.conf.train.epochs)
-        scheduler = ExponentialLR(optimizer, gamma=self.conf.train.gamma)
+        scheduler = CosineAnnealingLR(optimizer, T_max=self.conf.train.epochs)
+        # scheduler = ExponentialLR(optimizer, gamma=self.conf.train.gamma)
         self.init_for_training()
         self.task.add_tags(f'optimizer/{_.snake_case(optimizer.__class__.__name__)}')
         self.task.add_tags(f'scheduler/{_.snake_case(scheduler.__class__.__name__.removesuffix("LR"))}')

@@ -92,10 +92,10 @@ class Smoothing:
 @dataclass(frozen=True)
 class Train:
     supervision: Supervision = field(default_factory=Supervision)
-    epochs: int = 2**9
+    epochs: int = 2**7
     lr: float = 1e-3
-    gamma: float = .99
-    weight_decay = 1e-5  # 1e-4
+    gamma: float = .995
+    weight_decay = 1e-4  # 1e-4
     max_batch_size: Optional[int] = 2**7
     accum_grad_bs: int = 2**9
     smoothing: Smoothing = field(default_factory=Smoothing)
