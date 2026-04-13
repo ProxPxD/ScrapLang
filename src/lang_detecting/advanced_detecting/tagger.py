@@ -108,8 +108,8 @@ class Tagger:
 
     def _train_tags(self) -> TagS:
         params = dict(
-            lr=[get_decom_tag(add_coef=True), float],
-            weight_decay=[get_decom_tag(), float],
+            lr=[get_decom_tag(add_coef=True)],
+            weight_decay=[get_decom_tag()],
             gamma=[float],
             epochs=[get_decom_tag(base=2), int],
         )
