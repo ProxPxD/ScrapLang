@@ -190,8 +190,9 @@ class AdvancedDetector:
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
                 with self.tmp_seed(None):
                     suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
+                c = self.conf; t = c.train; w = c.weights
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'SchCos_lily_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'Freq{w.freq_bias}_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
@@ -256,10 +257,12 @@ class AdvancedDetector:
         self.init_for_training()
         self.task.add_tags(f'optimizer/{_.snake_case(optimizer.__class__.__name__)}')
         self.task.add_tags(f'scheduler/{_.snake_case(scheduler.__class__.__name__.removesuffix("LR"))}')
-        label_weights = self.train_param_calc.compute_weights().to(self.device)
+        label_weights = self.train_param_calc.compute_label_weights().to(self.device)
+        print('Labels:', self.conf.data.labels.used_names)
+        print('Label Weights:', label_weights.tolist())
         pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
         self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(
-            #weight=label_weights,
+            weight=label_weights,
             pos_weight=pos_weights,
             reduction='none',
         )

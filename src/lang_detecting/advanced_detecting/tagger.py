@@ -1,6 +1,7 @@
 import math
 import re
 from math import floor, log2
+from os import rename
 from typing import TYPE_CHECKING, Callable, Collection
 
 import pydash as _
@@ -110,11 +111,22 @@ class Tagger:
         params = dict(
             lr=[get_decom_tag(add_coef=True)],
             weight_decay=[get_decom_tag()],
-            gamma=[float],
+            gamma=float,
             epochs=[get_decom_tag(base=2), int],
         )
         return [
             f'{param}/{trans(getattr(self.conf.train, param))}'
+            for param, trans_s in params.items()
+            for trans in _.to_list(trans_s)
+        ]
+
+    def _weight_tags(self) -> TagS:
+        params = dict(
+            c_pos=float,
+            freq_bias=float,
+        )
+        return [
+            f'{param}/{trans(getattr(self.conf.weights, param))}'
             for param, trans_s in params.items()
             for trans in _.to_list(trans_s)
         ]

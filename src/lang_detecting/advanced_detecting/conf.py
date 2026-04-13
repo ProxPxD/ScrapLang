@@ -73,11 +73,8 @@ class ExpertConf:
 
 @dataclass(frozen=True)
 class Weights:
-    prob_tau: float = .5
-    entropy_tau: float = .5
-
-    freq_bias: float = 1.1 # 1.1 # 1.1
-    neg_bias: float = 4 # 4  # 3
+    c_pos: float = 1
+    freq_bias: float = 0.5
 
 @dataclass
 class Supervision:
@@ -95,14 +92,14 @@ class Train:
     epochs: int = 2**7
     lr: float = 1e-3
     gamma: float = .995
-    weight_decay = 1e-4  # 1e-4
+    weight_decay: float = 1e-4  # 1e-4
     max_batch_size: Optional[int] = 2**7
     accum_grad_bs: int = 2**9
     smoothing: Smoothing = field(default_factory=Smoothing)
 
 @dataclass
 class Conf:
-    seed: int = 9
+    seed: int = 2
     data: Data = field(default_factory=Data)
     expert: ExpertConf = field(default_factory=ExpertConf)
     train: Train = field(default_factory=Train)

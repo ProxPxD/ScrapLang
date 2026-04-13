@@ -18,7 +18,7 @@ class TrainParamCalc:
         self.conf: Conf = conf
         self.loss_func: Optional[nn.Module] = loss_func
 
-    def compute_weights(self, bias: float = None) -> Tensor:
+    def compute_label_weights(self, bias: float = None) -> Tensor:
         bias = bias or self.conf.weights.freq_bias
         all_labels, used_label_count = self.conf.data.labels.all_names, self.conf.data.labels.used_count
         present_classes = sorted(used_label_count.keys())
@@ -32,12 +32,12 @@ class TrainParamCalc:
         weights[present_idxs] = raw_weights
         return weights
 
-    @classmethod
-    def compute_pos_weights(cls, train_batches) -> Tensor:
+    def compute_pos_weights(self, train_batches) -> Tensor:
+        coef = self.conf.weights.c_pos
         all_targets = torch.cat(_.map_(train_batches, c().get(-1)), dim=0)
         pos_count = all_targets.sum(dim=0)
         neg_count = all_targets.shape[0] - pos_count
-        pos_weights = neg_count / (pos_count + 1e-6)
+        pos_weights = coef * neg_count / (pos_count + 1e-6)
         pos_weights[pos_count == 0] = 0.0
         return pos_weights
 
