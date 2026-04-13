@@ -262,7 +262,7 @@ class AdvancedDetector:
         print('Label Weights:', label_weights.tolist())
         pos_weights = self.train_param_calc.compute_pos_weights(train_batches).to(self.device)
         self.train_param_calc.loss_func = nn.BCEWithLogitsLoss(
-            # weight=label_weights,
+            weight=label_weights,
             pos_weight=pos_weights,
             reduction='none',
         )
