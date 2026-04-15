@@ -66,8 +66,9 @@ class ExpertConf:
     hidden_channels: Sequence[int] = (64, 64, 64)
     paddings: Sequence[int] =  (0, 0, 0)
     leaky_relu_slop: float = 0.1
-    p_dropout = .1
-    p_conv_dropout = .1
+    p_emb_dropout: float = .0
+    p_conv_dropout: float = .0
+    p_attn_dropout: float = .0
     # conv_norm_dims: Collection[int] = (-2,) # {-3: 'b', -2: 'c', -1: 'l'}
     tokenizer = None  # TODO: temp
 

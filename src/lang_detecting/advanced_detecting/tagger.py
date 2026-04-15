@@ -81,11 +81,11 @@ class Tagger:
     def _dropout_tags(self) -> TagS:
         tags, expert = [], self.conf.expert
         place_prob = {
-            'attn': expert.p_dropout,
-            'emb': expert.p_dropout,
+            'attn': expert.p_attn_dropout,
+            'emb': expert.p_emb_dropout,
             'conv': expert.p_conv_dropout,
         }
-        tags = [f'dropout/{place}/{int(100*p)}' for place, p in place_prob.items() if p]
+        tags = [f'dropout/{place}/{p}' for place, p in place_prob.items()]
         return tags
 
     def _act_tags(self) -> TagS:

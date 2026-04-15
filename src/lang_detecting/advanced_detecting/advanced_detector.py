@@ -147,9 +147,18 @@ class AdvancedDetector:
         if seed is None:
             random.seed(seed)
             torch.seed()
+            torch.cuda.seed()
+            torch.backends.cudnn.deterministic = False
+            torch.backends.cudnn.benchmark = True
+            torch.use_deterministic_algorithms(mode=False)
         else:
             random.seed(seed)
             torch.random.manual_seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            torch.use_deterministic_algorithms(mode=True, warn_only=True)
 
     @contextmanager
     def tmp_seed(self, seed: None | int = None) -> Generator[None, Any, None]:
@@ -190,9 +199,10 @@ class AdvancedDetector:
                 alpha = str(int(self.conf.train.smoothing.alpha*100))
                 with self.tmp_seed(None):
                     suffix = ''.join(random.choices(string.ascii_uppercase, k=3))
-                c = self.conf; t = c.train; w = c.weights
+                c = self.conf; t = c.train; w = c.weights; e = self.conf.expert
+                upto10 = lambda v: v
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'Freq{w.freq_bias}_P{w.c_pos}_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'T_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
