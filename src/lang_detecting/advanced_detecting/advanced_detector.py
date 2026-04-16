@@ -316,7 +316,9 @@ class AdvancedDetector:
                 optimizer.step()
             scheduler.step()
             self._val(val_batches, epoch)
-            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', TRAIN, 100 * epoch_loss / n_samples / self.conf.data.labels.n_used, epoch)
+            total_avg_loss = 100 * epoch_loss / n_samples / self.conf.data.labels.n_used
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', TRAIN, total_avg_loss, epoch)
+            self._board_mere_metric(TRAIN, 'Loss', total_avg_loss, epoch)
             self._board_metrics(TRAIN, epoch)
 
     def _val(self, batches: list[TensorBatch], epoch: int) -> None:
@@ -334,9 +336,9 @@ class AdvancedDetector:
                 val_loss += self.train_param_calc.compute_loss(logits, targets)
                 rows = zip(*[col.tolist() for col in (kinds, words, o_targets, probs)])
                 val_data = pd.concat([val_data, pd.DataFrame(rows, columns=val_data.columns)], ignore_index=True)
-            total_avg = 100 * val_loss / n_samples / self.conf.data.labels.n_used
-            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, total_avg, epoch)
-            self._board_mere_metric(VAL, 'Loss', total_avg, epoch)
+            total_avg_loss = 100 * val_loss / n_samples / self.conf.data.labels.n_used
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, total_avg_loss, epoch)
+            self._board_mere_metric(VAL, 'Loss', total_avg_loss, epoch)
             self._board_metrics(VAL, epoch)
 
             val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
