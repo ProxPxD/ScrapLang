@@ -130,3 +130,14 @@ class Tagger:
             for param, trans_s in params.items()
             for trans in _.to_list(trans_s)
         ]
+
+    def _conv_tags(self) -> TagS:
+        e = self.conf.expert
+        coef_tags = [
+            f'c_{name}/{c(getattr(e, name)).join("_").value()}'
+            for name in ('kernels', 'hidden_channels', 'paddings')
+        ]
+        return [
+            f'n_conv/{len(e.kernels)}',
+            *coef_tags,
+        ]

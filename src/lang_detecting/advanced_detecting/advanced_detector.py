@@ -142,9 +142,10 @@ class AdvancedDetector:
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
+    # TODO: Refactor advanced detector to initialize everything on the need/training for seed regularity
     def set_seed(self, seed: None | int) -> None:
-        if not self.context.dev:
-            return
+        # if not self.dev_training:
+        #     return
         if seed is None:
             random.seed(seed)
             torch.seed()
@@ -203,7 +204,7 @@ class AdvancedDetector:
                 c = self.conf; t = c.train; w = c.weights; e = self.conf.expert
                 upto10 = lambda v: v
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'Mask_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'C{len(e.kernels)}_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags,# + [*self.tagger.deltags()],
                     reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )

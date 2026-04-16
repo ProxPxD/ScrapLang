@@ -13,6 +13,7 @@ from torch import Tensor
 
 from src.lang_detecting.advanced_detecting.conf import Conf, ExpertConf
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToTargets, KindToVocab, Target, Vocab
+from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
 
 
 class MaskedLayerNorm(nn.Module):
@@ -128,7 +129,7 @@ class Expert(nn.Module):
         self.ffn = nn.Linear(C, n_labels)
         output_mask = c(all_classes).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
-        self.tokenizer = conf.tokenizer
+        self.tokenizer: MultiKindTokenizer = conf.tokenizer
 
     def forward(self, words: Tensor, specs: Tensor) -> Tensor:
         """
@@ -161,10 +162,10 @@ class Expert(nn.Module):
         *_, C, L = x.shape
         x = x.permute(0, 2, 1).reshape(B, ch*L, C)
         mask = mask.reshape(ch*L)
-        effective_mask =mask.repeat(B, 1)
-        # attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
-        attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
-        attn_out = self.attn_norm(attn_out, effective_mask.unsqueeze(2) == 1)
+        effective_mask = mask.repeat(B, 1)
+        attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
+        # attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
+        attn_out = self.attn_norm(attn_out, effective_mask.unsqueeze(2))
         x_attn = x + attn_out
         x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k
         x = self.ffn(x)  # B x o
