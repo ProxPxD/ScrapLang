@@ -68,7 +68,7 @@ class ExpertConf:
     leaky_relu_slop: float = 0.1
     p_emb_dropout: float = .1
     p_conv_dropout: float = .1
-    p_attn_dropout: float = .00  #.00 or .05 the best for now
+    p_attn_dropout: float = .05  #.00 or .05 the best for now
     tokenizer = None  # TODO: temp
 
 @dataclass(frozen=True)

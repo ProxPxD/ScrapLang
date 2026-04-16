@@ -142,8 +142,9 @@ class AdvancedDetector:
         self._cm_kind_every: int = 2 ** 5
         self.init_for_training()
 
-    @classmethod
-    def set_seed(cls, seed: None | int) -> None:
+    def set_seed(self, seed: None | int) -> None:
+        if not self.context.dev:
+            return
         if seed is None:
             random.seed(seed)
             torch.seed()
@@ -202,8 +203,9 @@ class AdvancedDetector:
                 c = self.conf; t = c.train; w = c.weights; e = self.conf.expert
                 upto10 = lambda v: v
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'T_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
-                    tags=self.tagger.tags, reuse_last_task_id=False, auto_connect_arg_parser=False,
+                    project_name='ScrapLang', task_name=f'Mask_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
+                    tags=self.tagger.tags,# + [*self.tagger.deltags()],
+                    reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )
 
                 self.task.connect(flatten_dict.flatten(asdict(self.conf), reducer='dot'))
@@ -332,7 +334,9 @@ class AdvancedDetector:
                 val_loss += self.train_param_calc.compute_loss(logits, targets)
                 rows = zip(*[col.tolist() for col in (kinds, words, o_targets, probs)])
                 val_data = pd.concat([val_data, pd.DataFrame(rows, columns=val_data.columns)], ignore_index=True)
-            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, 100 * val_loss / n_samples / self.conf.data.labels.n_used, epoch)
+            total_avg = 100 * val_loss / n_samples / self.conf.data.labels.n_used
+            retry_on(self._logger.report_scalar, ConnectionError, 7, 'Loss', VAL, total_avg, epoch)
+            self._board_mere_metric(VAL, 'Loss', total_avg, epoch)
             self._board_metrics(VAL, epoch)
 
             val_data[KIND] = val_data[KIND].apply(self.tokenizer.detokenize_kind)
@@ -384,9 +388,12 @@ class AdvancedDetector:
             # self.writer.add_scalar(f'{series}/metric_{avg}/{name}'.lower(), val, step)
             retry_on(self._logger.report_scalar, ConnectionError, 7, f'Metric/{name}', full_series, val, step)
             if avg in {'micro', None}:
-                retry_on(self._logger.report_scalar, ConnectionError, 7, f':All {series} μ-Metrics', f'{name}', val, step)
+                self._board_mere_metric(series, name, val, step)
 
         self._board_confusion_matrices(series, step)
+
+    def _board_mere_metric(self, series: str, metric: str, val: float, step: int):
+        retry_on(self._logger.report_scalar, ConnectionError, 7, f':All {series} μ-Metrics', metric, val, step)
 
     @cached_property
     def _n_cm_padding(self) -> int:

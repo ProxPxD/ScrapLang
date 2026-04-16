@@ -94,7 +94,7 @@ class Expert(nn.Module):
         kernels = [*list(padded(conf.kernels, 3, len(channels) - 2)), 1]
         paddings = list(padded(conf.paddings, 0, len(channels) - 1))
         self.conv_dropout = nn.Dropout(p=conf.p_conv_dropout)
-        self.dropout = nn.Dropout(p=conf.p_dropout)
+        self.emb_dropout = nn.Dropout(p=conf.p_emb_dropout)
         self.convs = nn.ModuleList([
             nn.Conv1d(
                 in_channels=ci,
@@ -114,7 +114,7 @@ class Expert(nn.Module):
             embed_dim=channels[-1],
             num_heads=1,
             batch_first=True,
-            dropout=conf.p_dropout,
+            dropout=conf.p_attn_dropout,
         )
         C = channels[-1]
         self.attn_norm = MaskedLayerNorm(C, dim=-1)
@@ -145,7 +145,7 @@ class Expert(nn.Module):
             v_min, v_max, n_embed = words.min().item(), words.max().item(), self.embed.num_embeddings
             raise ValueError(f'{v_min=}, {v_max=}, {n_embed=}')
 
-        x = self.dropout(self.embed(words))  # B x L x e0
+        x = self.emb_dropout(self.embed(words))  # B x L x e0
         x, mask = self._pad(x, -2, 0, return_mask=True)
         specs = self._pad(specs, -2, 0)
         x = self.cat_specs(x, specs)  # B x L x e1
@@ -157,13 +157,14 @@ class Expert(nn.Module):
             mask = F.max_pool1d(mask.float(), conv.kernel_size, conv.stride, conv.padding).int()
             effective_mask = mask.repeat(B, 1).unsqueeze(1)
             x = norm(x, effective_mask)
+        x = self.conv_dropout(x)
         *_, C, L = x.shape
         x = x.permute(0, 2, 1).reshape(B, ch*L, C)
         mask = mask.reshape(ch*L)
         effective_mask =mask.repeat(B, 1)
-        attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
-        # attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
-        attn_out = self.attn_norm(attn_out, effective_mask.unsqueeze(2))
+        # attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
+        attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
+        attn_out = self.attn_norm(attn_out, effective_mask.unsqueeze(2) == 1)
         x_attn = x + attn_out
         x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k
         x = self.ffn(x)  # B x o
