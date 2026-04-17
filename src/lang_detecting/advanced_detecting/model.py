@@ -36,17 +36,18 @@ class MaskedLayerNorm(nn.Module):
     def _n_norm_dims(self) -> int:
         return len(self._dims)
 
-    def forward(self, x: Tensor, mask: Tensor) -> Tensor:
+    def forward(self, x: Tensor, mask: Tensor = None) -> Tensor:
         if self._perm is None:
             orig_dims = range(x.ndim)
             target_dims = sorted([d % x.ndim for d in self._dims])
             other_dims = sorted(set(orig_dims) - set(target_dims))
             self._perm = other_dims + target_dims
             self._inv_perm = c(list(enumerate(self._perm))).sort(key=lambda t: t[1]).map(lambda t: t[0]).value()
-
+        is_masked = mask is not None
+        mask = mask if is_masked else 1
         x = x.permute(self._perm)
-        mask = mask.permute(self._perm)
-        count = self._get_adjusted_count(x, mask)
+        mask = mask.permute(self._perm) if is_masked else 1
+        count = self._get_adjusted_count(x, mask) if is_masked else x.numel()
         sum_x = torch.sum(x * mask, dim=self._over_dims, keepdim=True)
         mean = sum_x / count
 
@@ -57,27 +58,57 @@ class MaskedLayerNorm(nn.Module):
         if self.norm.elementwise_affine:
             x_norm = x_norm * self.norm.weight + self.norm.bias
         x_norm = x_norm.permute(self._inv_perm)
-        mask = mask.permute(self._inv_perm)
+        mask = mask.permute(self._inv_perm) if is_masked else 1
         return x_norm * mask
 
     def _get_adjusted_count(self, x: Tensor, mask: Tensor) -> Tensor:
         return (torch.ones(x.shape).to(x.device)*mask).sum(dim=self._over_dims, keepdim=True).clamp(min=1)
 
 
-class Expert(nn.Module):
-    @property
-    def post_attn_pool(self) -> Callable:
-        return self.funcs[self.post_attn_pool_name]
+class ConvBlock(nn.Module):
+    def __init__(self,
+            channels: Sequence[int],
+            kernels: Sequence[int],
+            paddings: Sequence[int],
+            *,
+            act: nn.Module = None,
+            scale: float = None,
+        ) -> None:
+        super().__init__()
+        self.convs: nn.ModuleList[nn.Conv1d] = nn.ModuleList([
+            nn.Conv1d(
+                in_channels=ci,
+                out_channels=co,
+                kernel_size=k,
+                padding=p,
+            ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
+        ])
+        if scale is not None:
+            with torch.no_grad():
+                for conv in self.convs:
+                    conv.weight *= scale
+        self.act = act or nn.GELU()
+        self.conv_norms = nn.ModuleList([
+            MaskedLayerNorm((co,), dim=(-2, )) for co in channels[1:]
+        ])
 
+    def forward(self, x: Tensor, mask: Tensor = None) -> tuple[Tensor, Tensor]:
+        for conv, norm in zip(self.convs, self.conv_norms):
+            x = self.act(conv(x))  # B*ch x c_k x l_k
+            mask = None if mask is None else F.max_pool1d(mask.float(), conv.kernel_size, conv.stride, conv.padding).int()
+            effective_mask = None if mask is None else mask.repeat(x.size(0), 1).unsqueeze(1)
+            x = norm(x, effective_mask)
+        return x, mask
+
+class Expert(nn.Module):
     def __init__(self,
             vocab: list[Vocab],
             targets: list[Target],
-            all_classes: list[Target],
+            all_labels: list[Target],
             conf: ExpertConf,
             n_specs: int = 0,
         ):
         super().__init__()
-        n_tokens, n_labels = len(vocab), len(all_classes)
         self.funcs = {
             (LOGSUMEXP:='logsumexp'): torch.logsumexp,
             'relu': torch.relu,
@@ -86,40 +117,37 @@ class Expert(nn.Module):
             (MEAN:='mean'): torch.mean,
             (GATE:='gate'): None,
         }
+        n_tokens, n_labels = len(vocab), len(all_labels)
         self.s_chunk = conf.chunking.size
         self.stride = conf.chunking.stride
         self.n_specs = n_specs
-
-        self.embed = nn.Embedding(n_tokens, conf.emb_dim - n_specs, padding_idx=conf.padding_idx)
-        channels = (conf.emb_dim, *conf.hidden_channels)
-        kernels = [*list(padded(conf.kernels, 3, len(channels) - 2)), 1]
-        paddings = list(padded(conf.paddings, 0, len(channels) - 1))
-        self.conv_dropout = nn.Dropout(p=conf.p_conv_dropout)
+        n_emb = conf.n_emb
+        self.embed = nn.Embedding(n_tokens, conf.n_emb - n_specs, padding_idx=conf.padding_idx)
         self.emb_dropout = nn.Dropout(p=conf.p_emb_dropout)
-        self.convs = nn.ModuleList([
-            nn.Conv1d(
-                in_channels=ci,
-                out_channels=co,
-                kernel_size=k,
-                padding=p,
-            ) for (ci, co), k, p in zip(windowed(channels, 2), kernels, paddings)
-        ])
-        l_k_s = [self.s_chunk]
-        for k, p in zip(kernels, paddings):
-            l_k_s.append(l_k_s[-1]-k+2*p + 1)
-        self.conv_norms = nn.ModuleList([
-            MaskedLayerNorm((co,), dim=(-2, )) for co, l_k in zip(channels[1:], l_k_s[1:])
-        ])
-        self.hid_act = nn.GELU()
+
+        channels = (n_emb, *conf.hid_channels)
+        kernels = [*list(padded(conf.kernels, 3, conf.n_conv-1)), 1]
+        paddings = list(padded(conf.paddings, 0, conf.n_conv))
+        self.skip_proj = nn.Conv1d(channels[0], channels[-1], 1)
+        nn.init.xavier_uniform_(self.skip_proj.weight)
+        with torch.no_grad():
+            self.skip_proj.weight *= .01
+            self.skip_proj.bias *= .01
+            for i in range(n_emb):
+                self.skip_proj.weight[i, i, 0] = 1.0
+        self.conv = ConvBlock(channels, kernels, paddings, act=nn.GELU(), scale=.1)
+        self.conv_dropout = nn.Dropout(p=conf.p_conv_dropout)
+
+        C = channels[-1]
         self.attn = nn.MultiheadAttention(
-            embed_dim=channels[-1],
+            embed_dim=C,
             num_heads=1,
             batch_first=True,
             dropout=conf.p_attn_dropout,
         )
-        C = channels[-1]
         self.attn_norm = MaskedLayerNorm(C, dim=-1)
         self.post_attn_pool_name = SUM
+        self.post_attn_pool = self.funcs[self.post_attn_pool_name]
         self.norm = nn.LayerNorm(C, eps=1e-3)
         # self.ffn = nn.Sequential(
         #     nn.Linear(C, 2*C),
@@ -127,7 +155,7 @@ class Expert(nn.Module):
         #     nn.Linear(2*C, n_labels),
         # )
         self.ffn = nn.Linear(C, n_labels)
-        output_mask = c(all_classes).map(targets.__contains__).map(int).value()
+        output_mask = c(all_labels).map(targets.__contains__).map(int).value()
         self.register_buffer('output_mask', torch.tensor(output_mask, dtype=torch.float32))
         self.tokenizer: MultiKindTokenizer = conf.tokenizer
 
@@ -153,12 +181,9 @@ class Expert(nn.Module):
         x, mask = self.chunk(x), self.chunk(mask)  # B x ch x e1 x l_0
         B, ch, C, L = x.shape
         x = x.reshape(B * ch, C, L)
-        for conv, norm in zip(self.convs, self.conv_norms):
-            x = self.hid_act(conv(x))  # B*ch x c_k x l_k
-            mask = F.max_pool1d(mask.float(), conv.kernel_size, conv.stride, conv.padding).int()
-            effective_mask = mask.repeat(B, 1).unsqueeze(1)
-            x = norm(x, effective_mask)
-        x = self.conv_dropout(x)
+        skip = self.skip_proj(x) * mask
+        res, mask = self.conv(x, mask)
+        x = self.conv_dropout(skip + res)
         *_, C, L = x.shape
         x = x.permute(0, 2, 1).reshape(B, ch*L, C)
         mask = mask.reshape(ch*L)

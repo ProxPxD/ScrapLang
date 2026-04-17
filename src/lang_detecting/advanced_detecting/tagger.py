@@ -91,7 +91,7 @@ class Tagger:
     def _act_tags(self) -> TagS:
         expert: Expert = self.moe.experts[0]
         pref_kind = [
-            ('act/conv', expert.hid_act.__class__.__name__.replace('ReLU', 'Relu')),
+            ('act/conv', expert.conv.act.__class__.__name__.replace('ReLU', 'Relu')),
             ('pool/attn', expert.post_attn_pool_name),
         ]
         tags = [f'{pref}/{_.snake_case(kind)}' for pref, kind in pref_kind]
@@ -135,7 +135,7 @@ class Tagger:
         e = self.conf.expert
         coef_tags = [
             f'c_{name}/{c(getattr(e, name)).join("_").value()}'
-            for name in ('kernels', 'hidden_channels', 'paddings')
+            for name in ('kernels', 'hid_channels', 'paddings')
         ]
         return [
             f'n_conv/{len(e.kernels)}',

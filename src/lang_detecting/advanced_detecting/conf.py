@@ -3,6 +3,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Optional
 
+from PIL.ImageOps import pad
+
 
 @dataclass(frozen=True)
 class Augment:
@@ -61,15 +63,24 @@ class Data:
 class ExpertConf:
     chunking: Chunking = field(default_factory=Chunking)
     padding_idx: int = None  # Autofill
-    emb_dim: int = 32
+    n_emb: int = 32
     kernels: Sequence[int] = (3, 3, 3)
-    hidden_channels: Sequence[int] = (64, 64, 64)
-    paddings: Sequence[int] =  (0, 0, 0)
+    hid_channels: Sequence[int] = (64, 64, 64)
+    paddings: Sequence[int] =  (kernels[0]//2, ) * len(kernels)
     leaky_relu_slop: float = 0.1
     p_emb_dropout: float = .1
     p_conv_dropout: float = .1
     p_attn_dropout: float = .00  #.00 or .05 the best for now
     tokenizer = None  # TODO: temp
+
+    def __post_init__(self) -> None:
+        conv_coefs = len(self.kernels), len(self.hid_channels), len(self.paddings)
+        if len(set(conv_coefs)) > 1:
+            raise ValueError('Conv block has to have the same number of kernels, channels and paddings')
+
+    @property
+    def n_conv(self) -> int:
+        return len(self.hid_channels)
 
 @dataclass(frozen=True)
 class Weights:
@@ -79,7 +90,7 @@ class Weights:
 @dataclass
 class Supervision:
     cm_threshes: Sequence[float] = (.5, .66, .80, .90, .95, .99)
-    metrics_thresh: float = .8
+    metrics_thresh: float = .5 #.8
 
 @dataclass(frozen=True)
 class Smoothing:
@@ -90,7 +101,7 @@ class Smoothing:
 class Train:
     supervision: Supervision = field(default_factory=Supervision)
     epochs: int = 2**7
-    lr: float = 1e-3
+    lr: float = 1e-4
     gamma: float = .995
     weight_decay: float = 1e-4  # 1e-4
     max_batch_size: Optional[int] = 2**7
