@@ -204,7 +204,7 @@ class AdvancedDetector:
                 c = self.conf; t = c.train; w = c.weights; e = self.conf.expert
                 upto10 = lambda v: v
                 self.task = Task.init(
-                    project_name='ScrapLang', task_name=f'Res_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
+                    project_name='ScrapLang', task_name=f'RN_C{e.hid_channels[0]}_{len(e.hid_channels)}_e{upto10(e.p_emb_dropout)}_a{upto10(e.p_attn_dropout)}_c{upto10(e.p_conv_dropout)}_{suffix}', task_type=Task.TaskTypes.training,
                     tags=self.tagger.tags,# + [*self.tagger.deltags()],
                     reuse_last_task_id=False, auto_connect_arg_parser=False,
                 )

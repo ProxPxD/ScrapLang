@@ -64,8 +64,8 @@ class ExpertConf:
     chunking: Chunking = field(default_factory=Chunking)
     padding_idx: int = None  # Autofill
     n_emb: int = 32
-    kernels: Sequence[int] = (3, 3, 3)
-    hid_channels: Sequence[int] = (64, 64, 64)
+    hid_channels: Sequence[int] = (64, 64, 64,)  #(64, 64, 64)
+    kernels: Sequence[int] = (3, ) * len(hid_channels) #(3, 3, 3)
     paddings: Sequence[int] =  (kernels[0]//2, ) * len(kernels)
     leaky_relu_slop: float = 0.1
     p_emb_dropout: float = .1

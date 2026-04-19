@@ -1,12 +1,12 @@
 import math
 from collections.abc import Sequence
+from itertools import chain, repeat
 from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from more_itertools import windowed
-from more_itertools.more import padded
+from more_itertools import take, windowed
 from pydash import chain as c
 from pydash import flow
 from torch import Tensor
@@ -124,15 +124,18 @@ class Expert(nn.Module):
         n_emb = conf.n_emb
         self.embed = nn.Embedding(n_tokens, conf.n_emb - n_specs, padding_idx=conf.padding_idx)
         self.emb_dropout = nn.Dropout(p=conf.p_emb_dropout)
+        self.pre_conv_norm = MaskedLayerNorm(n_emb, dim=-1)
 
         channels = (n_emb, *conf.hid_channels)
-        kernels = [*list(padded(conf.kernels, 3, conf.n_conv-1)), 1]
-        paddings = list(padded(conf.paddings, 0, conf.n_conv))
+        n_channels = len(conf.hid_channels)
+        kernels = take(n_channels, chain(conf.kernels, repeat(3)))
+        paddings = take(n_channels, chain(conf.paddings, repeat(0)))
         self.skip_proj = nn.Conv1d(channels[0], channels[-1], 1)
+        self.skip_norm = MaskedLayerNorm(channels[-1], dim=-2)
         nn.init.xavier_uniform_(self.skip_proj.weight)
         with torch.no_grad():
-            self.skip_proj.weight *= .01
-            self.skip_proj.bias *= .01
+            self.skip_proj.weight *= .1
+            self.skip_proj.bias *= .1
             for i in range(n_emb):
                 self.skip_proj.weight[i, i, 0] = 1.0
         self.conv = ConvBlock(channels, kernels, paddings, act=nn.GELU(), scale=.1)
@@ -148,7 +151,6 @@ class Expert(nn.Module):
         self.attn_norm = MaskedLayerNorm(C, dim=-1)
         self.post_attn_pool_name = SUM
         self.post_attn_pool = self.funcs[self.post_attn_pool_name]
-        self.norm = nn.LayerNorm(C, eps=1e-3)
         # self.ffn = nn.Sequential(
         #     nn.Linear(C, 2*C),
         #     nn.GELU(),
@@ -181,16 +183,19 @@ class Expert(nn.Module):
         x, mask = self.chunk(x), self.chunk(mask)  # B x ch x e1 x l_0
         B, ch, C, L = x.shape
         x = x.reshape(B * ch, C, L)
-        skip = self.skip_proj(x) * mask
+        skip = self.skip_proj(x)
+        effective_mask = mask.unsqueeze(1).repeat(B, skip.size(1), 1)
+        skip = self.skip_norm(skip, effective_mask)
         res, mask = self.conv(x, mask)
         x = self.conv_dropout(skip + res)
         *_, C, L = x.shape
-        x = x.permute(0, 2, 1).reshape(B, ch*L, C)
+        x = x.permute(0, 2, 1).reshape(B, ch, L, C).flatten(1, 2)
         mask = mask.reshape(ch*L)
-        effective_mask = mask.repeat(B, 1)
+        effective_mask = mask.unsqueeze(0).unsqueeze(-1).repeat(B, 1, C)
+        x = self.attn_norm(x, effective_mask)
         attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
         # attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
-        attn_out = self.attn_norm(attn_out, effective_mask.unsqueeze(2))
+        attn_out = self.attn_norm(attn_out, effective_mask)
         x_attn = x + attn_out
         x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k
         x = self.ffn(x)  # B x o
