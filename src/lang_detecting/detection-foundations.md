@@ -13,4 +13,4 @@ The application's database ought to be continually growing and so some character
 
 ### 2. Label Imbalance in Multilabel Classification
 
-
+Real-life experience proved that a large imbalance between labels is expected to arise. An imbalance of positive and negative classes is also expected. In both cases this should be weighted to make the model's predictions reliable both for the large and smaller classes. Other methods should be undertaken including redesigning the model to make it possible to do well in all the cases. Another case of imbalance is that which arises from the samples being true multi-label, so those that have more than one correct label. They will also necessarily favour the dominant languages. This signifies that the model should not be overdiscouraged from assigning some predictions to words that look like a specific language, but are not annotated as such. It should focus much more on assigning greater certainty for the records it has than on punishing the falsely negative labels. 
