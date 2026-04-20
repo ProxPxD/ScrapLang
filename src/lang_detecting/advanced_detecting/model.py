@@ -151,6 +151,7 @@ class Expert(nn.Module):
         self.attn_norm = MaskedLayerNorm(C, dim=-1)
         self.post_attn_pool_name = SUM
         self.post_attn_pool = self.funcs[self.post_attn_pool_name]
+        self.norm = nn.LayerNorm(C)
         # self.ffn = nn.Sequential(
         #     nn.Linear(C, 2*C),
         #     nn.GELU(),
@@ -190,14 +191,20 @@ class Expert(nn.Module):
         x = self.conv_dropout(skip + res)
         *_, C, L = x.shape
         x = x.permute(0, 2, 1).reshape(B, ch, L, C).flatten(1, 2)
-        mask = mask.reshape(ch*L)
-        effective_mask = mask.unsqueeze(0).unsqueeze(-1).repeat(B, 1, C)
-        x = self.attn_norm(x, effective_mask)
+        # mask = mask.reshape(ch*L)
+        # effective_mask = mask.unsqueeze(0).unsqueeze(-1).repeat(B, 1, C)
+        # x = self.attn_norm(x, effective_mask)
         attn_out, _ = self.attn(x, x, x)  # B*ch x l_k x c_k
         # attn_out, _ = self.attn(x, x, x, key_padding_mask=mask.repeat(B, 1) == 0)  # B*ch x l_k x c_k
-        attn_out = self.attn_norm(attn_out, effective_mask)
+        # attn_out = self.attn_norm(attn_out, effective_mask)
+        # attn_out = attn_out * effective_mask
         x_attn = x + attn_out
+        # x_attn = self.attn_norm(x + attn_out, effective_mask)
+        # x_attn = (x + attn_out) * effective_mask
+        # TODO: Change if ever decide to have separate map for the inputs
         x = self.post_attn_pool(x_attn, dim=-2)  # B x c_k
+        # x = torch.sigmoid(x)
+        # x = self.norm(x)
         x = self.ffn(x)  # B x o
         # Mask non-expert outputs
         x = x.masked_fill(self.output_mask == 0, -1e9)  # set masked to very negative value
