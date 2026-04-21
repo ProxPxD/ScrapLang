@@ -25,11 +25,17 @@ The model consists of Experts which are dedicated to scripts and equipped with m
 The initial and core architecture of an expert was a three-layer CNN with an FNN, later extended with an attention module in between in order to capture more distant relations. The features are pooled down before being passed to the FNN module.
 
 ## Experimentation
-The project's architecture is itself experimental and exploratory. A lot of runs have been executed to compare the impact of various regularization techniques and their placements. Different strategies of connecting the feature flow have been tested as well. This includes the use of the attention module as a gate versus as a residual as well as rewriting the CNN module to be connected as residual as well. Mask was introduced at some point which highly helped model focus on the important. In some cases, the introduction of mask worsened the results which had been fixed by an additional regularization. Setting the mask to the attention irreparably worsened the performance. Neither regularization nor any other change in the architecture was able to fix it. Further investigation is required. One of a worth-mentioning discoveries was that the little change in the validation and train set distribution sometimes leads to significant model quality shifts even when a seed is set. This application gathers data constantly and for the time of development no freezing of a dataset was anticipated. This finding is valuable for allowing to assess the model's and learning's quality and stability. It has become a question to resolve to increase the supervision's quality
+The project’s architecture is experimental and exploratory. Numerous runs have been executed to compare the impact of various regularization techniques and their placements. Different strategies of connecting feature flows have also been tested, including the use of the attention module as a gate versus a residual, as well as rewriting the CNN module to function as a residual component.
+
+At one stage, a mask was introduced, which significantly improved the model’s ability to focus on the relevant segments. However, in some cases, the mask degraded performance; this issue was mitigated through additional regularization. Applying the mask directly to the attention mechanism, however, irreparably worsened the performance that could not be resolved neither through further regularization nor architectural modifications. This aspect requires further investigation.
+
+Another noteworthy observation is that even minor changes in the distribution of training and validation datasets can lead to substantial shifts in model performance, despite using a fixed random seed. Since this application continuously collects data, freezing the dataset during the development was not considered. This finding is valuable for evaluating the model’s performance, learning dynamics, and overall stability. Improving the quality of supervision has therefore become a key objective.
 
 ## Roadmap
-- Finding the reason why padding mask does not yield better results in attention
-- Having worked out the final classification layer and earlier pooling - a suspicion that they can be improved
-- to understand whether normalization placements can be improved
-- Experimenting with the loss to test whether better results can be drawn if model is punished very little for some certainty in wrong classes as long as it predicts the correct ones more
-- Experimenting with soft loss
+- Investigate why padding mask does not yield better results in the attention mechanism
+- Having worked out the final classification layer and earlier pooling, there is a suspicion that they can be improved
+- Explore whether normalization placements can be improved
+- Experiment with the loss to test whether better results can be drawn if model is assigned a small penalty for some certainty in wrong classes - as long as it improves the prediction of the correct ones
+- Experiment with soft loss
+
+
