@@ -6,6 +6,8 @@ ScrapLang has been evolving towards ever greater comfort of specifying arguments
 ScrapLang has already accommodated for the special-character detection and last used language retrival, but the user experience demonstrated that translating between two languages is problematic due to a language misassuming despite the fact that some words are often easily categorizable even for a user not yet much familiar with a language.
 The model is not intended to be overtly large.
 
+The project is not yet terminated. The results are unsatisfactory, but it has been a great support in refreshing and expanding the knowledge and to practice solving real-scenario problems in a non-artificial environment.
+
 ## Data-Related Problematics
 The application is able to identify the intended language based on the special characters, so the model will have to take care of the remaining cases where there are no unique characters based on the words previously entered and successfully scrapped by the user. As some strings or extracted underlying features can be encountered in multiple languages, the model should be able to predict many labels, desirably with a lower confidence.  
 
@@ -22,4 +24,4 @@ Real-life experience proved that a large imbalance between labels is expected to
 The initial and core architecture was a three-layer CNN with an FNN, later extended with an attention module in between in order to capture more distant relations. The features are pooled down before being passed to the FNN module.
 
 ## Experimentation
-The project's architecture is itself experimental and exploratory. A lot of runs have been executed to compare the impact of various regularization techniques and their placements. Different strategies of connecting the feature flow have been tested as well. This includes the use of the attention module as a gate versus as a residual as well as rewriting the CNN module to be connected as residual as well. #todo (+mask) 
+The project's architecture is itself experimental and exploratory. A lot of runs have been executed to compare the impact of various regularization techniques and their placements. Different strategies of connecting the feature flow have been tested as well. This includes the use of the attention module as a gate versus as a residual as well as rewriting the CNN module to be connected as residual as well. Mask was introduced at some point which highly helped model focus on the important. In some cases, the introduction of mask worsened the results which had been fixed by an additional regularization. Setting the mask to the attention irreparably worsened the performance. Neither regularization nor any other change in the architecture was able to fix it. Further investigation is required.
