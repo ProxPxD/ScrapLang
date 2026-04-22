@@ -38,4 +38,12 @@ Another noteworthy observation is that even minor changes in the distribution of
 - Experiment with the loss to test whether better results can be drawn if model is assigned a small penalty for some certainty in wrong classes - as long as it improves the prediction of the correct ones
 - Experiment with soft loss
 
+## Current Results
 
+Validation metrics for 50% threshold:
+![best-metrics.png](img/best-metrics.png)
+Confusion Matrix:
+![best_cm.png](img/best_cm.png)
+
+### Earlier Valset Selection Influence on Precision
+![valset_influence.png](img/valset_influence.png)
