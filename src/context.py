@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from functools import lru_cache
 from itertools import cycle, product
 from typing import Any, ClassVar, Iterable, Optional, Sequence, TYPE_CHECKING
@@ -330,7 +331,7 @@ class Context:
 
     @property
     def grouparg(self) -> str:
-        return f'to_{self.groupby}' if self.groupby == 'lang' else self.groupby
+        return f'to_{self.groupby.value if isinstance(self.groupby, Enum) else self.groupby}' if self.groupby == 'lang' else self.groupby
 
     @property
     def memberarg(self) -> str:

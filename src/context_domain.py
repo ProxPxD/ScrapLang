@@ -17,22 +17,22 @@ class Unsupported(Exception):
             case _: msg = f'Unsupported {type(arg)} value: {arg}'
         super().__init__(msg)
 
-
-class SpecialEnum(StrEnum):
-    CONF = 'conf'  # TODO: Replace all with "auto"
-    AUTO = 'auto'
-
 class IVals(Enum):
     @classmethod
     @property
     def choices(cls) -> list[str]:
         return [member.value for member in cls]
 
+
+class SpecialEnum(StrEnum, IVals):
+    CONF = 'conf'  # TODO: Replace all with "auto"
+    AUTO = 'auto'
+
 class IWithAuto(IVals):
     @classmethod
     @property
     def choices_plus(cls) -> list[str]:
-        return cls.choices + list(SpecialEnum)
+        return cls.choices + SpecialEnum.choices
 
 class GroupBy(StrEnum, IWithAuto):
     LANG = 'lang'
