@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import re
 from functools import cached_property
-from itertools import combinations, chain
-from typing import Sequence, Iterable, Optional, Callable
+from itertools import chain, combinations
+from typing import Iterable, Optional, Self, Sequence
 
 import pydash as _
 import regex
@@ -14,7 +14,7 @@ from toolz import valfilter
 
 
 class ReSymbolSet(frozenset[str]):
-    def __new__(cls, elems: str | Iterable[str]) -> ReSymbolSet:
+    def __new__(cls, elems: str | Iterable[str]) -> Self:
         return super().__new__(cls, elems)
 
     def get_any(self) -> str:
@@ -22,8 +22,7 @@ class ReSymbolSet(frozenset[str]):
 
     @cached_property
     def together(self) -> str:
-        or_last = lambda e: int(e == '|')
-        return "".join(map(re.escape, sorted(self, key=or_last)))
+        return ''.join(map(re.escape, sorted(self, key=lambda e: int(e == '|'))))
 
     @cached_property
     def group(self) -> str:
@@ -45,7 +44,7 @@ class ReSymbolSet(frozenset[str]):
     def not_(self) -> str:
         return f'[^{self.together}]'
 
-    def __or__(self, other):
+    def __or__(self, other: Self) -> Self:
         return ReSymbolSet(set(self)|set(other))
 
 # TODO: idea "+" splitter: Bund+[es]+verfassung+[s]+gericht => Bundesverfassungsgericht
@@ -53,6 +52,7 @@ class ReSymbolSet(frozenset[str]):
 # TODO: ... Arbeit+[s]+zeit+gesetz => Arbeit, zeit, gesetz, Arbeitszeit, zeitgesetz, Arbeitszeitgesetz
 class Outstemmer:
     def __init__(self,
+            *,
             left_brackets: str | Sequence[str] = '[({',
             right_brackets: str | Sequence[str] = '])}',
             alt_seps: str | Sequence[str] = ',|',
@@ -91,13 +91,12 @@ class Outstemmer:
 
     def outstem(self, word: str) -> list:
         logging.debug(f'outstemming "{word}"')
-        modes = 'bracketed', 'cutted'
+        modes = 'bracketed', 'alternative', 'cutted'
         for mode in modes:
             stemmer = getattr(self, f'_outstem_{mode}')
             if stemmeds := stemmer(word):
                 return stemmeds
-        else:
-            return [word]
+        return [word]
 
     def flatmap_outstem(self, words: Iterable[str], *others: str) -> list[str]:
         return c(chain(words, others)).map(self.outstem).flatten().map(c().trim()).filter().uniq().value()
@@ -158,11 +157,11 @@ class Outstemmer:
         if rest.startswith('.'):
             orig += bare_rest
         return self.flatmap_outstem([orig.rstrip('_')], *fulls)
-        # rest = wordy[matched.end(0):]
-        # rest_match = self.after_ender(rest)
-        # immediate, continuation = rest_match.groups()
-        # # if immediate and not continuation:
-        # if immediate:
-        #     puts = c(puts).map(c().add(immediate)).value()
-        # joined = c((orig, *puts)).map(c().add(continuation or '')).value()
-        # return self.flatmap_outstem(joined)
+
+    def _outstem_alternative(self, word: str) -> Optional[list[str]]:
+        """
+        w,prze,wy,.prowadzić
+        compute.r => compute, computer
+        own.er,ing, => owner, owning, own
+        own.,er,ing => own, owner, owning
+        """
