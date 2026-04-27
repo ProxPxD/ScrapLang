@@ -1,20 +1,35 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import Enum
-from functools import lru_cache
-from itertools import cycle, product
-from typing import Any, ClassVar, Iterable, Optional, Sequence, TYPE_CHECKING
+from functools import cache, cached_property
+from itertools import product
+from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Sequence
 
 import pydash as _
 from box import Box
 from pydash import chain as c
 
 from src.constants import preinitialized
-from src.context_domain import Assume, Color, ColorSchema, GatherData, GroupBy, Indirect, InferVia, Mappings, RetrainOn, SpecialEnum, UNSET, Unsupported, color_names
+from src.context_domain import (
+    UNSET,
+    ArgKind,
+    Assume,
+    Color,
+    ColorSchema,
+    GatherData,
+    GroupBy,
+    Indirect,
+    InferVia,
+    Mappings,
+    PrintLevels,
+    RetrainOn,
+    SpecialEnum,
+    color_names,
+)
 
 if TYPE_CHECKING:
     from src.conf import Conf
+    from src.scrapping import Outcome
 
 @preinitialized
 @dataclass(frozen=True)
@@ -31,6 +46,9 @@ class Defaults:
 
     assume: str = 'lang'
     groupby: GroupBy = GroupBy.WORD
+    grouping_3: tuple[ArgKind] = (ArgKind.TO_LANGS, ArgKind.WORDS, ArgKind.FROM_LANGS)
+    grouping_2: tuple[ArgKind] = (ArgKind.FROM_LANGS, ArgKind.WORDS, ArgKind.TO_LANGS)
+    run_grouping: tuple[ArgKind] = None
     infervia: str = 'last'
     retrain_on: RetrainOn = 'gather'
     retrain: bool = False
@@ -47,121 +65,134 @@ class Defaults:
 
     loop: bool = False
 
+class ArgGroup:
+    app_order: ClassVar[list[ArgKind]] = [ArgKind.FROM_LANGS, ArgKind.TO_LANGS, ArgKind.WORDS]
 
-
-class ScrapIterator:
-    def __init__(self, context: Context, i: int, from_lang: str, to_lang: str, word: str, prev: ScrapIterator):
-        self._context = context
-        self.i: int = i
-        self.from_lang: str = from_lang
-        self.to_lang: str = to_lang
-        self.word: str = word
-        self.prev = prev
+    def __init__(self, group: Sequence[str], grouping: list[ArgKind], context: Context):
+        self.group = group
+        self.grouping = grouping
+        self.context = context
 
     def __repr__(self) -> str:
-        return f'ScrapIt(i={self.i}, from={self.from_lang}, word={self.word}, to={self.to_lang})'
+        args = self.args
+        return f'ArgGroup({args=})'
+
+    @cached_property
+    def _group_perm(self) -> list[int]:  # TODO: think of moving to context as it's not group specific
+        return [self.grouping.index(arg) for arg in self.app_order]
 
     @property
-    def args(self) -> tuple[str, str, str]:
-        return self.from_lang, self.to_lang, self.word
+    def args(self) -> list[str]:
+        return [self.group[i] for i in self._group_perm]
 
-    def _is_first_in_all_main_members(self):
-        return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == 0
+    def get_kind(self, level: PrintLevels | int) -> ArgKind:
+        i = level if isinstance(level, int) else level.i
+        return self.grouping[i]
 
-    @property
-    def curr_bundle(self) -> Sequence[str]:
-        return self._context.get_from_lang_word_bundle_by_word(self.word)
-
-    @property
-    def prev_bundle(self) -> Sequence[str]:
-        return self._context.get_from_lang_word_bundle_by_word(self.prev.word)
-
-    def is_in_same_word_bundle_as_prev(self) -> bool:
-        return self.prev_bundle != self.curr_bundle
-
-    def is_in_super_group(self) -> bool:
-        match self._context.groupby:
-            case 'lang': ...
-            case 'word': ...
-    def is_in_poly_main_group(self) -> bool:
-        if self._context.n_from_langs == 1:
-            return len(self._context.words) > 1 and len(self._context.to_langs) > 1
-        match self._context.groupby:
-            case 'lang': return len(self._context.to_langs) > 1
-            case 'word': return len(self._context.from_lang_word_bundles) > 1
-            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
-
-    def is_first_in_main_group(self) -> bool:
-        if self.prev is None:
-            return True
-        match self._context.groupby:
-            case 'lang': return self.prev.to_lang != self.to_lang
-            case 'word': return self.is_in_same_word_bundle_as_prev()
-            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
-
-    def is_first_in_poly_main_group(self) -> bool:
-        return self.is_in_poly_main_group() and self.is_first_in_main_group()
-
-    def is_in_poly_subgroup(self) -> bool:
-        if self._context.n_from_langs == 1:
-            return False
-        match self._context.groupby:
-            case 'lang': return len(self._context.from_lang_word_bundles) > 1
-            case 'word': return len(self._context.to_langs) > 1
-            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
-
-    def is_first_in_subgroup(self) -> bool:
-        if self.prev is None:
-            return True
-        match self._context.groupby:
-            case 'lang': return self.is_in_same_word_bundle_as_prev()
-            case 'word': return self.prev.to_lang != self.to_lang
-            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
-
-    def is_first_in_poly_subgroup(self) -> bool:
-        return self.is_in_poly_subgroup() and self.is_first_in_subgroup()
+    def get_arg(self, kind: ArgKind | PrintLevels) -> str:
+        kind = self.get_kind(kind) if isinstance(kind, PrintLevels) else kind
+        i = self.grouping.index(kind)
+        return self.group[i]
 
     @property
-    def main_group(self) -> str:
-        match self._context.groupby:
-            case 'lang': return self.to_lang
-            case 'word': return self.word_group
-            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+    def main_kind(self) -> ArgKind:
+        return self.get_kind(PrintLevels.MAIN)
 
     @property
-    def subgroup(self) -> str:
-        match self._context.groupby:
-            case 'lang': return self.word_group
-            case 'word': return self.to_lang
-            case _: raise ValueError(f'Unexpected groupby value: {self._context.groupby}')
+    def main_arg(self) -> str:
+        return self.get_arg(self.main_kind)
 
     @property
-    def word_group(self) -> str:
-        return '·'.join(self._context.get_from_lang_word_bundle_by_word(self.word))
+    def sub_kind(self) -> ArgKind:
+        return self.get_kind(PrintLevels.MID)
 
-    @lru_cache()
-    def is_last_in_main_group(self) -> bool:
-        return self._context.n_all_main_members == 0 or self.i % self._context.n_all_main_members == self._context.n_all_main_members - 1
+    @property
+    def sub_arg(self) -> str:
+        return self.get_arg(self.sub_kind)
 
-    @lru_cache()
-    def is_at_inflection(self) -> bool:
-        return self._context.inflection and self._is_first_in_all_main_members()
+    @property
+    def unit_kind(self) -> ArgKind:
+        return self.get_kind(PrintLevels.UNIT)
 
-    @lru_cache()
-    def is_at_grammar(self) -> bool:
-        return self._context.grammar and self._is_first_in_all_main_members()
+    @property
+    def unit_arg(self) -> str:
+        return self.get_arg(self.unit_kind)
 
-    @lru_cache()
-    def is_at_translation(self) -> bool:
-        return bool(self.to_lang)
+    def get_arg_index_for(self, kind: ArgKind | PrintLevels) -> int:
+        kind = self.get_kind(kind) if isinstance(kind, PrintLevels) else kind
+        all_kind_args = getattr(self.context, kind)
+        arg = self.get_arg(kind)
+        return all_kind_args.index(arg)
 
-    @lru_cache()
-    def is_at_wiktio(self) -> bool:
-        return self._context.wiktio and self.is_last_in_main_group()
+    @cache  # noqa: B019
+    def _is_first_in(self, kind: ArgKind) -> bool:
+        all_kind_args = getattr(self.context, kind)
+        arg = self.get_arg(kind)
+        return all_kind_args and arg and arg == all_kind_args[0]
 
-    @lru_cache()
-    def is_at_definition(self) -> bool:
-        return self._context.definition and self.is_last_in_main_group
+    @cache  # noqa: B019
+    def _is_rest_first_skip(self, skip_kind: ArgKind) -> bool:
+        rest_kinds = [arg_kind for arg_kind in self.grouping if arg_kind != skip_kind]
+        return all(
+            self._is_first_in(other_kind) or not self.get_arg(other_kind)
+            for other_kind in rest_kinds
+        )
+
+    def _is_all_sublevels_first(self, level: PrintLevels) -> bool:
+        return all(self._is_first_in(self.get_kind(sublevel)) for sublevel in level.sublevels)
+
+    def is_first_in_main_level(self) -> bool:
+        return self.context.is_multi_from_langs() and self._is_all_sublevels_first(PrintLevels.MAIN)
+
+    def is_first_in_mid_level(self) -> bool:
+        is_multi_sub_group = getattr(self.context, f'is_multi_{self.sub_kind.value}')
+        return is_multi_sub_group() and self._is_all_sublevels_first(PrintLevels.MID)
+
+    def is_first_at_from_for(self, outcome: str) -> bool:
+        return _.every([
+            self.context.is_at_from(),
+            getattr(self.context, outcome),
+            self._is_rest_first_skip(ArgKind.FROM_LANGS),
+        ])
+
+    def is_first_at_from_inflection(self) -> bool:
+        return self.is_first_at_from_for('inflection')
+
+    def is_first_at_from_grammar(self) -> bool:
+        return self.is_first_at_from_for('grammar')
+
+    def is_first_at_from_overview(self) -> bool:
+        return self.is_first_at_from_for('wiktio')
+
+    def is_first_at_from_definition(self) -> bool:
+        return self.is_first_at_from_for('definition')
+
+    def is_translating(self) -> bool:
+        return bool(self.get_arg(ArgKind.TO_LANGS))
+
+    def is_first_at_to_for(self, outcome: str, main: Outcome) -> bool:
+        return _.every([
+            self.context.is_at_to(),
+            getattr(self.context, outcome),
+            main.is_success(),
+        ])
+
+    def is_first_at_to_inflection(self, main: Outcome) -> bool:
+        return self.is_first_at_to_for('inflection', main)
+
+    def is_first_at_to_grammar(self, main: Outcome) -> bool:
+        return self.is_first_at_to_for('grammar', main)
+
+    def is_first_at_to_overview(self, main: Outcome) -> bool:
+        return self.is_first_at_to_for('wiktio', main)
+
+    def is_first_at_to_definition(self, main: Outcome) -> bool:
+        return self.is_first_at_to_for('definition', main)
+
+    def get_header_label(self, level: PrintLevels) -> str:
+        match self.get_kind(level):
+            case ArgKind.WORDS: return '·'.join(self.context.get_word_group(self.get_arg_index_for(level)))
+            case _: return self.get_arg(level)
 
 
 @dataclass(frozen=False, init=False)
@@ -186,6 +217,9 @@ class Context:
 
     assume: Assume = UNSET  # TODO: remove
     groupby: GroupBy | SpecialEnum = SpecialEnum.AUTO
+    grouping_3: tuple[ArgKind, ArgKind, ArgKind] = UNSET
+    grouping_2: tuple[ArgKind, ArgKind, ArgKind] = UNSET
+    run_grouping: tuple[ArgKind] = UNSET
     indirect: Indirect = UNSET
     color: Box | Color = UNSET
     gather_data: GatherData = UNSET
@@ -253,6 +287,38 @@ class Context:
         self.color = Box(self.color)
 
     @property
+    def grouping(self) -> list[ArgKind]:
+        groups = self.grouping_2 if self.n_from_langs <= 1 else self.grouping_3
+        if self.run_grouping:
+            unuseds = [group for group in groups if group not in self.run_grouping]
+            groups = list(self.run_grouping) + unuseds
+        return list(groups)
+
+    def get_words_for(self, from_lang: str) -> list[str]:
+        i = self.from_langs.index(from_lang)
+        return list(self.words[i::self.n_from_langs])
+
+    def get_word_group(self, i: int) -> list[str]:
+        return list(self.words[i:(i+1)*self.n_from_langs])
+
+    @property
+    def _from_lang_words_corr(self) -> dict[str, list[str]]:
+        return {
+            from_lang: self.get_words_for(from_lang)
+            for from_lang in self.from_langs
+        }
+
+    def iterate_grouped_args(self) -> Iterable[ArgGroup]:
+        from_lang_word_corr = self._from_lang_words_corr
+        grouped_args = [getattr(self, kind) for kind in self.grouping]
+        for group in product(*grouped_args):
+            arg_group = ArgGroup(group, grouping=self.grouping, context=self)
+            from_lang, to_lang, word = arg_group.args
+            if word not in from_lang_word_corr[from_lang]:
+                continue
+            yield arg_group
+
+    @property
     def conf_langs(self) -> list[str]:
         return self._conf.langs
 
@@ -264,87 +330,30 @@ class Context:
     def n_from_langs(self) -> int:
         return len(self.from_langs)
 
-    def is_multi_from_lang(self) -> bool:
+    def is_multi_from_langs(self) -> bool:
         return self.n_from_langs > 1
 
     @property
     def n_to_langs(self) -> int:
         return len(self.to_langs)
 
-    def is_multi_to_lang(self) -> bool:
+    def is_multi_to_langs(self) -> bool:
         return self.n_to_langs > 1
 
     @property
     def n_words(self) -> int:
         return len(self.words)
 
-    def is_multi_word(self) -> bool:
+    def is_multi_words(self) -> bool:
         return self.n_words > 1
 
-    def is_translating(self) -> bool:
-        return bool(self.to_langs)
-
     @property
-    def from_lang_word_bundles(self) -> Sequence[Sequence[str]]:
-        return _.chunk(self.words, self.n_from_langs)
-
-    @property
-    def n_sub_members(self) -> int:
-        return len(self.from_langs)
-
-    @property
-    def n_all_main_members(self) -> int:  # TODO: Theoritically it's a variable value based on the currect bunddle
-        match self.groupby:
-            case GroupBy.LANG: return self.n_from_langs * (len(list(self.from_lang_word_bundles)) if self.n_from_langs > 1 else 1)
-            case GroupBy.WORD: return self.n_from_langs * len(self.to_langs)
-            case _: raise Unsupported(self.groupby)
-
-    @property
-    def n_main_groups(self) -> int:
-        match self.groupby:
-            case GroupBy.LANG: return len(self.to_langs)
-            case GroupBy.WORD: return len(self.words)
-            case _: raise Unsupported(self.groupby)
-
-    @property
-    def dest_pairs(self) -> Iterable[tuple[Optional[str], str]]:
-        to_langs = self.to_langs or [None]
-        match self.groupby:
-            case GroupBy.LANG: return  ((t, w) for t, ws in product(to_langs, self.from_lang_word_bundles) for w in ws)
-            case GroupBy.WORD: return  ((t, w) for ws, t in product(self.from_lang_word_bundles, to_langs) for w in ws)
-            case _: raise Unsupported(self.groupby)
-
-    @property
-    def url_triples(self) -> Iterable[tuple[str, str]]:
-        return ((from_lang, *dest) for from_lang, dest in zip(cycle(self.from_langs), self.dest_pairs))
-
-    def iterate_args(self) -> Iterable[ScrapIterator]:
-        scrap_it = None
-        for i, (from_lang, to_lang, word) in enumerate(self.url_triples):
-            scrap_it = ScrapIterator(context=self, i=i, from_lang=from_lang, to_lang=to_lang, word=word, prev=scrap_it)
-            yield scrap_it
-
-    def get_from_lang_word_bundle_by_word(self, word: str) -> Sequence[str]:
-        n: int = len(self.from_langs)
-        i: int = self.words.index(word) // n
-        return self.words[i*n:(i+1)*n]
-
-    @property
-    def grouparg(self) -> str:
-        return f'to_{self.groupby.value if isinstance(self.groupby, Enum) else self.groupby}' if self.groupby == 'lang' else self.groupby
-
-    @property
-    def memberarg(self) -> str:
-        match self.groupby:
-            case 'lang': return 'word'
-            case 'word': return 'to_lang'
-            case _: raise ValueError(f'Unexpected groupby value: {self.groupby}')
-
-    @property
-    def member_prefix_arg(self) -> str:
-        match len(getattr(self, f'{self.memberarg}s')):
-            case 1: return self.grouparg
-            case _: return self.memberarg
+    def unit_prefix_arg(self) -> str:
+        unit_kind = self.grouping[-1]
+        sub_kind = self.grouping[1]
+        match getattr(self, f'is_multi_{unit_kind.value}')():
+            case True: return unit_kind.value[:-1]
+            case False: return sub_kind.value[:-1]
 
     @property
     def exit(self) -> bool:

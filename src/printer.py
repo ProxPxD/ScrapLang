@@ -7,12 +7,14 @@ from typing import Any, Callable
 import pydash as _
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pandas import DataFrame
-from pydash import chain as c, partial
+from pydash import chain as c
+from pydash import partial
 from tabulate import tabulate
 from termcolor import colored
 
 from .context import Context
-from .scrapping import Outcome, OutcomeKinds as OK
+from .scrapping import Outcome
+from .scrapping import OutcomeKinds as OK
 from .scrapping.wiktio.parsing import Meaning, Pronunciation, WiktioResult
 
 os.environ['TZ'] = 'Europe/Warsaw'
@@ -21,7 +23,6 @@ os.environ['TZ'] = 'Europe/Warsaw'
 class Colors:  # TODO: enable conf setting and a flag for no color
     BLUE = (0, 170, 249)
     ORANGE = (247, 126, 0) and 'red'
-
 
 
 class Printer:
@@ -114,10 +115,8 @@ class Printer:
             case OK.INDIRECT_TRANSLATION: return ' ' * 4 if outcome.is_success() else ''
             case _: raise ValueError(f'Unexpected transltation type: {outcome.kind}')
 
-    def get_member_prefix(self, outcome: Outcome):
-        match len(self.context.from_langs):
-            case 1: return f'{outcome.args[self.context.member_prefix_arg]}: '
-            case _: return f'{outcome.args.word}: '
+    def get_member_prefix(self, outcome: Outcome) -> str:
+        return f'{outcome.args[self.context.unit_prefix_arg]}: '
 
     def create_translation_row(self, outcome: Outcome) -> str:
         match outcome.is_success():
@@ -129,8 +128,7 @@ class Printer:
             exception = outcome.results
             if self.context.debug:
                 return traceback.format_exc()
-            else:
-                return exception.args[0]
+            return exception.args[0]
 
     def _print_wktio(self, outcome: Outcome) -> bool:
         if outcome.is_fail():

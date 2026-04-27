@@ -52,7 +52,7 @@ class OutcomeKinds(MainOutcomeKinds, HelperOutcomeKinds):
 class Outcome:
     kind: str | OutcomeKinds  # Incorect syntax, but there's no right solution
     args: Box = field(default_factory=Box)
-    results: Optional[DataFrame | Iterable[Result]] = None
+    results: Optional[DataFrame | Iterable[Result] | str] = None
 
     def __post_init__(self):
         if self.kind not in OutcomeKinds().all():

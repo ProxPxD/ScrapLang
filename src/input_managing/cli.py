@@ -15,7 +15,7 @@ from pydash import chain as c
 
 from src.conf import indirect, gather_data, infervia
 from src.context import Context
-from src.context_domain import GroupBy, SpecialEnum, UNSET, assume, at
+from src.context_domain import GroupBy, PrintLevels, SpecialEnum, UNSET, assume, at
 from src.logutils import setup_logging
 
 
@@ -45,23 +45,27 @@ class AtSpecifierAction(Action):
         ))
         return [f'-{group}' for group in sorteds]
 
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, values: str, option_string: str = None) -> None:
         options = list(option_string.replace('-', ''))
         side = next((side for side in self.sides if side in options), 'none')
-        try:
+        if side in options:
             options.remove(side)
-        except ValueError:
-            pass  # none
-
-        setattr(namespace, 'at', side)
+        namespace.at = side
         for o in options:
-            match o:
+            match o: # TODO: To enum in context to reuse
                 case 'o': dest = 'wiktio'
                 case 'i': dest = 'inflection'
                 case 'g': dest = 'grammar'
                 case 'd': dest = 'definition'
                 case _: raise ValueError(f'Unexpected option: {o}')
             setattr(namespace, dest, True)
+
+
+class GroupsAction(Action):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, values: str, option_string: str = None) -> None:
+        groups = values.split(',')
+        full_groups = [full_group for group in groups for full_group in PrintLevels if full_group.startswith(group)]
+        setattr(namespace, self.dest, full_groups)
 
 
 class CLI:
@@ -110,6 +114,7 @@ class CLI:
         # Display Modes
         display_group = parser.add_argument_group(title='Display Modes')
         display_group.add_argument('--groupby', '-by', choices=GroupBy.choices_plus, default=UNSET, help='What to group the result translations by')
+        display_group.add_argument('--groups', '--group', '-groups', '-group', '-gr', default=UNSET, dest='run_grouping', action=GroupsAction, help='Groups to display the results via')
         # Developer Modes (groupless)
         parser.add_argument('--debug', action='store_true', help=SUPPRESS)
         parser.add_argument('--test', action='store_true', help=SUPPRESS)

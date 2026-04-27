@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from src.context_domain import ColorSchema, GroupBy, Mappings, SpecialEnum, UNSET, assume, gather_data, indirect, infervia, retrain_on
+from src.context_domain import ColorSchema, GroupBy, PrintLevels, Mappings, SpecialEnum, UNSET, assume, gather_data, indirect, infervia, retrain_on
 
 ConfIndirect = Literal[*(indirect - {'conf'})]
 ConfAssume = Literal[*(assume - {'conf'})]
@@ -22,6 +22,8 @@ class Conf(BaseModel):
     assume: ConfAssume = UNSET
     color: ColorSchema = UNSET  # TODO: test both dict and straight string colors
     groupby: GroupBy | SpecialEnum = UNSET
+    grouping_2: list[PrintLevels] = UNSET
+    grouping_3: list[PrintLevels] = UNSET
     indirect: ConfIndirect = UNSET
     langs: list[str] = UNSET
     mappings: Mappings = UNSET

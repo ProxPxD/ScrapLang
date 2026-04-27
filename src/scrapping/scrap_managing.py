@@ -10,6 +10,7 @@ from .core.scrap_adapting import ScrapAdapter
 from .glosbe.scrap_adapting import GlosbeScrapAdapter
 from .outcome import Outcome, OutcomeKinds
 from .wiktio.scrap_adapting import WiktioScrapAdapter
+from ..context_domain import PrintLevels
 
 if TYPE_CHECKING:
     from src.context import Context
@@ -36,36 +37,36 @@ class ScrapMgr:
         return self.glosbe_scrapper, self.wiktio_scrapper
 
     def scrap(self, context: Context) -> Iterable[Outcome]:
-        for scrap_it in context.iterate_args():
-            from_lang, to_lang, word = scrap_it.args
-            if scrap_it.is_first_in_poly_main_group():
-                yield Outcome(OutcomeKinds.get_main_separator(context), results=scrap_it.main_group)
-            if scrap_it.is_first_in_poly_subgroup():
-                yield Outcome(OutcomeKinds.SUBGROUP_SEPERATOR, results=scrap_it.subgroup)
-            if context.is_at_from():
-                if scrap_it.is_at_inflection():
-                    yield self.scrap_inflections(from_lang, word)
-                if scrap_it.is_at_grammar():
-                    yield self.scrap_grammar(from_lang, word)
-            if scrap_it.is_at_translation():
+        for group in context.iterate_grouped_args():
+            from_lang, to_lang, word = group.args
+            if group.is_first_in_main_level():
+                yield Outcome(OutcomeKinds.get_main_separator(context), results=group.get_header_label(PrintLevels.MAIN))
+            if group.is_first_in_mid_level():
+                yield Outcome(OutcomeKinds.SUBGROUP_SEPERATOR, results=group.get_header_label(PrintLevels.MID))
+            if group.is_first_at_from_inflection():
+                yield self.scrap_inflections(from_lang, word)
+            if group.is_first_at_from_grammar():
+                yield self.scrap_grammar(from_lang, word)
+            main = None
+            if group.is_translating():
                 main = self.scrap_main_translations(from_lang, to_lang, word)
-                if context.is_at_to() and main.is_success():
-                    if scrap_it.is_at_inflection():   # TODO: test is_success (ex. lubieć -it instread of lubić)
-                        yield self.scrap_inflections(to_lang, main.results[0].word)
-                    if scrap_it.is_at_grammar():
-                        yield self.scrap_grammar(to_lang, main.results[0].word)
+                if group.is_first_at_to_inflection(main):  # TODO: test is_success (ex. lubieć -it instread of lubić)
+                    yield self.scrap_inflections(to_lang, main.results[0].word)
+                if group.is_first_at_to_grammar(main):
+                    yield self.scrap_grammar(to_lang, main.results[0].word)
                 yield main
-                if context.indirect == 'on' or context.indirect == 'fail' and main.is_fail():
+                if context.indirect == 'on' or (context.indirect == 'fail' and main.is_fail()):
                     yield self.scrap_indirect_translations(from_lang, to_lang, word)
-                if context.is_at_to() and scrap_it.is_at_wiktio() and main.is_success():
-                    yield self.scrap_wiktio(to_lang, main.results[0].word)
-                if context.is_at_to() and scrap_it.is_at_definition() and main.is_success():
-                    yield self.scrap_wiktio(to_lang, main.results[0].word)
-            if context.is_at_from() and scrap_it.is_at_wiktio():
+            if group.is_first_at_from_overview():
                 yield self.scrap_wiktio(from_lang, word)
-            if scrap_it.is_at_definition():
+            if group.is_first_at_from_definition():
                 yield self.scrap_definitions(from_lang, word)
                 yield Outcome(OutcomeKinds.NEWLINE)
+            if group.is_translating():
+                if group.is_first_at_to_definition(main):
+                    yield self.scrap_wiktio(to_lang, main.results[0].word)
+                if group.is_first_at_to_definition(main):
+                    yield self.scrap_wiktio(to_lang, main.results[0].word)
 
     def scrap_inflections(self, lang: str, word: str) -> Outcome:
         return Outcome(  # TODO: handle double tables?

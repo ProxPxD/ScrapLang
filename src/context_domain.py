@@ -1,6 +1,6 @@
 from abc import ABC
 from enum import StrEnum, Enum
-from typing import Any, Iterable, Literal, Sequence
+from typing import Any, Iterable, Literal, Self, Sequence
 
 from pydantic import RootModel
 from pydash import chain as c
@@ -33,6 +33,25 @@ class IWithAuto(IVals):
     @property
     def choices_plus(cls) -> list[str]:
         return cls.choices + SpecialEnum.choices
+
+class ArgKind(StrEnum, IVals):
+    FROM_LANGS = 'from_langs'
+    TO_LANGS = 'to_langs'
+    WORDS = 'words'
+
+
+class PrintLevels(StrEnum, IVals):
+    MAIN = 'main'
+    MID = 'mid'
+    UNIT = 'unit'
+
+    @property
+    def i(self) -> int:
+        return list(type(self)).index(self)
+
+    @property
+    def sublevels(self) -> list[Self]:
+        return [level for level in list(type(self)) if level.i > self.i]
 
 class GroupBy(StrEnum, IWithAuto):
     LANG = 'lang'
