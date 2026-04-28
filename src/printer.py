@@ -70,6 +70,8 @@ class Printer:
         return colored(to_color, tuple(color) if not isinstance(color, str) else color)
 
     def print_separator(self, group: str, sep: str) -> None:
+        if not group:
+            return
         bias = len(group)
         colored_group = self.color(group, self.context.color.main)
         self.print(f'{sep*4} {colored_group} {sep*(36-bias)}{sep*4}')

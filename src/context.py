@@ -126,11 +126,12 @@ class ArgGroup:
 
     @cache  # noqa: B019
     def _is_first_in(self, kind: ArgKind) -> bool:
-        all_kind_args = getattr(self.context, kind)
+        match kind:
+            case ArgKind.WORDS: all_kind_args = self.context.get_words_for(self.get_arg(ArgKind.FROM_LANGS))
+            case _: all_kind_args = getattr(self.context, kind)
         arg = self.get_arg(kind)
-        return all_kind_args and arg and arg == all_kind_args[0]
+        return not all_kind_args or not arg or arg == all_kind_args[0]
 
-    @cache  # noqa: B019
     def _is_rest_first_skip(self, skip_kind: ArgKind) -> bool:
         rest_kinds = [arg_kind for arg_kind in self.grouping if arg_kind != skip_kind]
         return all(
@@ -148,10 +149,10 @@ class ArgGroup:
         is_multi_sub_group = getattr(self.context, f'is_multi_{self.sub_kind.value}')
         return is_multi_sub_group() and self._is_all_sublevels_first(PrintLevels.MID)
 
-    def is_first_at_from_for(self, outcome: str) -> bool:
+    def is_first_at_from_for(self, trans_kind: str) -> bool:
         return _.every([
             self.context.is_at_from(),
-            getattr(self.context, outcome),
+            getattr(self.context, trans_kind),
             self._is_rest_first_skip(ArgKind.FROM_LANGS),
         ])
 
@@ -311,6 +312,7 @@ class Context:
     def iterate_grouped_args(self) -> Iterable[ArgGroup]:
         from_lang_word_corr = self._from_lang_words_corr
         grouped_args = [getattr(self, kind) for kind in self.grouping]
+        grouped_args = [args if args else [None] for args in grouped_args]
         for group in product(*grouped_args):
             arg_group = ArgGroup(group, grouping=self.grouping, context=self)
             from_lang, to_lang, word = arg_group.args
