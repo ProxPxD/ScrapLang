@@ -14,6 +14,7 @@ from more_itertools import bucket
 from numpy.lib.recfunctions import join_by
 from pandas import DataFrame
 from pydash import chain as c, flow, partial
+from sympy import expand_mul
 
 from ..core.parsing import Parser, ParsingException, Result, with_ensured_tag
 
@@ -126,6 +127,8 @@ class InflectionParser(Parser):
         if not (grammar_items := tag.select('div #grammar_0_0 ul li')):  # TODO: test: (en) man; (sv) mus, sida; (pl) łuk, chcieć; (de) Frau, gehen
             return ParsingException('No grammar info!')
         examples = c(grammar_items).filter(cls.is_grammar_item_valid).map(cls.extract_grammar_examples).filter(cls.discard_examples).value()
+        if not examples:
+            return ParsingException('No valid grammar info!')
         uniques = cls.uniq_grammar_example_batches(examples)
         return uniques
 

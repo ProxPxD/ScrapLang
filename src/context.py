@@ -103,12 +103,12 @@ class ArgGroup:
         return self.get_arg(self.main_kind)
 
     @property
-    def sub_kind(self) -> ArgKind:
+    def mid_kind(self) -> ArgKind:
         return self.get_kind(PrintLevels.MID)
 
     @property
     def sub_arg(self) -> str:
-        return self.get_arg(self.sub_kind)
+        return self.get_arg(self.mid_kind)
 
     @property
     def unit_kind(self) -> ArgKind:
@@ -146,8 +146,12 @@ class ArgGroup:
         return self.context.is_multi_from_langs() and self._is_all_sublevels_first(PrintLevels.MAIN)
 
     def is_first_in_mid_level(self) -> bool:
-        is_multi_sub_group = getattr(self.context, f'is_multi_{self.sub_kind.value}')
+        is_multi_sub_group = getattr(self.context, f'is_multi_{self.mid_kind.value}')
         return is_multi_sub_group() and self._is_all_sublevels_first(PrintLevels.MID)
+
+    def is_first_in_unit_level(self) -> bool:
+        is_multi_sub_group = getattr(self.context, f'is_multi_{self.unit_kind.value}')
+        return is_multi_sub_group() and self.context.is_at_to() and any(getattr(self.context, val) for val in ('wiktio', 'definition', 'grammar'))
 
     def is_first_at_from_for(self, trans_kind: str) -> bool:
         return _.every([
