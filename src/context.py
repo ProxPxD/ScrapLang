@@ -107,7 +107,7 @@ class ArgGroup:
         return self.get_kind(PrintLevels.MID)
 
     @property
-    def sub_arg(self) -> str:
+    def mid_arg(self) -> str:
         return self.get_arg(self.mid_kind)
 
     @property
