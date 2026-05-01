@@ -2,10 +2,11 @@ from typing import Any
 
 from requests import HTTPError
 
-from .parsing import TranslationParser, InflectionParser, DefinitionParser
+from src.scrapping.core.parsing import ParsingException, Result
+from src.scrapping.core.scrap_adapting import ScrapAdapter
+
+from .parsing import DefinitionParser, InflectionParser, TranslationParser
 from .web_building import GlosbeUrlBuilder
-from ..core.parsing import ParsingException, Result
-from ..core.scrap_adapting import ScrapAdapter
 
 
 class GlosbeScrapAdapter(ScrapAdapter):

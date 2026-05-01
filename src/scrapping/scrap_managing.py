@@ -49,26 +49,28 @@ class ScrapMgr:
                 yield self.scrap_inflections(from_lang, word)
             if group.is_first_at_from_grammar():
                 yield self.scrap_grammar(from_lang, word)
-            main = None
+            main = Outcome.empty()
+            to_word = None
             if group.is_translating():
                 main = self.scrap_main_translations(from_lang, to_lang, word)
-                if group.is_first_at_to_inflection(main):  # TODO: test is_success (ex. lubieć -it instead of lubić)
-                    yield self.scrap_inflections(to_lang, main.results[0].word)
-                if group.is_first_at_to_grammar(main):
-                    yield self.scrap_grammar(to_lang, main.results[0].word)
+                to_word = main.results[0].word
+            if group.is_first_at_to_inflection(main):  # TODO: test is_success (ex. lubieć -it instead of lubić)
+                yield self.scrap_inflections(to_lang, to_word)
+            if group.is_first_at_to_grammar(main):
+                yield self.scrap_grammar(to_lang, to_word)
+            if main.is_success():
                 yield main
-                if context.indirect == 'on' or (context.indirect == 'fail' and main.is_fail()):
-                    yield self.scrap_indirect_translations(from_lang, to_lang, word)
+            if context.indirect == 'on' or (context.indirect == 'fail' and main.is_fail()):
+                yield self.scrap_indirect_translations(from_lang, to_lang, word)
             if group.is_first_at_from_overview():
                 yield self.scrap_wiktio(from_lang, word)
             if group.is_first_at_from_definition():
                 yield self.scrap_definitions(from_lang, word)
                 yield Outcome(OutcomeKinds.NEWLINE)
-            if group.is_translating():
-                if group.is_first_at_to_overview(main):
-                    yield self.scrap_wiktio(to_lang, main.results[0].word)
-                if group.is_first_at_to_definition(main):
-                    yield self.scrap_definitions(to_lang, main.results[0].word)
+            if group.is_first_at_to_overview(main):
+                yield self.scrap_wiktio(to_lang, to_word)
+            if group.is_first_at_to_definition(main):
+                yield self.scrap_definitions(to_lang, to_word)
 
     def scrap_inflections(self, lang: str, word: str) -> Outcome:
         return Outcome(  # TODO: handle double tables?

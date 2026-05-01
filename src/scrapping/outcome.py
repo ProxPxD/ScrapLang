@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from functools import cache
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Self
 
 from box import Box
 from pandas import DataFrame
 
-from .core.parsing import Result
 from ..context import Context
+from .core.parsing import Result
 
 
 # TODO: Everywhere fix hinting
@@ -50,16 +50,20 @@ class OutcomeKinds(MainOutcomeKinds, HelperOutcomeKinds):
 
 @dataclass
 class Outcome:
-    kind: str | OutcomeKinds  # Incorect syntax, but there's no right solution
+    kind: None | str | OutcomeKinds  # Incorect syntax, but there's no right solution
     args: Box = field(default_factory=Box)
     results: Optional[DataFrame | Iterable[Result] | str] = None
 
     def __post_init__(self):
-        if self.kind not in OutcomeKinds().all():
+        if self.kind is not None and self.kind not in OutcomeKinds().all():
             raise ValueError(f'Outcome kind is {self.kind}, but expected one of {OutcomeKinds.all()}')
 
     def is_fail(self) -> bool:
-        return isinstance(self.results, Exception)
+        return isinstance(self.results, Exception) or self.results is None
 
     def is_success(self) -> bool:
         return not self.is_fail()
+
+    @classmethod
+    def empty(cls) -> Self:
+        return Outcome(None, results=None)
