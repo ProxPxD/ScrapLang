@@ -53,7 +53,7 @@ class ScrapMgr:
             to_word = None
             if group.is_translating():
                 main = self.scrap_main_translations(from_lang, to_lang, word)
-                to_word = main.results[0].word
+                to_word = main.results[0].word if main.is_success() else None
             if group.is_first_at_to_inflection(main):  # TODO: test is_success (ex. lubieć -it instead of lubić)
                 yield self.scrap_inflections(to_lang, to_word)
             if group.is_first_at_to_grammar(main):
