@@ -125,7 +125,8 @@ class ArgGroup:
         return all_kind_args.index(arg)
 
     @cache  # noqa: B019
-    def _is_first_in(self, kind: ArgKind) -> bool:
+    def _is_first_in(self, kind_level: ArgKind | PrintLevels) -> bool:
+        kind = kind_level if isinstance(kind_level, ArgKind) else self.get_kind(kind_level)
         match kind:
             case ArgKind.WORDS: all_kind_args = self.context.get_words_for(self.get_arg(ArgKind.FROM_LANGS))
             case _: all_kind_args = getattr(self.context, kind)
@@ -142,16 +143,25 @@ class ArgGroup:
     def _is_all_sublevels_first(self, level: PrintLevels) -> bool:
         return all(self._is_first_in(self.get_kind(sublevel)) for sublevel in level.sublevels)
 
+    def _is_all_sublevels_multi(self, level: PrintLevels) -> bool:
+        return all(self._is_level_multi(sublevel) for sublevel in level.sublevels)
+
+    def _is_all_sublevels_first_in_multi(self, level: PrintLevels) -> bool:
+        return all(self._is_level_multi(sublevel) and self._is_first_in(self.get_kind(sublevel)) for sublevel in level.sublevels)
+
+    def _is_level_multi(self, level_kind: PrintLevels | ArgKind) -> bool:
+        kind = level_kind if isinstance(level_kind, ArgKind) else self.get_kind(level_kind)
+        return getattr(self.context, f'is_multi_{kind.value}')()
+
     def is_first_in_main_level(self) -> bool:
-        return self.context.is_multi_from_langs() and self._is_all_sublevels_first(PrintLevels.MAIN)
+        return self._is_level_multi(ArgKind.FROM_LANGS) and self._is_all_sublevels_first(PrintLevels.MAIN) and self._is_all_sublevels_multi(PrintLevels.MAIN)
+        return self._is_level_multi(PrintLevels.MAIN) and self._is_all_sublevels_first(PrintLevels.MAIN)
 
     def is_first_in_mid_level(self) -> bool:
-        is_multi_sub_group = getattr(self.context, f'is_multi_{self.mid_kind.value}')
-        return is_multi_sub_group() and self._is_all_sublevels_first(PrintLevels.MID)
+        return self._is_level_multi(PrintLevels.MID) and self._is_all_sublevels_first_in_multi(PrintLevels.MID)
 
     def is_first_in_unit_level(self) -> bool:
-        is_multi_sub_group = getattr(self.context, f'is_multi_{self.unit_kind.value}')
-        return is_multi_sub_group() and self.context.is_at_to() and any(getattr(self.context, val) for val in ('wiktio', 'definition', 'grammar'))
+        return self._is_level_multi(PrintLevels.UNIT) and self.context.is_at_to() and any(getattr(self.context, val) for val in ('wiktio', 'definition', 'grammar'))
 
     def is_first_at_from_for(self, trans_kind: str) -> bool:
         return _.every([
