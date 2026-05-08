@@ -57,7 +57,7 @@ class ScrapMgr:
                 yield self.scrap_inflections(to_lang, to_word)
             if group.is_first_at_to_grammar(main):
                 yield self.scrap_grammar(to_lang, to_word)
-            if main.is_success():
+            if not main.is_empty():
                 yield main
             if context.indirect == 'on' or (context.indirect == 'fail' and main.is_fail()):
                 yield self.scrap_indirect_translations(from_lang, to_lang, word)

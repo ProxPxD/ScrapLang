@@ -64,6 +64,9 @@ class Outcome:
     def is_success(self) -> bool:
         return not self.is_fail()
 
+    def is_empty(self) -> bool:
+        return self.kind is None
+
     @classmethod
     def empty(cls) -> Self:
         return Outcome(None, results=None)
