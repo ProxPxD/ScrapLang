@@ -133,13 +133,6 @@ class ArgGroup:
         arg = self.get_arg(kind)
         return not all_kind_args or not arg or arg == all_kind_args[0]
 
-    def _is_rest_first_skip(self, skip_kind: ArgKind) -> bool:
-        rest_kinds = [arg_kind for arg_kind in self.grouping if arg_kind != skip_kind]
-        return all(
-            self._is_first_in(other_kind) or not self.get_arg(other_kind)
-            for other_kind in rest_kinds
-        )
-
     def _is_all_sublevels_first(self, level: PrintLevels) -> bool:
         return all(self._is_first_in(self.get_kind(sublevel)) for sublevel in level.sublevels)
 
@@ -167,7 +160,7 @@ class ArgGroup:
         return _.every([
             self.context.is_at_from(),
             getattr(self.context, trans_kind),
-            self._is_rest_first_skip(ArgKind.FROM_LANGS),
+            self._is_first_in(ArgKind.TO_LANGS),
         ])
 
     def is_first_at_from_inflection(self) -> bool:
