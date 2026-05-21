@@ -7,12 +7,12 @@ from src.constants import ResourceConstants
 from src.context import Context
 from src.input_managing.processing import InputProcessor
 from src.lang_detecting.preprocessing.data import DataProcessor
-from src.resouce_managing.short_mem import ShortMemMgr
-from src.resouce_managing.valid_data import ValidDataMgr
+from src.resource_managing.short_mem import ShortMemMgr
+from src.resource_managing.valid_data import ValidDataMgr
 from src.scrapping import Outcome
 
 if TYPE_CHECKING:
-    from src.app_managing import Timer
+    from src.debug_timer import Timer
 
 class DataGatherer:
     def __init__(self,

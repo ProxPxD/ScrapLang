@@ -20,7 +20,7 @@ from ..scrapping import Outcome, MainOutcomeKinds as Kinds
 from ..scrapping.wiktio.parsing import WiktioResult
 
 if TYPE_CHECKING:
-    from ..app_managing import Timer
+    from ..debug_timer import Timer
 
 
 @preinitialized
@@ -78,7 +78,7 @@ class ValidDataMgr:
             ])).map(list).flatten().filter(lambda vs: vs and sp(vs[1])[-1]['details']).map(c().concat([None]*len(cols)).take(len(cols))).value(),
             columns=cols,
         )
-        self.timer.time(f'{loc} success datTrue)
+        self.timer.time(f'{loc} success data')
         if not success_data.empty:
             logging.debug('Found potential new data for gathering')
             old = self.valid_data_file_mgr.load().sort_values(by=cols[:2]).convert_dtypes()

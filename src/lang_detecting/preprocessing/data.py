@@ -9,8 +9,8 @@ from pydash import chain as c
 from pydash import flow
 
 from src.constants import preinitialized
-from src.resouce_managing.file import FileMgr
-from src.resouce_managing.valid_data import VDC, ValidDataMgr
+from src.resource_managing.file import FileMgr
+from src.resource_managing.valid_data import VDC, ValidDataMgr
 
 
 @preinitialized

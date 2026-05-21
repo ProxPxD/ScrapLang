@@ -10,7 +10,7 @@ from pandas import DataFrame
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.preprocessing.data import LSC
 from src.lang_detecting.simple_detecting import SimpleDetector
-from src.resouce_managing.valid_data import ValidDataMgr
+from src.resource_managing.valid_data import ValidDataMgr
 
 try:
     import torch

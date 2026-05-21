@@ -7,8 +7,8 @@ from functools import cached_property
 from packaging.version import Version
 
 from src.constants import Paths
-from src.resouce_managing.file import FileMgr
-from src.resouce_managing.valid_data import VDC, ValidDataMgr
+from src.resource_managing.file import FileMgr
+from src.resource_managing.valid_data import VDC, ValidDataMgr
 
 migrations: dict[Version, list[Callable]] = {}
 

@@ -12,7 +12,7 @@ from pydash import flow, spread
 from src.constants import Paths
 from src.lang_detecting.advanced_detecting import colutils
 from src.lang_detecting.preprocessing.data import LSC
-from src.resouce_managing.file import FileMgr
+from src.resource_managing.file import FileMgr
 
 Kind = Vocab = Class = str
 KindToVocab = OrderedDict[Kind, Vocab]

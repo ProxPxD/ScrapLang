@@ -6,39 +6,16 @@ from pandas import DataFrame
 from pydash import chain as c
 from toolz import valmap
 
+from src.debug_timer import Timer
 from src.lang_detecting.advanced_detecting.conf import Conf
 from src.lang_detecting.advanced_detecting.dataset import BucketChunkDataset
 from src.lang_detecting.advanced_detecting.model import Moe
 from src.lang_detecting.advanced_detecting.model_io_mging import KindToTokenMgr, ModelIOMgr
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
-from src.resouce_managing.valid_data import ValidDataMgr
+from src.resource_managing.valid_data import ValidDataMgr
 
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = False
-
-class Timer:
-    def __init__(self) -> None:
-        self._points = {}
-        self._times = {}
-
-    def time(self, label: Any = None, *, new_point: bool = False) -> None:
-        point_label = None if None in self._points else label
-        if point_label not in self._points:
-            self._points[label] = time.time()
-        else:
-            self._times[label] = time.time() - self._points[point_label]
-            self._points.pop(point_label)
-        if new_point:
-            self.time()
-
-    def print_all(self) -> None:
-        l_longest_label = max(len(label) for label in self._times)
-        for label, t in self._times.items():
-            print(f'{label}: {" " * (l_longest_label - len(label)) + str(t)}')
-
-    def clear(self) -> None:
-        self._points.clear()
-        self._times.clear()
 
 
 class AdvancedDetector:

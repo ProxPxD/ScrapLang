@@ -14,7 +14,7 @@ from torch.utils.data import Dataset
 
 from src.conf import Conf
 from src.lang_detecting.advanced_detecting.tokenizer import MultiKindTokenizer
-from src.resouce_managing.valid_data import VDC
+from src.resource_managing.valid_data import VDC
 
 
 class BucketChunkDataset(Dataset[list[int]]):

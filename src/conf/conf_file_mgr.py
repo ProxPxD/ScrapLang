@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pydash as _
 
-from src.resouce_managing.file import FileMgr
-from src.resouce_managing.valid_data import ValidDataMgr
+from src.resource_managing.file import FileMgr
+from src.resource_managing.valid_data import ValidDataMgr
 from src import context_domain
 from src.conf import Conf
 
