@@ -52,11 +52,11 @@ class Timer:
 
 class AppMgr:
     def __init__(self, *,
-                 conf_path: Path | str,
-                 valid_data_file: Path | str = None,
-                 short_mem_file: Path | str = None,
-                 lang_script_file: Path | str = None,
-                 printer: Callable[[str], Any] = None,
+            conf_path: Path | str,
+            valid_data_file: Path | str = None,
+            short_mem_file: Path | str = None,
+            lang_script_file: Path | str = None,
+            printer: Callable[[str], Any] = None,
         ):
         self.timer = MagicMock()
         self.timer.time('App start', new_point=True)
