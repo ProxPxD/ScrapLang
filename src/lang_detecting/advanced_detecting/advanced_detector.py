@@ -1,4 +1,5 @@
-from typing import Callable, Sequence
+import time
+from typing import Any, Callable, Sequence
 
 import torch
 from pandas import DataFrame
@@ -15,10 +16,38 @@ from src.resouce_managing.valid_data import ValidDataMgr
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = False
 
+class Timer:
+    def __init__(self) -> None:
+        self._points = {}
+        self._times = {}
+
+    def time(self, label: Any = None, *, new_point: bool = False) -> None:
+        point_label = None if None in self._points else label
+        if point_label not in self._points:
+            self._points[label] = time.time()
+        else:
+            self._times[label] = time.time() - self._points[point_label]
+            self._points.pop(point_label)
+        if new_point:
+            self.time()
+
+    def print_all(self) -> None:
+        l_longest_label = max(len(label) for label in self._times)
+        for label, t in self._times.items():
+            print(f'{label}: {" " * (l_longest_label - len(label)) + str(t)}')
+
+    def clear(self) -> None:
+        self._points.clear()
+        self._times.clear()
+
 
 class AdvancedDetector:
     def __init__(self, lang_script: DataFrame, valid_data_mgr: ValidDataMgr, conf: Conf):
+        self.timer = Timer()
+        loc = 'Adv'
+        self.timer.time()
         self.model_io_mgr = ModelIOMgr()
+        self.timer.time(f'{loc} Model IO', new_point=True)
         self.valid_data_mgr = valid_data_mgr
         self.conf = conf
 
@@ -30,9 +59,14 @@ class AdvancedDetector:
             'Latn': [str.isupper],
             'Cyrl': [str.isupper],
         }
+        self.timer.time(f'{loc} K2C', new_point=True)
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, outputs, kind_to_specs=kind_to_specs)
+        self.timer.time(f'{loc} Token', new_point=True)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.timer.time(f'{loc} Device', new_point=True)
         self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
+        self.timer.time(f'{loc} Moe', new_point=True)
+        self.timer.print_all()
 
     def retrain_model(self):
         dataset = BucketChunkDataset(self.valid_data_mgr.data, tokenizer=self.tokenizer, conf=self.conf, shuffle=True)

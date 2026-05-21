@@ -1,7 +1,7 @@
 import logging
 from dataclasses import replace, dataclass, asdict
 from pathlib import Path
-from typing import Iterable, Sequence, Callable, Collection, Sized
+from typing import Iterable, Sequence, Callable, Collection, Sized, TYPE_CHECKING
 
 import pandas as pd
 import pydash as _
@@ -18,6 +18,9 @@ from ..context import Context
 # from ..lang_detecting.preprocessing.data import LSC # TODO: fix imports
 from ..scrapping import Outcome, MainOutcomeKinds as Kinds
 from ..scrapping.wiktio.parsing import WiktioResult
+
+if TYPE_CHECKING:
+    from ..app_managing import Timer
 
 
 @preinitialized
@@ -56,6 +59,7 @@ class ValidDataMgr:
         self.context = context
         self.valid_data_file_mgr = FileMgr(conf_file)
         self._n_parsed: int = n_parsed
+        self.timer: Timer
 
     @property
     def data(self) -> DataFrame:
@@ -65,6 +69,8 @@ class ValidDataMgr:
         logging.debug('Searching something not-yet-gathered')
         success_results = [replace(sr, args=Box(sr.args, default_box=True)) for sr in scrap_results if sr.is_success()]
         cols = list(asdict(ValidDataColumns).values())
+        loc = 'VDM'
+        self.timer.time()
         success_data = DataFrame(c(success_results).apply(_.over([
                 self._gather_for_from_main_translations,
                 self._gather_for_lang_data,
@@ -72,14 +78,19 @@ class ValidDataMgr:
             ])).map(list).flatten().filter(lambda vs: vs and sp(vs[1])[-1]['details']).map(c().concat([None]*len(cols)).take(len(cols))).value(),
             columns=cols,
         )
+        self.timer.time(f'{loc} success data', new_point=True)
         if not success_data.empty:
             logging.debug('Found potential new data for gathering')
             old = self.valid_data_file_mgr.load().sort_values(by=cols[:2]).convert_dtypes()
+            self.timer.time(f'{loc} old loading', new_point=True)
             valid_data = pd.concat([old, success_data], ignore_index=True)
-            valid_data = self._merge_matching(valid_data)
+            # valid_data = self._merge_matching(valid_data)
+            self.timer.time(f'{loc} matching merging', new_point=True)
             valid_data = valid_data.sort_values(by=cols[:2]).drop_duplicates().reset_index(drop=True).convert_dtypes()
+            self.timer.time(f'{loc} getting all', new_point=True)
             if not valid_data.equals(old):
                 self.valid_data_file_mgr.save(valid_data)
+                self.timer.time(f'{loc} saving', new_point=True)
                 return True
         return False
 
@@ -121,7 +132,7 @@ class ValidDataMgr:
                     if self.context.is_mapped(word):
                         yield lang, self.context.get_unmmapped(word), True
 
-
+    # TODO: has to be moved to training
     @classmethod
     def _merge_matching(cls, df: DataFrame) -> DataFrame:
         def process_group(group: DataFrameGroupBy):

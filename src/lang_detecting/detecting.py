@@ -1,7 +1,8 @@
 import ast
 import operator as op
+import time
 from functools import reduce
-from typing import Sequence, Optional
+from typing import Any, Sequence, Optional
 
 from GlotScript import sp
 from pandas import DataFrame
@@ -25,7 +26,7 @@ class Detector:
     def __init__(self, lang_script: DataFrame, valid_data_mgr: ValidDataMgr):
         self.lang_script = lang_script
         self.simple_detector = SimpleDetector(self.lang_script) if lang_script is not None else None
-        self.advanced_detector = AdvancedDetector(self.lang_script, valid_data_mgr=valid_data_mgr, conf=Conf()) if HAS_LIB_TORCH and lang_script is not None else None
+        # self.advanced_detector = AdvancedDetector(self.lang_script, valid_data_mgr=valid_data_mgr, conf=Conf()) if HAS_LIB_TORCH and lang_script is not None else None
 
     def detect_simple(self, words: Sequence[str]) -> Optional[str]:
         if not self.simple_detector:

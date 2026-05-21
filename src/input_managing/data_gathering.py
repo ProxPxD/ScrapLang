@@ -1,7 +1,7 @@
 import logging
 from argparse import Namespace
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from src.constants import ResourceConstants
 from src.context import Context
@@ -11,6 +11,8 @@ from src.resouce_managing.short_mem import ShortMemMgr
 from src.resouce_managing.valid_data import ValidDataMgr
 from src.scrapping import Outcome
 
+if TYPE_CHECKING:
+    from src.app_managing import Timer
 
 class DataGatherer:
     def __init__(self,
@@ -19,6 +21,7 @@ class DataGatherer:
             short_mem_file: str | Path = None,
             data_processor: DataProcessor = None,
         ):
+        self.timer: Timer
         self.context: Context = context
         self.data_processor = data_processor
         self.valid_args_mgr = valid_data_mgr
@@ -26,10 +29,15 @@ class DataGatherer:
 
     def gather_valid_data(self, scrap_results: Iterable[Outcome], processor: InputProcessor) -> None:
         if self.valid_args_mgr and self.context.gather_data in ['all', 'ai']:
+            loc = 'GD'
+            self.timer.time()
             gathered = self.valid_args_mgr.gather(scrap_results)
+            self.timer.time(f'{loc} Gathered', new_point=True)
             if gathered:  # TODO: test
                 logging.debug('Retraining after having data gathered')
                 self.data_processor.generate_script_summary()
+                self.timer.time(f'{loc} Script Generation', new_point=True)
+        self.timer.print_all()
 
     def gather_short_mem(self, parsed: Namespace) -> None:
         if self.shor_mem_mgr and self.context.gather_data in ['all', 'time']:
