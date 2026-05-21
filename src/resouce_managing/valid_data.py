@@ -78,19 +78,19 @@ class ValidDataMgr:
             ])).map(list).flatten().filter(lambda vs: vs and sp(vs[1])[-1]['details']).map(c().concat([None]*len(cols)).take(len(cols))).value(),
             columns=cols,
         )
-        self.timer.time(f'{loc} success data', new_point=True)
+        self.timer.time(f'{loc} success datTrue)
         if not success_data.empty:
             logging.debug('Found potential new data for gathering')
             old = self.valid_data_file_mgr.load().sort_values(by=cols[:2]).convert_dtypes()
-            self.timer.time(f'{loc} old loading', new_point=True)
+            self.timer.time(f'{loc} old loading')
             valid_data = pd.concat([old, success_data], ignore_index=True)
             # valid_data = self._merge_matching(valid_data)
-            self.timer.time(f'{loc} matching merging', new_point=True)
+            self.timer.time(f'{loc} matching merging')
             valid_data = valid_data.sort_values(by=cols[:2]).drop_duplicates().reset_index(drop=True).convert_dtypes()
-            self.timer.time(f'{loc} getting all', new_point=True)
+            self.timer.time(f'{loc} getting all')
             if not valid_data.equals(old):
                 self.valid_data_file_mgr.save(valid_data)
-                self.timer.time(f'{loc} saving', new_point=True)
+                self.timer.time(f'{loc} saving')
                 return True
         return False
 

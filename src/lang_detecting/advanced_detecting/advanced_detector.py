@@ -47,7 +47,7 @@ class AdvancedDetector:
         loc = 'Adv'
         self.timer.time()
         self.model_io_mgr = ModelIOMgr()
-        self.timer.time(f'{loc} Model IO', new_point=True)
+        self.timer.time(f'{loc} Model IO')
         self.valid_data_mgr = valid_data_mgr
         self.conf = conf
 
@@ -59,13 +59,13 @@ class AdvancedDetector:
             'Latn': [str.isupper],
             'Cyrl': [str.isupper],
         }
-        self.timer.time(f'{loc} K2C', new_point=True)
+        self.timer.time(f'{loc} K2C')
         self.tokenizer = MultiKindTokenizer(kinds_to_vocab, outputs, kind_to_specs=kind_to_specs)
-        self.timer.time(f'{loc} Token', new_point=True)
+        self.timer.time(f'{loc} Token')
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.timer.time(f'{loc} Device', new_point=True)
+        self.timer.time(f'{loc} Device')
         self.moe = Moe(kinds_to_vocab, kinds_to_outputs, valmap(len, kind_to_specs), conf=self.conf).to(self.device)
-        self.timer.time(f'{loc} Moe', new_point=True)
+        self.timer.time(f'{loc} Moe')
         self.timer.print_all()
 
     def retrain_model(self):

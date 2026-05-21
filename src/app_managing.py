@@ -24,34 +24,6 @@ from src.scrapping import ScrapMgr
 from src.scrapping.core.web_building import get_default_headers
 
 
-class Timer:
-    def __init__(self, *, default_new_point: bool = False) -> None:
-        self._default_new_point = default_new_point
-        self._points = {}
-        self._times = {}
-
-    def time(self, label: Any = None, *, new_point: bool = None) -> None:
-        new_point = self._default_new_point if new_point is None else new_point
-        point_label = None if None in self._points else label
-        if label is None or point_label not in self._points:
-            self._points[label] = time.time()
-        else:
-            self._times[label] = time.time() - self._points[point_label]
-            self._points.pop(point_label)
-        if new_point:
-            self.time()
-
-    def print_all(self, *, del_printed: bool = False) -> None:
-        l_longest_label = max(len(label) for label in self._times if label) if self._times else 0
-        for label, t in self._times.items():
-            print(f'{label}: {" " * (l_longest_label - len(label)) + str(t)}')
-        if del_printed:
-            self.clear()
-
-    def clear(self) -> None:
-        self._points.clear()
-        self._times.clear()
-
 class AppMgr:
     def __init__(self, *,
             conf_path: Path | str,
@@ -61,28 +33,28 @@ class AppMgr:
             printer: Callable[[str], Any] = None,
         ):
         self.timer = MagicMock()
-        self.timer.time('App start', new_point=True)
+        self.timer.time('App start')
         setup_logging()
-        self.timer.time('Log Setup', new_point=True)
+        self.timer.time('Log Setup')
         self.conf_mgr = ConfFileMgr(conf_path)  # TODO: Move paths to context and work from there
-        self.timer.time('Conf Mgr', new_point=True)
+        self.timer.time('Conf Mgr')
         self.context: Context = Context(self.conf_mgr.conf)
-        self.timer.time('context', new_point=True)
+        self.timer.time('context')
         self.valid_data_mgr = ValidDataMgr(valid_data_file, context=self.context) if valid_data_file else None  # TODO: Rework
-        self.timer.time('valmgr', new_point=True)
+        self.timer.time('valmgr')
         self.conf_mgr.valid_data_mgr = self.valid_data_mgr
         self.data_processor = DataProcessor(valid_data_mgr=self.valid_data_mgr , lang_script_file=lang_script_file)
-        self.timer.time('data processor', new_point=True)
+        self.timer.time('data processor')
         self.data_gatherer = DataGatherer(context=self.context, valid_data_mgr=self.valid_data_mgr, short_mem_file=short_mem_file, data_processor=self.data_processor)
         self.data_gatherer.timer = self.timer
-        self.timer.time('data gatherer', new_point=True)
+        self.timer.time('data gatherer')
         # InputMgr time: 0.128
         self.input_mgr = InputMgr(context=self.context, data_processor=self.data_processor)
-        self.timer.time('Input Mgr', new_point=True)
+        self.timer.time('Input Mgr')
         self.scrap_mgr = ScrapMgr()
-        self.timer.time('scrap Mgr', new_point=True)
+        self.timer.time('scrap Mgr')
         self.printer = Printer(context=self.context, printer=printer)
-        self.timer.time('printer', new_point=True)
+        self.timer.time('printer')
         self.migration_mgr = MigrationManager(self.valid_data_mgr)
         self.timer.time('migration mgr')
         self.timer.time('App start')
