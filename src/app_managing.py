@@ -25,11 +25,13 @@ from src.scrapping.core.web_building import get_default_headers
 
 
 class Timer:
-    def __init__(self) -> None:
+    def __init__(self, *, default_new_point: bool = False) -> None:
+        self._default_new_point = default_new_point
         self._points = {}
         self._times = {}
 
-    def time(self, label: Any = None, *, new_point: bool = False) -> None:
+    def time(self, label: Any = None, *, new_point: bool = None) -> None:
+        new_point = self._default_new_point if new_point is None else new_point
         point_label = None if None in self._points else label
         if label is None or point_label not in self._points:
             self._points[label] = time.time()
