@@ -58,7 +58,7 @@ class AppMgr:
                  lang_script_file: Path | str = None,
                  printer: Callable[[str], Any] = None,
         ):
-        self.timer = MagicMock() #
+        self.timer = MagicMock()
         self.timer.time('App start', new_point=True)
         setup_logging()
         self.timer.time('Log Setup', new_point=True)
