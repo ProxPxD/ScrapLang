@@ -22,8 +22,8 @@ UNSET = object()
 class FileMgr:
     def __init__(self, path: str | Path, *, func: Callable[[Any], Any] | type = UNSET, create_if_not: bool = False):
         self.path = Path(path)
-        if create_if_not:
-            self.path.touch(exist_ok=True)
+        if not self.path.exists() and create_if_not:
+            self.path.touch()
         self._func = func if func is not UNSET else _.identity
         self._content = None
 
