@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Optional, Any, Callable
@@ -107,6 +108,8 @@ class FileMgr:
 
     @classmethod
     def save_file(cls, path: str | Path = None, content = None) -> None:
+        if not os.access(path, os.W_OK):
+            return
         ext = cls._get_file_extension(path)
         save = getattr(cls, f'save_{ext}')
         save(path, content)
@@ -114,8 +117,9 @@ class FileMgr:
         logging.debug(f'Saved file "{path}": {content_view}')
 
     @classmethod
-    def save_yaml(cls, path: str | Path, conf: dict) -> None:
+    def save_yaml(cls, path: Path, conf: dict) -> None:
         import yaml
+        old_stat = path.stat() if path.exists() else None
         with tempfile.NamedTemporaryFile('w', dir=path.parent, delete=False, encoding='utf-8') as tmp:
             tmp_path = tmp.name
             new_data = cls._to_dict(conf)
@@ -123,9 +127,11 @@ class FileMgr:
             tmp.flush()
             os.fsync(tmp.fileno())
         os.replace(tmp_path, path)
+        if old_stat:
+            shutil.copystat(path, tmp_path)
 
     @classmethod
-    def save_toml(cls, path: str | Path, conf: dict) -> None:
+    def save_toml(cls, path: Path, conf: dict) -> None:
         with open(path, 'w+') as f:
             raise NotImplementedError
 
