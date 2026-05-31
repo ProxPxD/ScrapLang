@@ -126,9 +126,9 @@ class FileMgr:
             yaml.safe_dump(new_data, tmp, default_flow_style=None, allow_unicode=True, width=120)
             tmp.flush()
             os.fsync(tmp.fileno())
-        os.replace(tmp_path, path)
         if old_stat:
             shutil.copystat(path, tmp_path)
+        os.replace(tmp_path, path)
 
     @classmethod
     def save_toml(cls, path: Path, conf: dict) -> None:
