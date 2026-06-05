@@ -15,7 +15,7 @@ from pydash import chain as c
 
 from src.conf import indirect, gather_data, infervia
 from src.context import Context
-from src.context_domain import GroupBy, PrintLevels, SpecialEnum, UNSET, assume, at
+from src.context_domain import ArgKind, GroupBy, PrintLevels, SpecialEnum, UNSET, assume, at
 from src.logutils import setup_logging
 
 
@@ -64,8 +64,9 @@ class AtSpecifierAction(Action):
 class GroupsAction(Action):
     def __call__(self, parser: ArgumentParser, namespace: Namespace, values: str, option_string: str = None) -> None:
         groups = values.split(',')
-        full_groups = [full_group for group in groups for full_group in PrintLevels if full_group.startswith(group)]
-        setattr(namespace, self.dest, full_groups)
+        full_groups = [full_group for group in groups for full_group in ArgKind if full_group.startswith(group)]
+        all_groups = list(OrderedSet(ArgKind) - OrderedSet(full_groups)) + full_groups
+        setattr(namespace, self.dest, all_groups)
 
 
 class CLI:
