@@ -47,7 +47,7 @@ class Defaults:
     assume: str = 'lang'
     groupby: GroupBy = GroupBy.WORD
     grouping_3: tuple[ArgKind] = (ArgKind.TO_LANGS, ArgKind.WORDS, ArgKind.FROM_LANGS)
-    grouping_2: tuple[ArgKind] = (ArgKind.FROM_LANGS, ArgKind.WORDS, ArgKind.TO_LANGS)
+    grouping_2: tuple[ArgKind] = (ArgKind.FROM_LANGS, ArgKind.TO_LANGS, ArgKind.WORDS)
     run_grouping: tuple[ArgKind] = None
     infervia: str = 'last'
     retrain_on: RetrainOn = 'gather'
