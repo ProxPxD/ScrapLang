@@ -206,3 +206,88 @@ When the replacement happend before the end and all the words have the same endi
 besprechen: discuss (verb), review (verb), talk over (verb), bespeak, agitate, discussion, consult, stir up, talk together, debate, to confer, to criticize, to discuss, to review, to talk over, arrange, criticize, arouse, incite, talk about, to critique, to talk, record, to arrange, to consult somebody, to drive away, to record, to sweep out, to talk about, to talk something over
 versprechen: promise (noun) [verb], pledge (verb), misspeak (verb), fluff, hope, expect, word, undertaking, mispronounce, keep, assure, fulfil, guarantee, back, engagement, meet, plight, abide, secure, accomplish, to pledge, to promise, execute, achieve, protect, affirm, warrant, insure, underwrite, vouch, certify, safeguard, ensure, perform, exercise, observe, abide by, cover, have sexual intercourse, share a bed, vow, undertake, prometer, to reduce
 ```
+
+## Non-Translation Modes
+
+### Overview
+The tool provides a way to gather general information about words by adding an overview flag
+- overview: `--overview`, `-overview`, `-o`
+
+No to-languaga has to be specified, but it can
+
+```bash
+❮ t learn en -o
+learn: 
+meanings:
+  • [PoS: Verb, third-person singular simple present: learns, present participle: learning, simple past and past participle: learned or learnt]
+  pronunciation:
+    - Received Pronunciation: /lɜːn/
+    - General American: /lɝn/
+    - dialectal: /lɑː(ɹ)n/
+    - Early Modern: /lɛːrn/, /lɛrn/
+    etymology:
+      - from Middle English lernen (“to learn", also, "to teach"”)
+      - from Old English leornian (“to learn", rarely also, "to teach”)
+      - from Proto-West Germanic *liʀnōn
+      - from Proto-Germanic *lizaną
+      - from Proto-Indo-European *(le-)lóys-e, stative from the root *leys- (“track, furrow, trace, trail”)
+  • [PoS: Noun, plural: learns]
+  pronunciation:
+    - Received Pronunciation: /lɜːn/
+    - General American: /lɝn/
+    - dialectal: /lɑː(ɹ)n/
+    - Early Modern: /lɛːrn/, /lɛrn/
+    etymology:
+      - from Middle English lernen (“to learn", also, "to teach"”)
+      - from Old English leornian (“to learn", rarely also, "to teach”)
+      - from Proto-West Germanic *liʀnōn
+      - from Proto-Germanic *lizaną
+      - from Proto-Indo-European *(le-)lóys-e, stative from the root *leys- (“track, furrow, trace, trail”)
+```
+
+### Translated Word Overview
+To compensate for a need to translate a word and get more data straight right up, one use "t" after the flag `-o` to denote "getting overview for the to-lang word" as `-ot`. The tool will translate and and get the overview right after.
+
+```bash
+❮ t teach en pl -ot
+pl: uczyć (verb) [impf], nauczać (verb), dydaktyka (noun), nauczyć, nauczanie, nauka, trenować, belfer, nauczyciel, nauczycielka, uczyć kogoś, wprawiać, sposobić, pouczać, uczyć się, wykładać
+meanings:
+  • /ˈu.t͡ʂɘt͡ɕ/ [PoS: Verb, gender: impf]
+    etymology:
+      - Inherited from Old Polish uczyć
+      - from Proto-Slavic *učiti
+```
+
+### Grammar
+
+To gather short grammatical data regarding the words use grammar flag:
+- gather grammar data: `--grammar`, `-grammar`, `-g`
+
+```bash
+❮ t learn en -g 
+learn: 
+  - learn, learns, learning, learned, learnt
+  - s, ing
+```
+
+The same rule as for the overview applies for to-language data gathering
+
+
+### Inflection
+Inflection gathering serves for displaying an inflection table for verbs and nouns for langauges that provide it. In case an inflection table is not available, the tool falls back into a grammar flag.
+
+How to display an inflection of a German word for dog:
+```bash
+❮ t dog en de -it
+╭───┬────────────┬───────┬─────┬───────────────────────┬─────┬────────╮
+│ 0 │ nominative │ ein   │ der │ Hund                  │ die │ Hunde  │
+│ 1 │ genitive   │ eines │ des │ Hundes, Hunds         │ der │ Hunde  │
+│ 2 │ dative     │ einem │ dem │ Hund, Hunde (archaic) │ den │ Hunden │
+│ 3 │ accusative │ einen │ den │ Hund                  │ die │ Hunde  │
+╰───┴────────────┴───────┴─────┴───────────────────────┴─────┴────────╯
+de: Hund (noun) [masculine], Rüde (noun) [masculine], verfolgen (verb) [v], Hündin, jagen, Köter, Töle, Hunde, hetzen, Haushund, plagen, fixieren, befestigen, festmachen, Dackel, Klammer, Pleite, Schreckschraube, Vogelscheuche, Schurke, sichern, Schuft, an den Fersen bleiben, Bock, Knagge, Mitnehmer, schreckschraube, Wauwau, Auflagebock, Feuerbock, Klampe, Mitnehmerstift, Schabracke, Nocke, Hunt, nachspüren, Hund -es, Hunde-, Klaue, Klemme
+```
+
+### Mixed Modes
+
+Those additional flags can be combined in any sequence like `-igt`, `-git`. It is recommend though to put the side "t" at the end as putting it elsewhere may lead to confusing collision like "-to" which is a flag on its own, but other combinations are allowed for convenience like "-otg"
