@@ -37,7 +37,7 @@ class DataGatherer:
                 logging.debug('Retraining after having data gathered')
                 self.data_processor.generate_script_summary()
                 self.timer.time(f'{loc} Script Generation')
-        self.timer.print_all()
+        self.timer.print_all(clear=True)
 
     def gather_short_mem(self, parsed: Namespace) -> None:
         if self.shor_mem_mgr and self.context.gather_data in ['all', 'time']:

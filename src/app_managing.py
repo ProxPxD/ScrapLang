@@ -12,6 +12,7 @@ from requests import Session
 
 from src.conf import ConfFileMgr
 from src.context import Context
+from src.debug_timer import Timer
 from src.exceptions import ScrapLangException
 from src.input_managing import InputMgr
 from src.input_managing.data_gathering import DataGatherer
@@ -32,7 +33,7 @@ class AppMgr:
             lang_script_file: Path | str = None,
             printer: Callable[[str], Any] = None,
         ):
-        self.timer = MagicMock()
+        self.timer = Timer(default_new_point=True)
         self.timer.time('App start')
         setup_logging()
         self.timer.time('Log Setup')
@@ -58,8 +59,8 @@ class AppMgr:
         self.migration_mgr = MigrationManager(self.valid_data_mgr)
         self.timer.time('migration mgr')
         self.timer.time('App start')
-        self.timer.clear()
         self.timer.print_all()
+        self.timer.clear()
 
     @contextmanager
     def connect(self) -> Iterator[Session]:
@@ -75,8 +76,10 @@ class AppMgr:
                 session.close()
 
     def run(self) -> None:
+        self.timer.time('Pre Run')
         if self.migration_mgr.is_migration_needed():
             self.migration_mgr.migrate()
+        self.timer.time('Migration')
         self.run_single()
         while self.context.loop:
             from_langs, to_langs = c().at('from_langs', 'to_langs').map(','.join)(self.context)
@@ -92,12 +95,14 @@ class AppMgr:
 
     def _raw_run_single(self, args: list[str] = None) -> None:
         parsed = self.input_mgr.ingest_input(args)
+        self.timer.time('Input Ingestion')
         if parsed.set or parsed.add or parsed.delete:
             self.context.loop = False
             self.conf_mgr.update_conf(parsed)
             return
 
         setup_logging(self.context)
+        self.timer.time('Setups and updates')
         if self.context.words:
             self.run_scrap()
 
@@ -105,8 +110,9 @@ class AppMgr:
         with self.connect():
             scrap_results = seekable(self.scrap_mgr.scrap(self.context))
             _.for_each(scrap_results, self.printer.print_result)
-
+        self.timer.time('Scrapping & Printing')
         self.conf_mgr.update_lang_order(self.context.all_context_langs)
         scrap_results.seek(0)
         self.data_gatherer.valid_args_mgr.timer = self.timer
         self.data_gatherer.gather_valid_data(scrap_results, self.input_mgr.processor)
+        self.timer.print_all(clear=True)

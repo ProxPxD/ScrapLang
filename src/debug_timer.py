@@ -17,13 +17,13 @@ class Timer:
             self._times[label] = time.time() - self._points[point_label]
             self._points.pop(point_label)
         if new_point:
-            self.time()
+            self.time(new_point=False)
 
-    def print_all(self, *, del_printed: bool = False) -> None:
+    def print_all(self, *, clear: bool = False) -> None:
         l_longest_label = max(len(label) for label in self._times if label) if self._times else 0
         for label, t in self._times.items():
             print(f'{label}: {" " * (l_longest_label - len(label)) + str(t)}')
-        if del_printed:
+        if clear:
             self.clear()
 
     def clear(self) -> None:
