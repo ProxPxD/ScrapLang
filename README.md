@@ -210,10 +210,10 @@ versprechen: promise (noun) [verb], pledge (verb), misspeak (verb), fluff, hope,
 ## Non-Translation Modes
 
 ### Overview
-The tool provides a way to gather general information about words by adding an overview flag
+The tool provides a way to gather general information about words by adding an overview flag.
 - overview: `--overview`, `-overview`, `-o`
 
-No to-languaga has to be specified, but it can
+Specifying a to-language is not required, but it is allowed.
 
 ```bash
 ❮ t learn en -o
@@ -246,7 +246,7 @@ meanings:
 ```
 
 ### Translated Word Overview
-To compensate for a need to translate a word and get more data straight right up, one use "t" after the flag `-o` to denote "getting overview for the to-lang word" as `-ot`. The tool will translate and and get the overview right after.
+To address the need to translate a word and get additional data immediately, one can use "t" after the `-o` flag to request an overview of the to-lang word, as in `-ot`. The tool will perform the translation and retrieve the overview right afterward.
 
 ```bash
 ❮ t teach en pl -ot
@@ -260,7 +260,7 @@ meanings:
 
 ### Grammar
 
-To gather short grammatical data regarding the words use grammar flag:
+To gather short grammatical information about the words, use the grammar flag:
 - gather grammar data: `--grammar`, `-grammar`, `-g`
 
 ```bash
@@ -270,13 +270,13 @@ learn:
   - s, ing
 ```
 
-The same rule as for the overview applies for to-language data gathering
+The same rule as for the overview applies to to-language data gathering.
 
 
 ### Inflection
-Inflection gathering serves for displaying an inflection table for verbs and nouns for langauges that provide it. In case an inflection table is not available, the tool falls back into a grammar flag.
+Inflection gathering is used to display inflection tables for verbs and nouns in langauges that provide them. If an inflection table is not available, the tool falls back to the grammar flag.
 
-How to display an inflection of a German word for dog:
+How to display the inflection of the German word for "dog":
 ```bash
 ❮ t dog en de -it
 ╭───┬────────────┬───────┬─────┬───────────────────────┬─────┬────────╮
@@ -290,4 +290,4 @@ de: Hund (noun) [masculine], Rüde (noun) [masculine], verfolgen (verb) [v], Hü
 
 ### Mixed Modes
 
-Those additional flags can be combined in any sequence like `-igt`, `-git`. It is recommend though to put the side "t" at the end as putting it elsewhere may lead to confusing collision like "-to" which is a flag on its own, but other combinations are allowed for convenience like "-otg"
+These additional flags can be combined in any sequence, for example `-igt` or `-git`. However, it is recommended to place the side "t" at the end, as putting it elsewhere may lead to confusing collisions, such as "-to", which is a flag on its own. Other combinations are still allowed for convenience, such as "-otg".
