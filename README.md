@@ -18,7 +18,7 @@ pl: uczyć się (verb), uczyć (verb), poznawać (verb), dowiedzieć się, nauka
 ```
 
 ### Default Words
-If no language is configured, the argument is assumed to be a word
+If no language is configured, the argument is assumed to be a word.
 
 ```bash
 ❮ t learn -f en -t pl
@@ -26,7 +26,7 @@ pl: uczyć się (verb), uczyć (verb), poznawać (verb), dowiedzieć się, nauka
 ```
 
 ### Common Language Flag
-Specifying many flags is not exactly the most comfortable, so a joined flag for languages can be used. Only the first argument is assumed to be the language to translate from. The rest is assumed to be the language(s) to translate to
+Specifying many flags is not particularly convenient, so a combined flag for languages can be used. Only the first argument is assumed to be the language to translate from. The rest is assumed to be the language(s) to translate to.
 - Languages: `--langs`, `--lang`, `-langs`, `-lang`, `-l`
 
 ```bash
@@ -34,10 +34,10 @@ Specifying many flags is not exactly the most comfortable, so a joined flag for 
 pl: uczyć się (verb), uczyć (verb), poznawać (verb), dowiedzieć się, nauka, usłyszeć, nauczać, nauczyć, nauczyć się, zapamiętywać, dowiedzieć, poznać, dowiadywać, zrozumieć, zapamiętać, rozeznawać, dowiadywać się
 ```
 
-## Multi Translation
+## Multi-Translation
 
 ### Basic
-The tool allows to translate many words to many languages at once by specifying more arguments in the corresponding places
+The tool allows to translate many words to many languages at once by specifying more arguments in the corresponding places.
 
 ```bash
 ❮ t learn teach -f en -t pl es
@@ -49,8 +49,8 @@ learn: aprender (verb), estudiar (verb), enterarse (verb), averiguar, saber, ens
 teach: enseñar (verb), instruir (verb), aprender (verb), educar, adiestrar, enseñanza, aprendizaje, explicar, capacitar, estudio, demostrar, dar, alfabetizar, dar clases, dar clases a, dar clases de, el profe, la profe, preparar, enterar, eseñar, aducir, manifestar, enseña, formar, acostumbrar, amaestrar, culturizar, anunciar, dar clase, hacer saber
 ```
 
-### Common Language Flag Multi Translation
-Just like in a single translation, a common flag can be used. (Here the output differs to show how one-word translated to multiple languages is formatted)
+### Common Language Flag Multi-Translation
+Just like with a single translation, a shared flag can be used. (The output differs here to show how a single word is formatted when translated to multiple languages.)
 ```bash
 ❮ t learn -l en pl es
 pl: uczyć się (verb), uczyć (verb), poznawać (verb), dowiedzieć się, nauka, usłyszeć, nauczać, nauczyć, nauczyć się, zapamiętywać, dowiedzieć, poznać, dowiadywać, zrozumieć, zapamiętać, rozeznawać, dowiadywać się
@@ -59,7 +59,7 @@ es: aprender (verb), estudiar (verb), enterarse (verb), averiguar, saber, enseñ
 
 
 ### Flexible
-For the comfort of specifying arguments whenever one likes, some words may be specified implicitly while some after a flag. As it can be seen below, the expected order is maintained
+For convenience, some words may be specified implicitly, while others can be specified after a flag. As shown below, the expected order is maintained.
 ```bash
 ❮ t learn -l en pl es -w teach
 ──── pl ──────────────────────────────────────
@@ -71,29 +71,29 @@ teach: enseñar (verb), instruir (verb), aprender (verb), educar, adiestrar, ens
 ```
 
 ## Personalization
-The repository stores the user configuration in `resources/cong.yaml`. To manipulate the configuration, use configuration flags:
+The repository stores user configuration in `resources/cong.yaml`. The configuration can be modified using the following flags:
 - Setting: `--set`, `-set`, `-s`
 - Adding: `--add`, `-add`, `-a`
 - Deleting: `--delete`, `-delete`, `--del`, `-del`
 
 ### Configuring Languages
-The most important personalization is setting up user languages. The language codes will be remembered and filtered out out of the words.
+The most important personalization step is configuring user's preferred languages. The language codes are remembered and automatically filtered out from the words to translate.
 
-Adding English, Polish, Spanish and German languages:
+Adding English, Polish, Spanish, and German languages:
 ```bash
 ❮ t -a lang en pl es de
 ```
-To see all language code see the codes at [glosbe.com](https://glosbe.com/).
+To see all language codes, see the codes at [glosbe.com](https://glosbe.com/).
 
 ### Benefits of personalized languages
 
-The goal of this setting is to remove the need to use flags to specify the languages. Languages will be filtered out with the first one assumed to be the so-called from-language.
+The goal of this setting is to remove the need to use flags to specify languages. The languages will be filtered out, with the first one assumed to be the so-called "from-language".
 ```bash
 ❮ t learn en pl
 pl: uczyć się (verb), uczyć (verb), poznawać (verb), dowiedzieć się, nauka, usłyszeć, nauczać, nauczyć, nauczyć się, zapamiętywać, dowiedzieć, poznać, dowiadywać, zrozumieć, zapamiętać, rozeznawać, dowiadywać się
 ```
 
-This also guarantees a freedom to specify languages language in any position. All the following are equally valid:
+This also provides the freedom to specify languages in any position. All of the following are equally valid:
 ```bash
 ❮ t en learn pl
 ❮ t en pl learn
@@ -105,10 +105,10 @@ This also guarantees a freedom to specify languages language in any position. Al
 ❮ t -del lang de
 ```
 
-### Other settings are not yet setable via CLI. Following sections will be extended later
+### Other settings are not yet setable via CLI. Following sections will be extended later.
 
-## Multi From Translation
-Multi from translation is a concept created for a specific need. Sometimes polysemic words can deceive, but taking other languages can come to rescue. For that needs, the tool allows to specify many from-languages in an alternating pattern
+## Multi-From-Translation
+Multi-from-translation is a concept created for a specific need. Sometimes polysemous words can be misleading, but using other languages can come to the rescue. To address this need, the tool allows multiple from-languages to be specified in an alternating pattern.
 
 ```bash
 ❮ t pass aprobar -f en es -t pl
@@ -116,15 +116,15 @@ pass: przechodzić (verb), podać (verb) [pf], przepustka (noun) [feminine], zda
 aprobar: aprobować (verb), zatwierdzać (Verb verb), pochwalać, przyjmować, uchwalać, zaliczać, zdać, pochwalić, uznawać, przyzwalać
 ```
 
-In the example above, one can see that neither English "pass" nor Spanish "aprobar" gives the same answer. English "pass" can have quite many meanings. The same, but to a lesser extent, is true for the Spanish "aprobar". Together the common translation hints to Polish "zdać" which is the first common match. A back-translation confirms it as this word translate to its English and Spanish counterparts as a primary meaning:
+In the example above, one can see that neither the English word "pass" nor the Spanish word "aprobar" gives the same answer. The English word "pass" can have many different meanings. The same is true, to a lesser extent, for the Spanish word "aprobar". Together, the translations points to the Polish word "zdać", which is the first common match. A back-translation confirms this, as this word translates back to its English and Spanish counterparts as its primary meaning:
 ```bash
 ❮ t zdać pl en es
 en: pass (verb), turn over (verb), to graduate (verb), to pass, to realize, qualify
 es: aprobar (verb), pasar (verb)
 ```
 
-### Multi From and To Translation
-All multi-modes can be used at once. In that case the alternative syntax can be seen in the words. Groups will be printed to ease reading the output
+### Multi-From- and To-Translation
+All multi-modes can be used at once. In that case, the alternative syntax can be seen in the words. Groups will be printed to make the output easier to read:
 ```bash
 ❮ t pass aprobar know conocer -f en es -t pl de
 ━━━━ pl ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -144,17 +144,17 @@ conocer: kennen (verb) [v], kennenlernen (verb), verstehen (verb), bekannt, lern
 ```
 
 ## Shared Parts Syntax
-Sometimes there appears a need to compare words that are related one to another. The tool provides a syntax to type those words without a need to reapet one self.
+Sometimes there is a need to compare words that are related to one another. The tool provides a syntax for specifying such words without the need to reapet oneself.
 
 ### Replacemnt
-This syntax is especially useful when one wants to compare trasnlations depending on a certain element varying. Like prefixes in some languages
+This syntax is especially useful when one wants to compare translations that differ depending on a certain varying element, such as prefixes in some languages.
 ```bash
 ❮ t [ver,be]sprechen de en
 versprechen: promise (noun) [verb], pledge (verb), misspeak (verb), fluff, hope, expect, word, undertaking, mispronounce, keep, assure, fulfil, guarantee, back, engagement, meet, plight, abide, secure, accomplish, to pledge, to promise, execute, achieve, protect, affirm, warrant, insure, underwrite, vouch, certify, safeguard, ensure, perform, exercise, observe, abide by, cover, have sexual intercourse, share a bed, vow, undertake, prometer, to reduce
 besprechen: discuss (verb), review (verb), talk over (verb), bespeak, agitate, discussion, consult, stir up, talk together, debate, to confer, to criticize, to discuss, to review, to talk over, arrange, criticize, arouse, incite, talk about, to critique, to talk, record, to arrange, to consult somebody, to drive away, to record, to sweep out, to talk about, to talk something over
 ```
 
-There may be a will to check also the unprefixed word as German "sprechen" is a word on its own. To do that an empty position can be added
+There may be a need to check the unprefixed word as well. For example, the German word "sprechen" is valid on its own. To support this case, an empty position can be added:
 
 ```bash
 ❮ t [ver,be,]sprechen de en
@@ -163,14 +163,14 @@ besprechen: discuss (verb), review (verb), talk over (verb), bespeak, agitate, d
 sprechen: speak (verb), talk (verb), say (verb), tell, converse, express, pronounce, argue, utter, recite, story, propose, distinguish, discriminate, manage, carry through, dispose of, speaking respectfully, talking, to articulate, to broadcast, to converse, to pronounce, to put up, to recite, to rehearse, to say, to see, to speak, to talk, chat, utterance, past, history, pretext, eat, taste, be noticed, be recognized, be seen, be visible, refer to, speak of, to negotiate, discourse, administer, chatter, natter, ... says, according to ..., speak (irr.), speak to, talk to, to be noticed, to be recognized, to be seen, to be visible, to call, to have a talk, to open one's mouth, to put into words, to speak {spoke, spoken} (about), to tell a story
 ```
 
-Those produce the same words, just with a different order:
+Those produce the same words, just in a different order:
 ```bash
 ❮ t [ver,,be]sprechen de en
 ❮ t [,ver,be]sprechen de en
 ```
 
 ## Empty Replacement Syntax
-It's worth noting that if a single element is specified in the brackets "[X]", it is treated as if there was a comma in front "[,X]". This way one may easier remove certain parts and learn whole consecutive language logic. That syntax can also be nested
+It is worth noting that if a single element is specified in the brackets "[X]", it is treated as if there were a comma in front of it: "[,X]". This way, one may easier remove certain parts and learn the entire consecutive language logic. This syntax can also be nested.
 
 ```bash
 ❮ t nation[al[ize[d]]] en es 
@@ -182,7 +182,7 @@ nationalized: nacionalizada (adjective) [feminine], nacionalizado (adjective) [m
 
 ### Post-Segmental Replacement - Removal
 
-Another way to work with syntax is to specify the replacement after having written the word. This feature has been implemented to allow to introduce changes without a need to go back to add brackets but instead in a continuous writing flow. The syntax utilized "/" as a way to mark a removal of a previous character. To remove more than one, one can either put a numebr "/3" or type the symbol n times "///"
+Another way to use the syntax is to specify the replacement after writing the word. This feature allows changes to be introduced without going back to add brackets,keeping the writing flow continuous. The "/" syntax indicates the removal of previous characters. To remove multiple characters, either specify the number (e.g., "/3") or repeat the symbol (e.g., "///").
 
 ```bash
 ❮ t national/2 en pl
@@ -190,7 +190,7 @@ national: narodowy (adjective) [masculine], krajowy (adjective) [masculine], nar
 nation: naród (noun) [masculine], nacja (noun) [feminine], lud (noun) [masculine], państwo, kraj, stan, nawa państwowa, Naród
 ```
 ### Post-Segmental Replacement - True Replacement
-To add a part after the removal, it has to be written after the "/" operators. This is especially useful when a suffix removed previously a certain ending.
+To add a part after the removal, it has to be written after the "/" operator. This is especially useful when a suffix removes a previously existing ending.
 
 ```bash
 ❮ t baking/3e en pl
@@ -199,7 +199,7 @@ bake: piec (verb) [impf], wypalać (verb), upiec (verb), zapiekać, wypiekać, g
 ```
 
 ### Post-Segmental Replacement - Replacement boundary
-When the replacement happend before the end and all the words have the same ending, a "." can mark the spot.
+When the replacement occurs before the end and all words share the same ending, a "." can be used to indicate the position.
 
 ```bash
 ❮ t be//ver.sprechen de en
